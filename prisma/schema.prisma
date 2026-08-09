@@ -1,0 +1,362 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  SUPERVISOR
+}
+
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  passwordHash  String
+  role          Role
+  phone         String?
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  monthlySalary Float?    // Fixed payment set by admin for supervisors
+
+  // Supervisor-only: sites assigned to this user
+  assignedSites SiteSupervisor[]
+  auditLogs     AuditLog[]
+  labours       Labour[]
+  supervisorPayments SupervisorPayment[] @relation("SupervisorPayments")
+  supervisorTransfers SupervisorTransferHistory[]
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  gstNo     String?
+  contactPerson String?
+  phone     String?
+  email     String?
+  remarks   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sites     Site[]
+  quotations Quotation[]
+}
+
+model Site {
+  id            String   @id @default(cuid())
+  projectName   String
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id])
+  address       String?
+  gstNo         String?
+  retentionPct  Float    @default(2)
+  cgstPct       Float    @default(9)
+  sgstPct       Float    @default(9)
+  tdsPct        Float    @default(1)
+  startDate     DateTime?
+  endDate       DateTime?
+  remarks       String?
+  workOrderNo   String?
+  active        Boolean  @default(true)
+  progress      Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  buildings         Building[]
+  workItems         WorkItem[]
+  labourCategories  LabourCategory[]
+  supervisors       SiteSupervisor[]
+  attendances       Attendance[]
+  bills             RunningBill[]
+  quotations        Quotation[]
+  payments          Payment[]
+  labourEntries     LabourEntry[]
+  documents         Document[]
+  labours           Labour[]
+  labourTransfersFrom LabourTransferHistory[] @relation("LabourTransferFromSite")
+  labourTransfersTo   LabourTransferHistory[] @relation("LabourTransferToSite")
+  supervisorTransfersFrom SupervisorTransferHistory[] @relation("SupervisorTransferFromSite")
+  supervisorTransfersTo   SupervisorTransferHistory[] @relation("SupervisorTransferToSite")
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  siteId      String
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name        String   // e.g. "Work Order.pdf", "Site Photo.jpg"
+  url         String   // Cloudinary URL
+  publicId    String   // Cloudinary public ID for deletion
+  createdAt   DateTime @default(now())
+}
+
+// Many-to-many: a supervisor can be assigned to multiple sites, a site can have multiple supervisors
+model SiteSupervisor {
+  id           String @id @default(cuid())
+  siteId       String
+  site         Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  supervisorId String
+  supervisor   User   @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, supervisorId])
+}
+
+model Building {
+  id        String   @id @default(cuid())
+  siteId    String
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name      String   // e.g. "Tower A", "S2 Wing", "Club House" — fully dynamic
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  attendances    Attendance[]
+  billLines      BillLine[]
+}
+
+// Fully dynamic work item catalogue per site (Column, Beam, 16th Slab, Pile Cap, etc.)
+model WorkItem {
+  id        String   @id @default(cuid())
+  siteId    String
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name      String   // e.g. "15th Slab", "OHWT", "Pile Cap"
+  unit      String   // e.g. "Sft", "Nos", "Cum"
+  rate      Float
+  buWork    Float?   // approx built-up quantity for this item on this site (used as "W.O. Qty")
+  remarks   String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  billLines BillLine[]
+}
+
+// Fully dynamic labour category catalogue per site (Fitter, Helper, Carpenter, Mason...)
+model LabourCategory {
+  id            String   @id @default(cuid())
+  siteId        String
+  site          Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name          String   // e.g. "Fitter", "Helper", "Carpenter"
+  dailyWage     Float
+  overtimeRate  Float    @default(0)
+  remarks       String?
+  order         Int      @default(0)
+
+  labours       Labour[]
+  billLines     BillLine[]
+}
+
+// Individual named labourers working under a category, on a site
+model Labour {
+  id                String   @id @default(cuid())
+  siteId            String
+  site              Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  labourCategoryId  String
+  labourCategory    LabourCategory @relation(fields: [labourCategoryId], references: [id], onDelete: Cascade)
+  name              String
+  phone             String?
+  address           String?
+  joiningDate       DateTime?
+  aadharNumber      String?
+  accountNumber     String?
+  bankName          String?
+  ifscCode          String?
+  bankBranch        String?
+  supervisorId      String?
+  supervisor        User?    @relation(fields: [supervisorId], references: [id])
+  dailyWage         Float?   // Set by Admin per labourer
+  overtimeRate      Float?   // Set by Admin per labourer
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+
+  attendances       Attendance[]
+  labourEntries     LabourEntry[]
+  payments          LabourPayment[]
+  transferHistory   LabourTransferHistory[]
+}
+
+model LabourPayment {
+  id              String   @id @default(cuid())
+  labourId        String
+  labour          Labour   @relation(fields: [labourId], references: [id], onDelete: Cascade)
+  amount          Float
+  date            DateTime @default(now())
+  transactionId   String?
+  reason          String?
+  createdAt       DateTime @default(now())
+}
+
+model SupervisorPayment {
+  id              String   @id @default(cuid())
+  supervisorId    String
+  supervisor      User     @relation(fields: [supervisorId], references: [id], onDelete: Cascade, name: "SupervisorPayments")
+  amount          Float
+  date            DateTime @default(now())
+  transactionId   String?
+  reason          String?
+  createdAt       DateTime @default(now())
+}
+
+model Attendance {
+  id          String   @id @default(cuid())
+  siteId      String
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  buildingId  String?
+  building    Building? @relation(fields: [buildingId], references: [id])
+  labourId    String
+  labour      Labour   @relation(fields: [labourId], references: [id], onDelete: Cascade)
+  date        DateTime
+  status      String   // PRESENT | ABSENT | HALF_DAY (Legacy, will be used just for flags)
+  hajari      Float    @default(0) // New system: 1 to 10 Hajaris
+  hajariRate  Float    @default(0) // Snapshots the labourer's dailyWage at the exact moment this is marked
+  overtimeHrs Float    @default(0) // Phasing out in favor of hajari
+  remarks     String?
+  markedById  String   // supervisor user id
+  createdAt   DateTime @default(now())
+
+  @@unique([labourId, date])
+  @@index([siteId, date])
+}
+
+// Monthly / periodic labour payment run, auto-calculated from Attendance
+model LabourEntry {
+  id            String   @id @default(cuid())
+  siteId        String
+  site          Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  periodStart   DateTime
+  periodEnd     DateTime
+  labourId      String
+  labour        Labour   @relation(fields: [labourId], references: [id], onDelete: Cascade)
+  presentDays   Float
+  overtimeHrs   Float    @default(0)
+  dailyWage     Float
+  grossAmount   Float
+  approved      Boolean  @default(false)
+  approvedById  String?
+  createdAt     DateTime @default(now())
+}
+
+// One quotation record per client submission
+model Quotation {
+  id            String   @id @default(cuid())
+  siteId        String?
+  site          Site?    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  clientId      String?
+  client        Client?  @relation(fields: [clientId], references: [id])
+  projectName   String?
+  quotationNo   String
+  date          DateTime @default(now())
+  subject       String
+  termsJson     String   // JSON array of term strings
+  exclusionsJson String? // JSON array of exclusion strings
+  itemsJson     String   // JSON array of { description, unit, rate, remarks }
+  status        String   @default("DRAFT") // DRAFT | SENT | ACCEPTED | REJECTED
+  createdAt     DateTime @default(now())
+}
+
+// One Running Bill = one full package (Tax Invoice + Summary + building sheets + supply + balance)
+model RunningBill {
+  id            String   @id @default(cuid())
+  siteId        String
+  site          Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  billNo        String   // e.g. "007/2026-27"
+  refNo         String?  // e.g. "01"
+  billDate      DateTime @default(now())
+  periodLabel   String?  // e.g. "May 2026"
+  status        String   @default("DRAFT") // DRAFT | GENERATED | SENT
+  cgstPct       Float    @default(9)
+  sgstPct       Float    @default(9)
+  tdsPct        Float    @default(1)
+  retentionPct  Float    @default(2)
+  createdAt     DateTime @default(now())
+
+  lines         BillLine[]
+}
+
+// One row per (work item OR labour category) per building, per bill — mirrors the uploaded Excel exactly
+model BillLine {
+  id                 String   @id @default(cuid())
+  runningBillId      String
+  runningBill        RunningBill @relation(fields: [runningBillId], references: [id], onDelete: Cascade)
+  buildingId         String?
+  building           Building? @relation(fields: [buildingId], references: [id])
+  workItemId         String?
+  workItem           WorkItem? @relation(fields: [workItemId], references: [id])
+  labourCategoryId   String?
+  labourCategory     LabourCategory? @relation(fields: [labourCategoryId], references: [id])
+
+  description        String   // frozen at generation time (e.g. "S3 Reinforcement Work Done.")
+  unit               String
+  woQty              Float?   // work-order / approximate quantity
+  rate               Float
+
+  previousQty        Float    @default(0)
+  currentQty          Float   @default(0)
+  cumulativeQty       Float   @default(0)
+
+  previousAmount      Float   @default(0)
+  currentAmount       Float   @default(0)
+  cumulativeAmount    Float   @default(0)
+
+  order               Int     @default(0)
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  siteId          String
+  site            Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  date            DateTime @default(now())
+  amount          Float
+  mode            String   // CASH | NEFT | ONLINE | CHEQUE
+  accountCredited String?
+  reference       String?  // links loosely to a RunningBill billNo
+  remarks         String?
+  createdAt       DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String   // e.g. "SITE_CREATED", "BILL_GENERATED"
+  entity    String
+  entityId  String
+  metaJson  String?
+  createdAt DateTime @default(now())
+}
+
+model LabourTransferHistory {
+  id                  String   @id @default(cuid())
+  labourId            String
+  labour              Labour   @relation(fields: [labourId], references: [id], onDelete: Cascade)
+  fromSiteId          String?
+  fromSite            Site?    @relation("LabourTransferFromSite", fields: [fromSiteId], references: [id])
+  toSiteId            String
+  toSite              Site     @relation("LabourTransferToSite", fields: [toSiteId], references: [id])
+  fromSupervisorId    String?
+  toSupervisorId      String?
+  previousDailyWage   Float?
+  newDailyWage        Float?
+  previousOvertimeRate Float?
+  newOvertimeRate     Float?
+  transferDate        DateTime @default(now())
+  createdAt           DateTime @default(now())
+}
+
+model SupervisorTransferHistory {
+  id                  String   @id @default(cuid())
+  supervisorId        String
+  supervisor          User     @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+  fromSiteId          String?
+  fromSite            Site?    @relation("SupervisorTransferFromSite", fields: [fromSiteId], references: [id])
+  toSiteId            String
+  toSite              Site     @relation("SupervisorTransferToSite", fields: [toSiteId], references: [id])
+  laboursTransferred  Int      @default(0) // Count of labours transferred along with them
+  transferDate        DateTime @default(now())
+  createdAt           DateTime @default(now())
+}
