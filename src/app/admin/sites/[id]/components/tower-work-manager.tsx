@@ -1,0 +1,483 @@
+"use client";
+
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { formatINR } from "@/lib/utils";
+import { addBuildingAction, updateBuildingHeaderAction } from "../actions";
+import { addTowerWorkItemAction, updateTowerWorkProgressAction, deleteTowerWorkItemAction } from "../bill-actions";
+import { Building2, Hammer, Plus, Save, Trash2, Layers, Edit2, CheckCircle2, Percent } from "lucide-react";
+
+export function TowerWorkManager({ site }: { site: any }) {
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string>(
+    site.buildings[0]?.id || ""
+  );
+  const [isAddingBuilding, setIsAddingBuilding] = useState(false);
+  const [isEditingHeader, setIsEditingHeader] = useState(false);
+  const [isAddingItem, setIsAddingItem] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const selectedBuilding = site.buildings.find((b: any) => b.id === selectedBuildingId) || site.buildings[0];
+
+  // Local state for editing progress quantities/percentages and part amounts
+  const [progressState, setProgressState] = useState<Record<string, { name: string; previousQty: number; currentQty: number; previousPct: number; currentPct: number; cumulativePct: number; partAmount: number; previousAmt: number; currentAmt: number; cumulativeAmt: number }>>(() => {
+    const initialState: Record<string, { name: string; previousQty: number; currentQty: number; previousPct: number; currentPct: number; cumulativePct: number; partAmount: number; previousAmt: number; currentAmt: number; cumulativeAmt: number }> = {};
+    site.buildings.forEach((b: any) => {
+      b.workItems?.forEach((item: any) => {
+        initialState[item.id] = {
+          name: item.name || "",
+          previousQty: item.previousQty || 0,
+          currentQty: item.currentQty || 0,
+          previousPct: item.previousPct || 0,
+          currentPct: item.currentPct || 0,
+          cumulativePct: item.cumulativePct || 0,
+          partAmount: item.partAmount || 0,
+          previousAmt: item.previousAmt || 0,
+          currentAmt: item.currentAmt || 0,
+          cumulativeAmt: item.cumulativeAmt || 0,
+        };
+      });
+    });
+    return initialState;
+  });
+
+  const handleFieldChange = (itemId: string, field: string, value: string | number) => {
+    setProgressState((prev) => ({
+      ...prev,
+      [itemId]: {
+        ...prev[itemId],
+        [field]: typeof value === "number" && value < 0 ? 0 : value,
+      },
+    }));
+  };
+
+  const handleSaveProgress = async () => {
+    if (!selectedBuilding) return;
+    setIsSaving(true);
+    const itemsToUpdate = (selectedBuilding.workItems || []).map((item: any) => {
+      const state = progressState[item.id];
+      return {
+        id: item.id,
+        name: state?.name ?? item.name,
+        previousQty: state?.previousQty ?? (item.previousQty || 0),
+        currentQty: state?.currentQty ?? (item.currentQty || 0),
+        previousPct: state?.previousPct ?? (item.previousPct || 0),
+        currentPct: state?.currentPct ?? (item.currentPct || 0),
+        cumulativePct: state?.cumulativePct ?? (item.cumulativePct || 0),
+        partAmount: state?.partAmount ?? (item.partAmount || 0),
+        previousAmt: state?.previousAmt ?? (item.previousAmt || 0),
+        currentAmt: state?.currentAmt ?? (item.currentAmt || 0),
+        cumulativeAmt: state?.cumulativeAmt ?? (item.cumulativeAmt || 0),
+      };
+    });
+
+    await updateTowerWorkProgressAction(site.id, itemsToUpdate);
+    setIsSaving(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Tower / Building Tabs Selector */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {site.buildings.map((b: any) => (
+            <Button
+              key={b.id}
+              variant={b.id === selectedBuildingId ? "default" : "outline"}
+              onClick={() => {
+                setSelectedBuildingId(b.id);
+                setIsEditingHeader(false);
+              }}
+              className="gap-2"
+            >
+              <Building2 className="h-4 w-4" />
+              {b.name}
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {b.workItems?.length || 0} items
+              </Badge>
+            </Button>
+          ))}
+          <Button variant="outline" onClick={() => setIsAddingBuilding(!isAddingBuilding)} className="gap-1 border-dashed">
+            <Plus className="h-4 w-4" /> Add Tower / Wing
+          </Button>
+        </div>
+
+        {selectedBuilding && (
+          <Button onClick={handleSaveProgress} disabled={isSaving} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+            <Save className="h-4 w-4" />
+            {isSaving ? "Saving..." : "Save Tower Progress"}
+          </Button>
+        )}
+      </div>
+
+      {/* Add New Tower Form */}
+      {isAddingBuilding && (
+        <Card className="bg-muted/40 border-dashed">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Add New Tower / Wing with BUA Area & Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form
+              action={async (formData) => {
+                await addBuildingAction(site.id, formData);
+                setIsAddingBuilding(false);
+              }}
+              className="grid gap-4 md:grid-cols-4 items-end"
+            >
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">Tower / Wing Name *</label>
+                <Input name="name" placeholder="e.g. Tower S2 Wing, S3 Wing" required />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">Approx BUA Area (Sft / Sq)</label>
+                <Input name="approxArea" type="number" step="0.01" placeholder="e.g. 184464 or 314554" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">Contract Rate (₹ / Sft)</label>
+                <Input name="contractRate" type="number" step="0.01" placeholder="e.g. 49.60 or 53.00" />
+              </div>
+              <div>
+                <Button type="submit" className="w-full">Create Tower</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {selectedBuilding ? (
+        <div className="space-y-6">
+          {/* TOWER CONTRACT VALUE HEADER CARD */}
+          {(() => {
+            const approxArea = selectedBuilding.approxArea || 0;
+            const contractRate = selectedBuilding.contractRate || 0;
+            const totalContractValue = approxArea * contractRate;
+
+            const sumPartAmounts = (selectedBuilding.workItems || []).reduce(
+              (sum: number, item: any) => sum + (progressState[item.id]?.partAmount || 0),
+              0
+            );
+
+            return (
+              <Card className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white border-indigo-500/30">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between flex-wrap gap-4 border-b border-indigo-500/20 pb-4 mb-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5 text-indigo-400" />
+                        <h2 className="text-xl font-bold tracking-tight">{selectedBuilding.name}</h2>
+                        <Badge variant="outline" className="text-indigo-300 border-indigo-400/40">
+                          CIVIL WORK (BUA)
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-indigo-200/80 mt-1">
+                        Overall Tower Built-up Area (Sft/Sq) & Contract Rate (Exact PDF Format Matching)
+                      </p>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditingHeader(!isEditingHeader)}
+                      className="gap-1 border-indigo-400/40 text-indigo-200 hover:bg-indigo-500/20"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                      {isEditingHeader ? "Close Edit" : "Edit BUA Area & Rate"}
+                    </Button>
+                  </div>
+
+                  {/* Header Edit Form */}
+                  {isEditingHeader ? (
+                    <form
+                      action={async (formData) => {
+                        await updateBuildingHeaderAction(site.id, selectedBuilding.id, formData);
+                        setIsEditingHeader(false);
+                      }}
+                      className="grid gap-3 md:grid-cols-3 bg-white/10 p-4 rounded-lg items-end mb-4 border border-indigo-400/30"
+                    >
+                      <div>
+                        <label className="text-xs font-medium text-indigo-200 block mb-1">Approximate BUA Area (Sft / Sq) *</label>
+                        <Input name="approxArea" type="number" step="0.01" defaultValue={approxArea} required className="bg-slate-900 text-white" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-indigo-200 block mb-1">Contract Rate (₹ / Sft) *</label>
+                        <Input name="contractRate" type="number" step="0.01" defaultValue={contractRate} required className="bg-slate-900 text-white" />
+                      </div>
+                      <div>
+                        <Button type="submit" className="w-full bg-indigo-500 hover:bg-indigo-600">
+                          Save Header Values
+                        </Button>
+                      </div>
+                    </form>
+                  ) : null}
+
+                  {/* Summary Metric Cards */}
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <div className="bg-white/5 p-3.5 rounded-lg border border-indigo-500/20">
+                      <p className="text-xs text-indigo-300 font-medium">Approximate Area (BUA)</p>
+                      <p className="text-2xl font-bold font-mono mt-1">{approxArea.toLocaleString()} <span className="text-sm font-normal text-indigo-300">Sft</span></p>
+                    </div>
+
+                    <div className="bg-white/5 p-3.5 rounded-lg border border-indigo-500/20">
+                      <p className="text-xs text-indigo-300 font-medium">Contract Rate (@ ₹)</p>
+                      <p className="text-2xl font-bold font-mono mt-1">₹{contractRate} <span className="text-sm font-normal text-indigo-300">/ Sft</span></p>
+                    </div>
+
+                    <div className="bg-indigo-500/20 p-3.5 rounded-lg border border-indigo-400/40">
+                      <p className="text-xs text-indigo-200 font-medium">Total Tower Contract Value</p>
+                      <p className="text-2xl font-bold font-mono text-emerald-400 mt-1">{formatINR(totalContractValue)}</p>
+                    </div>
+
+                    <div className="bg-white/5 p-3.5 rounded-lg border border-indigo-500/20">
+                      <p className="text-xs text-indigo-300 font-medium">Sum of Stage Part Amounts</p>
+                      <p className="text-2xl font-bold font-mono text-blue-400 mt-1">{formatINR(sumPartAmounts)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {/* Selected Tower Work Items Table */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <div>
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Layers className="h-5 w-5 text-indigo-500" />
+                  {selectedBuilding.name} - Work Items & Expense Tracker (Matching PDF Format)
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Track allocated stage Part Amounts (₹), Previous Work Done (%), This Bill Work Done (%), and Cumulative Amounts.
+                </p>
+              </div>
+              <Button size="sm" onClick={() => setIsAddingItem(!isAddingItem)} className="gap-1">
+                <Plus className="h-4 w-4" /> Add Work Item / Stage
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Add Work Item Form */}
+              {isAddingItem && (
+                <form
+                  action={async (formData) => {
+                    await addTowerWorkItemAction(site.id, selectedBuilding.id, formData);
+                    setIsAddingItem(false);
+                  }}
+                  className="p-4 bg-muted/40 rounded-lg grid gap-3 md:grid-cols-4 items-end mb-4 border"
+                >
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1">Stage / Floor Particulars *</label>
+                    <Input name="name" placeholder="e.g. 40th Terrace Slab, 16th Slab" required />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1">Unit</label>
+                    <Input name="unit" placeholder="%" defaultValue="%" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1">Stage Part Amount (₹) *</label>
+                    <Input name="partAmount" type="number" step="0.01" placeholder="340000" required />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1">Rate / W.O. Qty (Optional)</label>
+                    <Input name="rate" type="number" step="0.01" placeholder="0" defaultValue="0" />
+                  </div>
+                  <div className="md:col-span-4 flex justify-end gap-2 mt-2">
+                    <Button type="button" variant="ghost" onClick={() => setIsAddingItem(false)}>Cancel</Button>
+                    <Button type="submit">Save Stage Item</Button>
+                  </div>
+                </form>
+              )}
+
+              {/* Work Items Table */}
+              {selectedBuilding.workItems?.length > 0 ? (
+                <div className="overflow-x-auto border rounded-md">
+                  <Table>
+                    <THead className="bg-muted/50">
+                      <TR>
+                        <TH className="w-12">#</TH>
+                        <TH>Particulars of Item</TH>
+                        <TH className="text-right">Part Amount (₹)</TH>
+                        <TH className="text-center">Previous Qty (%)</TH>
+                        <TH className="text-center">This Bill Qty (%)</TH>
+                        <TH className="text-center">Cumulative Qty (%)</TH>
+                        <TH className="text-right">Previous Amt (₹)</TH>
+                        <TH className="text-right">This Bill Amt (₹)</TH>
+                        <TH className="text-right">Cumulative Amt (₹)</TH>
+                        <TH className="text-right w-16">Actions</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {selectedBuilding.workItems.map((item: any, idx: number) => {
+                        const state = progressState[item.id] || {};
+                        const partAmt = state.partAmount || 0;
+                        const prevPct = state.previousPct || 0;
+                        const currPct = state.currentPct || 0;
+                        const cumPct = state.cumulativePct || 0;
+                        const prevA = state.previousAmt || 0;
+                        const currA = state.currentAmt || 0;
+                        const cumA = state.cumulativeAmt || 0;
+                        const name = state.name || "";
+
+                        return (
+                          <TR key={item.id}>
+                            <TD className="font-mono text-xs">{idx + 1}</TD>
+                            <TD>
+                              <Input
+                                value={name}
+                                onChange={(e) => handleFieldChange(item.id, "name", e.target.value)}
+                                className="h-8 text-xs font-medium min-w-[150px]"
+                              />
+                            </TD>
+                            <TD className="text-right">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={partAmt}
+                                onChange={(e) => handleFieldChange(item.id, "partAmount", parseFloat(e.target.value) || 0)}
+                                className="w-28 h-8 font-mono text-xs text-right font-semibold"
+                              />
+                            </TD>
+                            <TD className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Input
+                                  type="number"
+                                  step="1"
+                                  value={prevPct}
+                                  onChange={(e) => handleFieldChange(item.id, "previousPct", parseFloat(e.target.value) || 0)}
+                                  className="w-16 h-8 font-mono text-xs text-center"
+                                />
+                                <span className="text-xs text-muted-foreground">%</span>
+                              </div>
+                            </TD>
+                            <TD className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Input
+                                  type="number"
+                                  step="1"
+                                  value={currPct}
+                                  onChange={(e) => handleFieldChange(item.id, "currentPct", parseFloat(e.target.value) || 0)}
+                                  className="w-16 h-8 font-mono text-xs text-center bg-emerald-500/10 border-emerald-500/30 font-bold text-emerald-600"
+                                />
+                                <span className="text-xs text-emerald-600 font-bold">%</span>
+                              </div>
+                            </TD>
+                            <TD className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Input
+                                  type="number"
+                                  step="1"
+                                  value={cumPct}
+                                  onChange={(e) => handleFieldChange(item.id, "cumulativePct", parseFloat(e.target.value) || 0)}
+                                  className="w-16 h-8 font-mono text-xs text-center font-semibold"
+                                />
+                                <span className="text-xs font-semibold">%</span>
+                              </div>
+                            </TD>
+                            <TD className="text-right">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={prevA}
+                                onChange={(e) => handleFieldChange(item.id, "previousAmt", parseFloat(e.target.value) || 0)}
+                                className="w-28 h-8 font-mono text-xs text-right"
+                              />
+                            </TD>
+                            <TD className="text-right">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={currA}
+                                onChange={(e) => handleFieldChange(item.id, "currentAmt", parseFloat(e.target.value) || 0)}
+                                className="w-28 h-8 font-mono text-xs text-right font-bold text-emerald-600 bg-emerald-500/10 border-emerald-500/30"
+                              />
+                            </TD>
+                            <TD className="text-right">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={cumA}
+                                onChange={(e) => handleFieldChange(item.id, "cumulativeAmt", parseFloat(e.target.value) || 0)}
+                                className="w-28 h-8 font-mono text-xs text-right font-bold"
+                              />
+                            </TD>
+                            <TD className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={async () => {
+                                  if (confirm(`Delete ${name}?`)) {
+                                    await deleteTowerWorkItemAction(site.id, item.id);
+                                  }
+                                }}
+                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TD>
+                          </TR>
+                        );
+                      })}
+
+                      {/* Total Summary Row */}
+                      {(() => {
+                        const items = selectedBuilding.workItems;
+                        let totPartA = 0;
+                        let totPrevPct = 0;
+                        let totCurrPct = 0;
+                        let totCumPct = 0;
+                        let totPrevA = 0;
+                        let totCurrA = 0;
+                        let totCumA = 0;
+                        items.forEach((item: any) => {
+                          const state = progressState[item.id] || {};
+                          totPartA += state.partAmount || 0;
+                          totPrevPct += state.previousPct || 0;
+                          totCurrPct += state.currentPct || 0;
+                          totCumPct += state.cumulativePct || 0;
+                          totPrevA += state.previousAmt || 0;
+                          totCurrA += state.currentAmt || 0;
+                          totCumA += state.cumulativeAmt || 0;
+                        });
+
+                        return (
+                          <TR className="bg-muted/80 font-bold border-t-2">
+                            <TD colSpan={2} className="text-right uppercase tracking-wider text-xs">TOTAL AMOUNT ({selectedBuilding.name})</TD>
+                            <TD className="font-mono text-right text-blue-500">{formatINR(totPartA)}</TD>
+                            <TD className="text-center font-mono text-xs">{totPrevPct}%</TD>
+                            <TD className="text-center font-mono text-xs text-emerald-500 font-bold">{totCurrPct}%</TD>
+                            <TD className="text-center font-mono text-xs">{totCumPct}%</TD>
+                            <TD className="font-mono text-right">{formatINR(totPrevA)}</TD>
+                            <TD className="font-mono text-emerald-500 text-right">{formatINR(totCurrA)}</TD>
+                            <TD className="font-mono text-right">{formatINR(totCumA)}</TD>
+                            <TD></TD>
+                          </TR>
+                        );
+                      })()}
+                    </TBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Hammer className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  No stage items added for this tower yet. Click "Add Work Item / Stage" to add floor stages.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <Card className="text-center py-12">
+          <CardContent>
+            <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+            <h3 className="text-lg font-semibold mb-1">No Towers or Buildings Created</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Add your first tower (e.g. S2 Wing, S3 Wing) with its BUA Area & Rate to start tracking.
+            </p>
+            <Button onClick={() => setIsAddingBuilding(true)}>Add Tower / Wing</Button>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

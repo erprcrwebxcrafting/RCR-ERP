@@ -3,20 +3,32 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-const firstNames = ["Rahul", "Amit", "Suresh", "Ramesh", "Vijay", "Anil", "Sunil", "Rajesh", "Prakash", "Ganesh", "Kishore", "Sanjay", "Manoj", "Ajay", "Dinesh", "Nitin", "Pramod", "Deepak", "Ravi", "Ashok"];
-const lastNames = ["Singh", "Kumar", "Sharma", "Verma", "Patil", "Yadav", "Gupta", "Jadhav", "Deshmukh", "Kale", "Kadam", "Mishra", "Chavan"];
-const projectNames = ["Green Meadows", "Skyline Towers", "Riverfront Residences", "Sunset Boulevard", "Golden Estates"];
-const clientNames = ["SSHIVAAY CONSTRUCTIONS", "L&T Realty", "Godrej Properties", "Lodha Group", "Shapoorji Pallonji"];
-
-function getRandomName() {
-  return `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
-}
-
 async function main() {
-  console.log("Starting bulk seed...");
+  console.log("Resetting seed data with exact PDF (s.pdf) percentage format matching...");
 
+  const seedSiteIds = [
+    "seed-site-pdf",
+    "seed-site-100pct",
+    "seed-site-25pct",
+    "seed-site-multitower",
+    "seed-site-notowersupply",
+    "seed-site-0",
+    "seed-site-1",
+    "seed-site-2",
+    "seed-site-3",
+    "seed-site-4"
+  ];
+
+  // Clean up duplicate seed records
+  console.log("Cleaning up old test buildings, bills, and payments...");
+  await prisma.building.deleteMany({ where: { siteId: { in: seedSiteIds } } });
+  await prisma.runningBill.deleteMany({ where: { siteId: { in: seedSiteIds } } });
+  await prisma.payment.deleteMany({ where: { siteId: { in: seedSiteIds } } });
+  await prisma.supplyLabourEntry.deleteMany({ where: { siteId: { in: seedSiteIds } } });
+
+  // 1. Admin & Supervisor Users
   const adminPasswordHash = await bcrypt.hash("admin123", 10);
-  const admin = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: "admin@rcrenterprises.com" },
     update: {},
     create: {
@@ -27,216 +39,274 @@ async function main() {
     },
   });
 
-  const supervisors = [];
-  for (let i = 1; i <= 5; i++) {
-    const supHash = await bcrypt.hash(`supervisor${i}`, 10);
-    const sup = await prisma.user.upsert({
-      where: { email: `supervisor${i}@rcrenterprises.com` },
-      update: {},
-      create: {
-        name: `Supervisor ${i}`,
-        email: `supervisor${i}@rcrenterprises.com`,
-        passwordHash: supHash,
-        role: "SUPERVISOR",
+  const supervisorPasswordHash = await bcrypt.hash("supervisor123", 10);
+  await prisma.user.upsert({
+    where: { email: "supervisor@rcrenterprises.com" },
+    update: {},
+    create: {
+      name: "Ramesh Sharma (Supervisor)",
+      email: "supervisor@rcrenterprises.com",
+      passwordHash: supervisorPasswordHash,
+      role: "SUPERVISOR",
+    },
+  });
+
+  // -------------------------------------------------------------
+  // EXACT SCENARIO MATCHING PDF (s.pdf - NEO ITURKAA ENTERPRISES REF NO. 23)
+  // -------------------------------------------------------------
+  console.log("Seeding Real PDF Scenario (s.pdf - NEO ITURKAA ENTERPRISES)...");
+  const clientPdf = await prisma.client.upsert({
+    where: { id: "seed-client-pdf" },
+    update: {},
+    create: {
+      id: "seed-client-pdf",
+      name: "NEO ITURKAA ENTERPRISES",
+      address: "Mumbai",
+      gstNo: "27AEXFS8040P1ZW",
+      contactPerson: "Site Project Manager",
+    },
+  });
+
+  const sitePdf = await prisma.site.upsert({
+    where: { id: "seed-site-pdf" },
+    update: {},
+    create: {
+      id: "seed-site-pdf",
+      projectName: "NEO ITURKAA - Real Bill PDF (REF NO. 23)",
+      clientId: clientPdf.id,
+      address: "Mumbai Site",
+      workOrderNo: "WO/NEO/2026/023",
+      retentionPct: 2,
+      cgstPct: 9,
+      sgstPct: 9,
+      tdsPct: 1,
+      progress: 92,
+    },
+  });
+
+  // Building matching exact s.pdf format
+  const towerPdf = await prisma.building.create({
+    data: {
+      siteId: sitePdf.id,
+      name: "BUA Building (s.pdf Format)",
+      approxArea: 184464,
+      contractRate: 49.60,
+      order: 0,
+      workItems: {
+        create: [
+          // Row 1: 16th slab
+          { siteId: sitePdf.id, name: "16th slab", unit: "%", partAmount: 310000, previousPct: 100, currentPct: 0, previousQty: 100, currentQty: 0 },
+          // Rows 2-24: 17th slab to 39th slab
+          ...Array.from({ length: 23 }, (_, i) => ({
+            siteId: sitePdf.id,
+            name: `${17 + i}${i === 0 ? 'th' : i === 1 ? 'th' : i === 2 ? 'th' : 'th'} slab`,
+            unit: "%",
+            partAmount: 340000,
+            previousPct: 100,
+            currentPct: 0,
+            previousQty: 100,
+            currentQty: 0,
+          })),
+          // Row 25: 40th Terrace slab (100% in This Bill)
+          { siteId: sitePdf.id, name: "Completion of Terrace Slab 40th slab", unit: "%", partAmount: 340000, previousPct: 0, currentPct: 100, previousQty: 0, currentQty: 100 },
+          // Row 26: LMR, OHWT Parapet
+          { siteId: sitePdf.id, name: "Completion of LMR, OHWT PARAPET WALL", unit: "%", partAmount: 680000, previousPct: 0, currentPct: 0, previousQty: 0, currentQty: 0 },
+        ],
       },
-    });
-    supervisors.push(sup);
-  }
+    },
+  });
 
-  for (let s = 0; s < 5; s++) {
-    const supervisor = supervisors[s];
-    
-    // Create Client
-    const client = await prisma.client.upsert({
-      where: { id: `seed-client-${s}` },
-      update: {},
-      create: {
-        id: `seed-client-${s}`,
-        name: clientNames[s],
-        address: `Sector ${s+1}, Navi Mumbai`,
-        gstNo: `27AEXFS8040P1Z${s}`,
-        contactPerson: `Mr. Client ${s+1}`,
+  // Create Bill 23 matching s.pdf
+  await prisma.runningBill.create({
+    data: {
+      siteId: sitePdf.id,
+      billNo: "REF NO. : 23",
+      refNo: "23",
+      periodLabel: "August 2026",
+      status: "GENERATED",
+      cgstPct: 9,
+      sgstPct: 9,
+      retentionPct: 2,
+      tdsPct: 1,
+      lines: {
+        create: [
+          {
+            buildingId: towerPdf.id,
+            description: "Completion of Terrace Slab 40th slab (100%)",
+            unit: "%",
+            woQty: 100,
+            rate: 340000,
+            previousQty: 2400,
+            currentQty: 100,
+            cumulativeQty: 2500,
+            previousAmount: 8130000,
+            currentAmount: 340000,
+            cumulativeAmount: 8470000,
+          },
+        ],
       },
-    });
+    },
+  });
 
-    // Create Site
-    const site = await prisma.site.upsert({
-      where: { id: `seed-site-${s}` },
-      update: {},
-      create: {
-        id: `seed-site-${s}`,
-        projectName: projectNames[s],
-        clientId: client.id,
-        address: `Plot ${s*10}, Mumbai`,
-        workOrderNo: `WO/2026/${s+1}`,
-        buildings: {
-          create: [{ name: "Tower A", order: 0 }, { name: "Tower B", order: 1 }],
-        },
-        workItems: {
-          create: [
-            { name: "Excavation", unit: "Cum", rate: 250, buWork: 5000, order: 0 },
-            { name: "RCC Slab", unit: "Sft", rate: 55, buWork: 15000, order: 1 },
-            { name: "Brickwork", unit: "Sqm", rate: 450, buWork: 8000, order: 2 },
-          ],
-        },
-        labourCategories: {
-          create: [
-            { name: "Fitter", dailyWage: 1200, overtimeRate: 150, order: 0 },
-            { name: "Helper", dailyWage: 800, overtimeRate: 100, order: 1 },
-            { name: "Mason", dailyWage: 1100, overtimeRate: 140, order: 2 },
-            { name: "Carpenter", dailyWage: 1150, overtimeRate: 145, order: 3 },
-          ],
-        },
+  // -------------------------------------------------------------
+  // SCENARIO 1: 100% Completed Site (Golden Heights)
+  // -------------------------------------------------------------
+  console.log("Seeding Scenario 1: 100% Completed Site...");
+  const client1 = await prisma.client.upsert({
+    where: { id: "seed-client-100pct" },
+    update: {},
+    create: {
+      id: "seed-client-100pct",
+      name: "Godrej Properties Ltd",
+      address: "Bandra East, Mumbai",
+      gstNo: "27AAACG1234F1Z1",
+      contactPerson: "Mr. Rajesh Malhotra",
+    },
+  });
+
+  const site1 = await prisma.site.upsert({
+    where: { id: "seed-site-100pct" },
+    update: {},
+    create: {
+      id: "seed-site-100pct",
+      projectName: "Golden Heights - 100% Completed",
+      clientId: client1.id,
+      address: "Plot 42, Bandra East, Mumbai",
+      workOrderNo: "WO/GODREJ/2025/100",
+      retentionPct: 2,
+      cgstPct: 9,
+      sgstPct: 9,
+      tdsPct: 1,
+      progress: 100,
+    },
+  });
+
+  const tower1 = await prisma.building.create({
+    data: {
+      siteId: site1.id,
+      name: "Tower A (100% Done)",
+      approxArea: 23000,
+      contractRate: 55,
+      order: 0,
+      workItems: {
+        create: [
+          { siteId: site1.id, name: "Raft Footing & Plinth", unit: "%", partAmount: 250000, previousPct: 0, currentPct: 100, previousQty: 0, currentQty: 5000 },
+          { siteId: site1.id, name: "1st to 5th Slab Concrete", unit: "%", partAmount: 825000, previousPct: 0, currentPct: 100, previousQty: 0, currentQty: 15000 },
+          { siteId: site1.id, name: "Terrace Slab & Parapet", unit: "%", partAmount: 180000, previousPct: 0, currentPct: 100, previousQty: 0, currentQty: 3000 },
+        ],
       },
-    });
+    },
+  });
 
-    await prisma.siteSupervisor.upsert({
-      where: { siteId_supervisorId: { siteId: site.id, supervisorId: supervisor.id } },
-      update: {},
-      create: { siteId: site.id, supervisorId: supervisor.id },
-    });
+  // -------------------------------------------------------------
+  // SCENARIO 3: Multi-Tower & Extra Supply Labours (Shivaay Towers / Vikhroli)
+  // Matching the user's Excel file structure!
+  // -------------------------------------------------------------
+  console.log("Seeding Scenario 3: Multi-Tower & Extra Supply Site (Matching Excel)...");
+  const client3 = await prisma.client.upsert({
+    where: { id: "seed-client-excel" },
+    update: {},
+    create: {
+      id: "seed-client-excel",
+      name: "SSHIVAAY CONSTRUCTIONS",
+      address: "Flat 5, Sant Krupa CHS, Sector 19, Nerul, Navi Mumbai",
+      gstNo: "27AEXFS8040P1ZW",
+      contactPerson: "Mr. Sandip Patil",
+    },
+  });
 
-    const siteWithDeps = await prisma.site.findUnique({
-      where: { id: site.id },
-      include: { labourCategories: true, buildings: true, workItems: true },
-    });
+  const site3 = await prisma.site.upsert({
+    where: { id: "seed-site-multitower" },
+    update: {},
+    create: {
+      id: "seed-site-multitower",
+      projectName: "BMC Colony - Multi-Tower & Extra Supply",
+      clientId: client3.id,
+      address: "Building S2 & S3, Vikhroli, Mumbai",
+      workOrderNo: "PARKSITE/SSHIVAAY/2026-27",
+      retentionPct: 2,
+      cgstPct: 9,
+      sgstPct: 9,
+      tdsPct: 1,
+      progress: 60,
+    },
+  });
 
-    if (!siteWithDeps) continue;
+  const towerS2 = await prisma.building.create({
+    data: {
+      siteId: site3.id,
+      name: "Tower S2 Wing",
+      approxArea: 314554,
+      contractRate: 53,
+      order: 0,
+      workItems: {
+        create: [
+          { siteId: site3.id, name: "Raft Footing & Plinth Beam", unit: "Sft", rate: 53, partAmount: 1204584, buWork: 22728, previousQty: 22728, currentQty: 0, previousPct: 100, currentPct: 0 },
+          { siteId: site3.id, name: "1st to 14th Slab", unit: "Sft", rate: 53, partAmount: 8863932, buWork: 167244, previousQty: 167244, currentQty: 0, previousPct: 100, currentPct: 0 },
+          { siteId: site3.id, name: "15th to 16th Slab Reinforcement", unit: "Sft", rate: 53, partAmount: 1266276, buWork: 23892, previousQty: 0, currentQty: 4729, previousPct: 0, currentPct: 20 },
+          { siteId: site3.id, name: "Terrace Slab & LMR", unit: "Sft", rate: 53, partAmount: 1266276, buWork: 23892, previousQty: 0, currentQty: 0, previousPct: 0, currentPct: 0 },
+        ],
+      },
+    },
+  });
 
-    // Create 20 Labours per supervisor/site
-    const labours = [];
-    for (let l = 1; l <= 20; l++) {
-      const category = siteWithDeps.labourCategories[Math.floor(Math.random() * siteWithDeps.labourCategories.length)];
-      const dailyWage = category.dailyWage + (Math.floor(Math.random() * 50) - 25); // Slight variation
-      const overtimeRate = category.overtimeRate;
+  const towerS3 = await prisma.building.create({
+    data: {
+      siteId: site3.id,
+      name: "Tower S3 Wing",
+      approxArea: 24750,
+      contractRate: 52,
+      order: 1,
+      workItems: {
+        create: [
+          { siteId: site3.id, name: "15th Slab Reinforcement", unit: "Sft", rate: 52, partAmount: 143000, buWork: 2750, previousQty: 0, currentQty: 2750, previousPct: 0, currentPct: 100 },
+          { siteId: site3.id, name: "16th Slab Reinforcement", unit: "Sft", rate: 52, partAmount: 143000, buWork: 2750, previousQty: 0, currentQty: 1924, previousPct: 0, currentPct: 70 },
+          { siteId: site3.id, name: "17th to 21st Slab", unit: "Sft", rate: 52, partAmount: 715000, buWork: 13750, previousQty: 0, currentQty: 0, previousPct: 0, currentPct: 0 },
+          { siteId: site3.id, name: "Completion of Terrace & LMR", unit: "Sft", rate: 52, partAmount: 286000, buWork: 5500, previousQty: 0, currentQty: 0, previousPct: 0, currentPct: 0 },
+        ],
+      },
+    },
+  });
 
-      const labour = await (prisma as any).labour.upsert({
-        where: { id: `seed-labour-${s}-${l}` },
-        update: {},
-        create: {
-          id: `seed-labour-${s}-${l}`,
-          siteId: site.id,
-          labourCategoryId: category.id,
-          name: getRandomName(),
-          phone: `9876543${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
-          supervisorId: supervisor.id,
-          dailyWage: dailyWage,
-          overtimeRate: overtimeRate,
-          joiningDate: new Date("2026-05-01"),
-        },
-      });
-      labours.push(labour);
-    }
+  await prisma.supplyLabourEntry.createMany({
+    data: [
+      {
+        siteId: site3.id,
+        challanNo: "9",
+        description: "15th slab covering and slab checking work S3 building",
+        fitterQty: 2,
+        fitterHours: 8,
+        fitterRate: 1100,
+        helperQty: 0,
+        helperHours: 0,
+        helperRate: 800,
+        totalAmount: 2200,
+        date: new Date("2026-04-09"),
+      },
+      {
+        siteId: site3.id,
+        challanNo: "9",
+        description: "15th slab casting work complit 1 fitter & S2 building drain slab steel cutting",
+        fitterQty: 4,
+        fitterHours: 8,
+        fitterRate: 1100,
+        helperQty: 1,
+        helperHours: 10,
+        helperRate: 800,
+        totalAmount: 5400,
+        date: new Date("2026-04-10"),
+      },
+    ],
+  });
 
-    // Create Attendance for past 10 days
-    const today = new Date();
-    const attendanceData = [];
-    for (let d = 1; d <= 10; d++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - d);
-
-      for (const labour of labours) {
-        const r = Math.random();
-        let status = "PRESENT";
-        let hajari = 1;
-        
-        if (r > 0.9) {
-          status = "ABSENT";
-          hajari = 0;
-        }
-        
-        // Randomly assign multiple hajaris for some workers to simulate overtime
-        if (status === "PRESENT" && Math.random() > 0.7) {
-          hajari = Math.floor(Math.random() * 3) + 2; // 2, 3, or 4 hajaris
-        }
-
-        attendanceData.push({
-          siteId: site.id,
-          buildingId: siteWithDeps.buildings[0].id,
-          labourId: labour.id,
-          date: date,
-          status: status,
-          hajari: hajari,
-          hajariRate: labour.dailyWage,
-          markedById: supervisor.id
-        });
-      }
-    }
-    
-    const chunkSize = 100;
-    for (let i = 0; i < attendanceData.length; i += chunkSize) {
-      await prisma.attendance.createMany({ 
-        skipDuplicates: true, 
-        data: attendanceData.slice(i, i + chunkSize) 
-      });
-    }
-
-    // Create 2-3 Payments per Labour
-    for (const labour of labours) {
-      await (prisma as any).labourPayment.create({
-        data: {
-          labourId: labour.id,
-          amount: Math.floor(Math.random() * 3) * 500 + 1000, // 1000, 1500, or 2000
-          date: new Date(),
-          reason: "Weekly Advance",
-        }
-      });
-    }
-
-    // Create 1 Quotation
-    await prisma.quotation.create({
-      data: {
-        siteId: site.id,
-        clientId: client.id,
-        projectName: site.projectName,
-        quotationNo: `QT-${s+1}/2026`,
-        date: new Date(),
-        subject: `Quotation for ${site.projectName}`,
-        termsJson: JSON.stringify(["Payment within 30 days"]),
-        itemsJson: JSON.stringify([
-          { description: "RCC Works", unit: "Sft", rate: 55, remarks: "" },
-          { description: "Brickwork", unit: "Sqm", rate: 450, remarks: "" }
-        ]),
-        status: "SENT",
-      }
-    });
-
-    // Create 1 Running Bill
-    await prisma.runningBill.upsert({
-      where: { id: `seed-bill-${s}` },
-      update: {},
-      create: {
-        id: `seed-bill-${s}`,
-        siteId: site.id,
-        billNo: `RB-00${s+1}/2026-27`,
-        refNo: "01",
-        periodLabel: "May 2026",
-        status: "GENERATED",
-        lines: {
-          create: [
-            {
-              buildingId: siteWithDeps.buildings[0].id,
-              workItemId: siteWithDeps.workItems[1].id, // RCC
-              description: "RCC Work Done",
-              unit: "Sft",
-              woQty: 15000,
-              rate: 55,
-              currentQty: 2500,
-              currentAmount: 25000 * 55, // Math is wrong here (2500*55), let's fix it: 137500
-              cumulativeQty: 2500,
-              cumulativeAmount: 137500,
-              order: 0
-            }
-          ]
-        }
-      }
-    });
-  }
-
-  console.log("Bulk Seed complete!");
-  console.log("Created: 5 Sites, 5 Supervisors, 100 Labours, 1000 Attendances, Payments, Bills, and Quotations.");
+  console.log("Real PDF Scenario (s.pdf) & Test Scenarios Seeded Successfully!");
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1); })
-  .finally(async () => { await prisma.$disconnect(); });
+  .catch((e) => {
+    console.error("Seed error:", e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

@@ -37,8 +37,20 @@ export async function deleteDocumentAction(siteId: string, documentId: string, p
 
 export async function addBuildingAction(siteId: string, formData: FormData) {
   const name = formData.get("name") as string;
+  const approxArea = parseFloat((formData.get("approxArea") as string) || "0");
+  const contractRate = parseFloat((formData.get("contractRate") as string) || "0");
   if (!name) return;
-  await prisma.building.create({ data: { siteId, name } });
+  await prisma.building.create({ data: { siteId, name, approxArea, contractRate } });
+  revalidatePath(`/admin/sites/${siteId}`);
+}
+
+export async function updateBuildingHeaderAction(siteId: string, buildingId: string, formData: FormData) {
+  const approxArea = parseFloat((formData.get("approxArea") as string) || "0");
+  const contractRate = parseFloat((formData.get("contractRate") as string) || "0");
+  await prisma.building.update({
+    where: { id: buildingId },
+    data: { approxArea, contractRate },
+  });
   revalidatePath(`/admin/sites/${siteId}`);
 }
 

@@ -79,6 +79,7 @@ model Site {
   quotations        Quotation[]
   payments          Payment[]
   labourEntries     LabourEntry[]
+  supplyLabourEntries SupplyLabourEntry[]
   documents         Document[]
   labours           Labour[]
   labourTransfersFrom LabourTransferHistory[] @relation("LabourTransferFromSite")
@@ -109,29 +110,43 @@ model SiteSupervisor {
 }
 
 model Building {
-  id        String   @id @default(cuid())
-  siteId    String
-  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  name      String   // e.g. "Tower A", "S2 Wing", "Club House" — fully dynamic
-  order     Int      @default(0)
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  siteId       String
+  site         Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name         String   // e.g. "Tower A", "S2 Wing", "Club House" — fully dynamic
+  approxArea   Float?   @default(0) // Approximate Built-Up Area in Sft / Sq
+  contractRate Float?   @default(0) // Contract Rate per Sft / Sq (e.g. 49.60)
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
 
   attendances    Attendance[]
   billLines      BillLine[]
+  workItems      WorkItem[]
 }
 
-// Fully dynamic work item catalogue per site (Column, Beam, 16th Slab, Pile Cap, etc.)
+// Fully dynamic work item catalogue per tower/site (Column, Beam, 15th Slab, Plinth Beam, etc.)
 model WorkItem {
-  id        String   @id @default(cuid())
-  siteId    String
-  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  name      String   // e.g. "15th Slab", "OHWT", "Pile Cap"
-  unit      String   // e.g. "Sft", "Nos", "Cum"
-  rate      Float
-  buWork    Float?   // approx built-up quantity for this item on this site (used as "W.O. Qty")
-  remarks   String?
-  order     Int      @default(0)
-  createdAt DateTime @default(now())
+  id          String    @id @default(cuid())
+  siteId      String
+  site        Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  buildingId  String?
+  building    Building? @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  name        String    // e.g. "15th Slab", "40th Terrace Slab"
+  unit        String    // e.g. "Sft", "Nos", "Cum", "%"
+  rate        Float     @default(0)
+  buWork      Float?    // approx built-up quantity / W.O. Qty for this item
+  partAmount  Float?    @default(0) // Stage Allocated Amount (Part Amount in PDF)
+  previousQty Float     @default(0)
+  currentQty  Float     @default(0)
+  previousPct Float     @default(0)
+  currentPct  Float     @default(0)
+  cumulativePct Float?  @default(0)
+  previousAmt Float?    @default(0)
+  currentAmt  Float?    @default(0)
+  cumulativeAmt Float?  @default(0)
+  remarks     String?
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
 
   billLines BillLine[]
 }
@@ -259,7 +274,27 @@ model Quotation {
   createdAt     DateTime @default(now())
 }
 
-// One Running Bill = one full package (Tax Invoice + Summary + building sheets + supply + balance)
+// Extra Supply Labour entries billed to client (Challan-wise daily/hourly extra manpower)
+model SupplyLabourEntry {
+  id            String       @id @default(cuid())
+  siteId        String
+  site          Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  date          DateTime     @default(now())
+  challanNo     String?
+  description   String       // e.g. "15th slab covering and slab checking work S3 building"
+  fitterQty     Float        @default(0) // Nos / Count
+  fitterHours   Float        @default(0)
+  fitterRate    Float        @default(1100)
+  helperQty     Float        @default(0)
+  helperHours   Float        @default(0)
+  helperRate    Float        @default(800)
+  totalAmount   Float        @default(0)
+  runningBillId String?
+  runningBill   RunningBill? @relation(fields: [runningBillId], references: [id])
+  createdAt     DateTime     @default(now())
+}
+
+// One Running Bill = one full package (Tax Invoice + Abstract + building sheets + supply + balance)
 model RunningBill {
   id            String   @id @default(cuid())
   siteId        String
@@ -275,10 +310,11 @@ model RunningBill {
   retentionPct  Float    @default(2)
   createdAt     DateTime @default(now())
 
-  lines         BillLine[]
+  lines               BillLine[]
+  supplyLabourEntries SupplyLabourEntry[]
 }
 
-// One row per (work item OR labour category) per building, per bill — mirrors the uploaded Excel exactly
+// One row per (work item OR supply category) per building, per bill — mirrors the uploaded Excel exactly
 model BillLine {
   id                 String   @id @default(cuid())
   runningBillId      String
@@ -303,6 +339,7 @@ model BillLine {
   currentAmount       Float   @default(0)
   cumulativeAmount    Float   @default(0)
 
+  isSupplyLabour      Boolean @default(false)
   order               Int     @default(0)
 }
 

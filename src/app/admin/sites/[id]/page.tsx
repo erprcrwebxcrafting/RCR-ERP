@@ -11,14 +11,16 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
     where: { id },
     include: {
       client: true,
-      buildings: { orderBy: { order: "asc" } },
+      buildings: { orderBy: { order: "asc" }, include: { workItems: { orderBy: { order: "asc" } } } },
       workItems: { orderBy: { order: "asc" } },
+      supplyLabourEntries: { orderBy: { date: "asc" } },
       labourCategories: { orderBy: { order: "asc" }, include: { labours: true } },
       supervisors: { include: { supervisor: true } },
-      bills: { orderBy: { createdAt: "desc" } },
+      bills: { orderBy: { createdAt: "desc" }, include: { lines: true } },
       quotations: { orderBy: { createdAt: "desc" } },
       payments: { orderBy: { date: "desc" } },
       labourEntries: { orderBy: { createdAt: "desc" } },
+      documents: { orderBy: { createdAt: "desc" } },
     },
   });
   if (!site) notFound();
