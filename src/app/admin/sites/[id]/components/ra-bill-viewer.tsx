@@ -166,30 +166,57 @@ export function RABillViewer({ site }: { site: any }) {
         <Button variant={activeSheetTab === "balance" ? "default" : "ghost"} size="sm" onClick={() => setActiveSheetTab("balance")}>Balance Sheet</Button>
       </div>
 
+      {/* TAB CONTENT: SHEET 1 (TAX INVOICE) */}
       {activeSheetTab === "sheet1" && (
         <Card className="max-w-4xl mx-auto shadow-md border p-6 bg-background space-y-6">
           <BillHeaderBanner site={site} latestBill={latestBill} sheetTitle="TAX INVOICE" />
 
+          {/* Invoice Itemized Work Description Table */}
           <div className="border rounded-md overflow-hidden">
             <Table>
               <THead className="bg-muted/60">
                 <TR>
                   <TH className="w-16">Sr. No.</TH>
-                  <TH>Description</TH>
+                  <TH>Particulars / Work Description</TH>
                   <TH className="text-right">Amount (₹)</TH>
                 </TR>
               </THead>
               <TBody>
-                <TR>
-                  <TD>1</TD>
-                  <TD className="font-medium">{site.projectName} Construction Work Done</TD>
-                  <TD className="text-right font-mono font-semibold">{formatINR(grossBillTotal)}</TD>
-                </TR>
-                <TR className="border-t bg-muted/20 font-semibold">
+                {/* Itemize each tower's work done amount */}
+                {site.buildings.map((b: any, idx: number) => {
+                  const towerWorkAmt = (b.workItems || []).reduce((s: number, i: any) => {
+                    return s + ((i.currentAmt !== undefined && i.currentAmt !== null) ? i.currentAmt : ((i.currentQty || 0) * i.rate));
+                  }, 0);
+
+                  return (
+                    <TR key={b.id}>
+                      <TD>{idx + 1}</TD>
+                      <TD className="font-medium">
+                        <span className="font-bold text-foreground">{site.projectName} — {b.name}</span> Reinforcement & Construction Work Done
+                      </TD>
+                      <TD className="text-right font-mono font-semibold">{formatINR(towerWorkAmt)}</TD>
+                    </TR>
+                  );
+                })}
+
+                {/* Itemize Extra Supply Labour if present */}
+                {totalSupplyWork > 0 && (
+                  <TR>
+                    <TD>{site.buildings.length + 1}</TD>
+                    <TD className="font-medium">
+                      <span className="font-bold text-indigo-500">Departmental Extra Labour Supply</span> (Fitters & Helpers Log Billed)
+                    </TD>
+                    <TD className="text-right font-mono font-semibold text-indigo-500">{formatINR(totalSupplyWork)}</TD>
+                  </TR>
+                )}
+
+                {/* Subtotal / Taxable Amount */}
+                <TR className="border-t bg-muted/30 font-bold text-sm">
                   <TD></TD>
-                  <TD>Taxable Amount</TD>
-                  <TD className="text-right font-mono">{formatINR(grossBillTotal)}</TD>
+                  <TD className="uppercase tracking-wider">Total Taxable Amount</TD>
+                  <TD className="text-right font-mono text-base">{formatINR(grossBillTotal)}</TD>
                 </TR>
+
                 <TR>
                   <TD></TD>
                   <TD className="text-xs text-muted-foreground">Add CGST @ {taxPcts.cgstPct}%</TD>
@@ -202,13 +229,14 @@ export function RABillViewer({ site }: { site: any }) {
                 </TR>
                 <TR className="border-t-2 bg-emerald-500/10 font-bold text-base">
                   <TD></TD>
-                  <TD>Net Payable Amount</TD>
-                  <TD className="text-right font-mono text-emerald-500">{formatINR(grossBillTotal + cgst + sgst)}</TD>
+                  <TD className="text-emerald-700 dark:text-emerald-400">NET PAYABLE INVOICE AMOUNT</TD>
+                  <TD className="text-right font-mono text-emerald-600 dark:text-emerald-400 text-lg font-black">{formatINR(grossBillTotal + cgst + sgst)}</TD>
                 </TR>
               </TBody>
             </Table>
           </div>
 
+          {/* Bank Details & Authorized Signatory */}
           <div className="grid grid-cols-2 gap-4 pt-6 border-t text-xs">
             <div className="space-y-1">
               <p className="font-bold text-sm">BANK DETAILS FOR PAYMENT:</p>
@@ -224,6 +252,7 @@ export function RABillViewer({ site }: { site: any }) {
         </Card>
       )}
 
+      {/* TAB CONTENT: SHEET 2 (CONSOLIDATED ABSTRACT) */}
       {activeSheetTab === "sheet2" && (
         <Card className="p-6 overflow-x-auto space-y-6 bg-background">
           <CardHeader className="px-0 pt-0 flex flex-row items-center justify-between flex-wrap gap-3 border-b pb-4">
@@ -347,6 +376,7 @@ export function RABillViewer({ site }: { site: any }) {
         </Card>
       )}
 
+      {/* TAB CONTENT: TOWER SHEETS */}
       {activeSheetTab === "towers" && (
         <Card className="p-6 space-y-6 bg-background">
           <div className="flex items-center gap-2 flex-wrap">
@@ -364,6 +394,30 @@ export function RABillViewer({ site }: { site: any }) {
             const approxArea = b.approxArea || 0;
             const contractRate = b.contractRate || 0;
             const totalVal = approxArea * contractRate;
+
+            const items = b.workItems || [];
+            let totPrevQ = 0;
+            let totCurrQ = 0;
+            let totCumQ = 0;
+            let totPrevA = 0;
+            let totCurrA = 0;
+            let totCumA = 0;
+
+            items.forEach((item: any) => {
+              const prevQ = item.previousPct ?? item.previousQty ?? 0;
+              const currQ = item.currentPct ?? item.currentQty ?? 0;
+              const cumQ = item.cumulativePct ?? (prevQ + currQ);
+              const prevA = (item.previousAmt !== undefined && item.previousAmt !== null) ? item.previousAmt : (prevQ > 0 ? (item.partAmount * prevQ / 100) : 0);
+              const currA = (item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : (currQ > 0 ? (item.partAmount * currQ / 100) : 0);
+              const cumA = item.cumulativeAmt ?? (prevA + currA);
+
+              totPrevQ += prevQ;
+              totCurrQ += currQ;
+              totCumQ += cumQ;
+              totPrevA += prevA;
+              totCurrA += currA;
+              totCumA += cumA;
+            });
 
             return (
               <div className="space-y-6">
@@ -391,7 +445,7 @@ export function RABillViewer({ site }: { site: any }) {
                     </TR>
                   </THead>
                   <TBody>
-                    {(b.workItems || []).map((item: any, i: number) => {
+                    {items.map((item: any, i: number) => {
                       const prevQ = item.previousPct ?? item.previousQty ?? 0;
                       const currQ = item.currentPct ?? item.currentQty ?? 0;
                       const cumQ = item.cumulativePct ?? (prevQ + currQ);
@@ -412,6 +466,17 @@ export function RABillViewer({ site }: { site: any }) {
                         </TR>
                       );
                     })}
+
+                    {/* Prominent TOTAL Row at the bottom of Tower Sheet */}
+                    <TR className="bg-muted/80 font-bold border-t-2 text-xs">
+                      <TD colSpan={3} className="text-right uppercase tracking-wider">TOTAL {b.name.toUpperCase()} AMOUNT</TD>
+                      <TD className="text-center font-mono">{totPrevQ}%</TD>
+                      <TD className="text-center font-mono text-emerald-500">{totCurrQ}%</TD>
+                      <TD className="text-center font-mono font-bold">{totCumQ}%</TD>
+                      <TD className="text-right font-mono">{formatINR(totPrevA)}</TD>
+                      <TD className="text-right font-mono text-emerald-500 font-black text-sm">{formatINR(totCurrA)}</TD>
+                      <TD className="text-right font-mono font-black text-sm">{formatINR(totCumA)}</TD>
+                    </TR>
                   </TBody>
                 </Table>
               </div>
