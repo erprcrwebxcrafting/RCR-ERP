@@ -58,16 +58,19 @@ export function SiteProgressEdit({ siteId, initialProgress }: { siteId: string; 
 
   return (
     <div className="flex items-center gap-3 bg-muted/30 px-3 py-1.5 rounded-md border border-border/50">
-      <div className="flex flex-col gap-1 w-24">
+      <div className="flex flex-col gap-1 w-28">
         <div className="flex items-center justify-between text-xs font-medium">
-          <span className="text-muted-foreground">Progress</span>
-          <span>{initialProgress}%</span>
+          <span className="text-muted-foreground flex items-center gap-1">
+            Progress
+            <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">(Auto)</span>
+          </span>
+          <span className="font-bold font-mono">{initialProgress}%</span>
         </div>
         <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden">
-          <div className="bg-primary h-full transition-all" style={{ width: `${initialProgress}%` }} />
+          <div className="bg-emerald-500 h-full transition-all" style={{ width: `${initialProgress}%` }} />
         </div>
       </div>
-      <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => setIsEditing(true)}>
+      <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-foreground" title="Override progress manually" onClick={() => setIsEditing(true)}>
         <Pencil className="h-3 w-3" />
       </Button>
     </div>

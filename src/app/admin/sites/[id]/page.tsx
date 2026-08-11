@@ -44,6 +44,30 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
   const labourById = new Map(labours.map((l) => [l.id, l]));
   const labourEntriesWithNames = site.labourEntries.map((e) => ({ ...e, labour: labourById.get(e.labourId) }));
 
+  // Dynamic Auto Progress calculation based on completed stage work values vs total contract value
+  let totalAllocatedValue = 0;
+  let totalWorkDoneValue = 0;
+
+  site.buildings.forEach((b: any) => {
+    (b.workItems || []).forEach((item: any) => {
+      const partAmt = item.partAmount || (item.buWork && item.rate ? item.buWork * item.rate : item.rate || 0);
+      const cumPct = (item.cumulativePct !== undefined && item.cumulativePct !== null && item.cumulativePct > 0)
+        ? item.cumulativePct
+        : ((item.previousPct || 0) + (item.currentPct || 0));
+      
+      const cumAmt = (item.cumulativeAmt !== undefined && item.cumulativeAmt !== null && item.cumulativeAmt > 0)
+        ? item.cumulativeAmt
+        : (partAmt * (cumPct / 100));
+
+      totalAllocatedValue += partAmt;
+      totalWorkDoneValue += cumAmt;
+    });
+  });
+
+  const autoCalculatedProgress = totalAllocatedValue > 0 
+    ? Math.min(100, Math.round((totalWorkDoneValue / totalAllocatedValue) * 100))
+    : (site.progress || 0);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -52,7 +76,7 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
           <p className="text-muted-foreground">{site.client.name}</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap justify-end">
-          <SiteProgressEdit siteId={site.id} initialProgress={site.progress} />
+          <SiteProgressEdit siteId={site.id} initialProgress={autoCalculatedProgress} />
           <TransferResourcesModal 
             siteId={site.id} 
             allSites={allSites} 
