@@ -76,7 +76,11 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
           <p className="text-muted-foreground">{site.client.name}</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap justify-end">
-          <SiteProgressEdit siteId={site.id} initialProgress={autoCalculatedProgress} />
+          <SiteProgressEdit 
+            siteId={site.id} 
+            siteProgress={site.progress} 
+            autoProgress={autoCalculatedProgress} 
+          />
           <TransferResourcesModal 
             siteId={site.id} 
             allSites={allSites} 
