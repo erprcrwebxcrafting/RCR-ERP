@@ -252,9 +252,12 @@ export function RABillViewer({ site }: { site: any }) {
 
       {/* TAB CONTENT: SHEET 2 (CONSOLIDATED ABSTRACT) */}
       {activeSheetTab === "sheet2" && (
-        <Card className="p-4 overflow-x-auto space-y-4">
-          <CardHeader className="px-0 pt-0 flex flex-row items-center justify-between flex-wrap gap-3">
-            <CardTitle className="text-base font-bold">Sheet 2: Consolidated Bill Abstract</CardTitle>
+        <Card className="p-6 overflow-x-auto space-y-6 bg-background">
+          <CardHeader className="px-0 pt-0 flex flex-row items-center justify-between flex-wrap gap-3 border-b pb-4">
+            <div>
+              <CardTitle className="text-lg font-bold">Sheet 2: Consolidated Bill Abstract</CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">RCR ENTERPRISES / SSHIVAAY CONSTRUCTIONS</p>
+            </div>
             <div className="flex items-center gap-3 bg-muted/40 p-2.5 rounded-lg border text-xs flex-wrap">
               <span className="font-bold text-muted-foreground uppercase tracking-wider">Live Tax & Deductions Edit:</span>
               <label className="flex items-center gap-1 font-semibold">
@@ -299,6 +302,26 @@ export function RABillViewer({ site }: { site: any }) {
               </label>
             </div>
           </CardHeader>
+
+          {/* Full Client & Project Header Details matching Excel Sheet2 & PDF */}
+          <div className="grid grid-cols-2 text-xs gap-4 border-b pb-4 bg-muted/20 p-4 rounded-lg">
+            <div className="space-y-1">
+              <p className="font-semibold text-muted-foreground">To,</p>
+              <p className="font-bold text-sm text-foreground">{site.client?.name || "Client Name"}</p>
+              <p className="text-muted-foreground">{site.address || "Client Office Address"}</p>
+              {site.gstNo && <p className="font-mono text-[11px] pt-1">GST No: {site.gstNo}</p>}
+            </div>
+            <div className="text-right space-y-1">
+              <p><span className="font-semibold text-muted-foreground">Invoice No:</span> <span className="font-bold text-sm font-mono">{latestBill?.billNo || "007/2026-27"}</span></p>
+              <p><span className="font-semibold text-muted-foreground">Date:</span> {formatDate(latestBill?.billDate || new Date())}</p>
+              <p><span className="font-semibold text-muted-foreground">Ref No:</span> <span className="font-semibold">{latestBill?.refNo || "01"}</span></p>
+              <p><span className="font-semibold text-muted-foreground">W.O. No:</span> <span className="font-mono text-xs">{site.workOrderNo || "PARKSITE/SSHIVAAY/2026-27"}</span></p>
+            </div>
+            <div className="col-span-2 pt-2 border-t flex items-center justify-between text-xs font-semibold flex-wrap gap-2">
+              <p>Name of Work: <span className="font-normal text-muted-foreground">Reinforcement & Concrete Construction Work</span></p>
+              <p>Name of Project: <span className="font-bold text-indigo-500">{site.projectName}</span></p>
+            </div>
+          </div>
           <Table className="border">
             <THead className="bg-muted/60">
               <TR>
