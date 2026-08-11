@@ -138,6 +138,10 @@ export function RABillViewer({ site }: { site: any }) {
                 <Input name="billNo" defaultValue={`007/${new Date().getFullYear()}-${(new Date().getFullYear()+1).toString().slice(2)}`} required />
               </div>
               <div>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">Bill Date *</label>
+                <Input name="billDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
+              </div>
+              <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">Ref No.</label>
                 <Input name="refNo" defaultValue="01" />
               </div>
@@ -145,6 +149,7 @@ export function RABillViewer({ site }: { site: any }) {
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">Period Label</label>
                 <Input name="periodLabel" defaultValue={new Date().toLocaleString("en-US", { month: "long", year: "numeric" })} />
               </div>
+
               <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">Retention %</label>
                 <Input name="retentionPct" type="number" step="0.5" value={taxPcts.retentionPct} onChange={(e) => setTaxPcts(p => ({ ...p, retentionPct: parseFloat(e.target.value) || 0 }))} />

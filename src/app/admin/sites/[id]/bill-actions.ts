@@ -166,12 +166,16 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
 
   if (!site) return;
 
+  const billDateStr = formData.get("billDate") as string;
+  const billDate = billDateStr ? new Date(billDateStr) : new Date();
+
   const runningBill = await prisma.runningBill.create({
     data: {
       siteId,
       billNo,
       refNo,
       periodLabel,
+      billDate,
       cgstPct,
       sgstPct,
       retentionPct,
@@ -179,6 +183,7 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
       status: "GENERATED",
     },
   });
+
 
   // Create bill lines for each building work item
   let order = 0;
