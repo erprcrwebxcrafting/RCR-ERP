@@ -248,32 +248,94 @@ export async function generateRABillExcelWorkbook(data: {
   // ==========================================
   const balSheet = workbook.addWorksheet("Balance sheet");
   const bHeaders = [
-    "Sr. No.", "Date", "RA Bill Ref / Description", "Bill Amount",
-    "Retention 2%", "Net Bill Amount", "Payment Received Date",
-    "Payment Mode", "Account Credited", "Amount Received",
-    "1% TDS Deducted", "Outstanding Balance"
+    "Sr. No.", "Date", "RA Bill Ref / Description", "Bill Amount (Gross)",
+    `Retention (${retPct}%)`, "Net Bill Amount", "Account Credited / Recd",
+    "1% TDS Deducted", "Cumulative Recd / Advance", "Running Balance", "GST Amount (18%)", "Balance with GST"
   ];
   const bhRow = balSheet.addRow(bHeaders);
   bhRow.font = { bold: true };
 
-  let runningBalance = totCurrAmt;
+  // Build unified chronological ledger (Bills + Payments)
+  const allBills = site.bills || [];
+  const allPayments = payments || [];
+  const ledger: any[] = [];
 
-  payments.forEach((pay: any, idx: number) => {
-    runningBalance -= (pay.amount || 0);
+  allBills.forEach((b: any) => {
+    const gross = (b.lines || []).reduce((s: number, l: any) => s + (l.currentAmount || 0), 0);
+    const bRetPct = b.retentionPct ?? retPct;
+    const bTdsPct = b.tdsPct ?? tdsPct;
+    const bCgst = b.cgstPct ?? cgstPct;
+    const bSgst = b.sgstPct ?? sgstPct;
+
+    const bRetAmt = gross * (bRetPct / 100);
+    const bNetAmt = gross - bRetAmt;
+    const bTdsAmt = gross * (bTdsPct / 100);
+    const bGstAmt = gross * ((bCgst + bSgst) / 100);
+
+    ledger.push({
+      type: "BILL",
+      date: new Date(b.billDate || b.createdAt),
+      refName: `BILL NO.${b.billNo || "01"} (${b.periodLabel || site.projectName || "Site"})`,
+      grossAmount: gross,
+      retentionAmt: bRetAmt,
+      netBilledAmt: bNetAmt,
+      accountCredited: "—",
+      paymentRecd: 0,
+      tdsAmt: bTdsAmt,
+      gstAmt: bGstAmt,
+    });
+  });
+
+  allPayments.forEach((p: any) => {
+    ledger.push({
+      type: "PAYMENT",
+      date: new Date(p.date || p.createdAt),
+      refName: p.remarks || `CLIENT PAYMENT (${p.mode || "NEFT"})`,
+      grossAmount: 0,
+      retentionAmt: 0,
+      netBilledAmt: 0,
+      accountCredited: p.accountCredited || p.mode || "BANK",
+      paymentRecd: p.amount || 0,
+      tdsAmt: 0,
+      gstAmt: 0,
+    });
+  });
+
+  ledger.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  let runCumNetBilled = 0;
+  let runCumRecd = 0;
+  let runCumTds = 0;
+
+  ledger.forEach((item, idx) => {
+    if (item.type === "BILL") {
+      runCumNetBilled += item.netBilledAmt;
+      runCumTds += item.tdsAmt;
+    } else {
+      runCumRecd += item.paymentRecd;
+    }
+
+    const cumAdv = runCumRecd + runCumTds;
+    const runBal = runCumNetBilled - runCumRecd;
+    const balWithGst = runBal + item.gstAmt;
+
     balSheet.addRow([
       idx + 1,
-      pay.date ? new Date(pay.date).toLocaleDateString("en-IN") : "-",
-      pay.remarks || "Payment Received",
-      "", "", "",
-      pay.date ? new Date(pay.date).toLocaleDateString("en-IN") : "-",
-      pay.mode || "CASH",
-      pay.accountCredited || "-",
-      pay.amount,
-      "",
-      runningBalance
+      item.date ? item.date.toLocaleDateString("en-IN") : "-",
+      item.refName,
+      item.type === "BILL" ? item.grossAmount : "-",
+      item.type === "BILL" ? item.retentionAmt : "-",
+      item.type === "BILL" ? item.netBilledAmt : "-",
+      item.type === "PAYMENT" ? `${item.paymentRecd} (${item.accountCredited})` : "-",
+      item.type === "BILL" ? item.tdsAmt : "-",
+      cumAdv,
+      runBal,
+      item.type === "BILL" ? item.gstAmt : "-",
+      balWithGst,
     ]);
   });
 
   const arrayBuffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(arrayBuffer);
 }
+
