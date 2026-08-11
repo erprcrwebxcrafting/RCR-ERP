@@ -20,20 +20,71 @@ export async function generateRABillExcelWorkbook(data: {
   const clientName = site.client?.name || "Client";
   const workOrderNo = site.workOrderNo || "PARKSITE/SSHIVAAY/2026-27";
 
+  const retPct = runningBill?.retentionPct ?? site.retentionPct ?? 2;
+  const tdsPct = runningBill?.tdsPct ?? site.tdsPct ?? 1;
+  const cgstPct = runningBill?.cgstPct ?? site.cgstPct ?? 9;
+  const sgstPct = runningBill?.sgstPct ?? site.sgstPct ?? 9;
+
+  const headerFill: ExcelJS.Fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "1F4E79" }, // Deep Navy
+  };
+
+  const subHeaderFill: ExcelJS.Fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "D9E1F2" }, // Soft Gray Blue
+  };
+
+  const highlightFill: ExcelJS.Fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "E2EFDA" }, // Soft Mint Green
+  };
+
+  const thinBorder: Partial<ExcelJS.Borders> = {
+    top: { style: "thin", color: { argb: "D3D3D3" } },
+    left: { style: "thin", color: { argb: "D3D3D3" } },
+    bottom: { style: "thin", color: { argb: "D3D3D3" } },
+    right: { style: "thin", color: { argb: "D3D3D3" } },
+  };
+
+  // Helper to format table headers
+  const formatHeaderRow = (row: ExcelJS.Row) => {
+    row.font = { bold: true, color: { argb: "FFFFFF" }, size: 10 };
+    row.alignment = { vertical: "middle", horizontal: "center" };
+    row.height = 24;
+    row.eachCell((cell) => {
+      cell.fill = headerFill;
+      cell.border = thinBorder;
+    });
+  };
+
+  // Helper for auto column sizing & gridlines
+  const finalizeSheet = (sheet: ExcelJS.Worksheet) => {
+    sheet.views = [{ showGridLines: true }];
+    sheet.columns.forEach((col) => {
+      let maxLen = 12;
+      col.eachCell?.({ includeEmpty: false }, (cell) => {
+        const valStr = cell.value ? cell.value.toString() : "";
+        if (valStr.length > maxLen) maxLen = valStr.length;
+      });
+      col.width = Math.min(maxLen + 4, 60);
+    });
+  };
+
   // ==========================================
   // SHEET 1: TAX INVOICE
   // ==========================================
-  const sheet1 = workbook.addWorksheet("Sheet1");
-  sheet1.columns = [
-    { header: "Sr. No.", key: "sr", width: 10 },
-    { header: "Description", key: "desc", width: 50 },
-    { header: "Amount (₹)", key: "amount", width: 20 },
-  ];
+  const sheet1 = workbook.addWorksheet("Sheet1 (Tax Invoice)");
 
   sheet1.mergeCells("A1:C1");
-  sheet1.getCell("A1").value = "TAX INVOICE";
-  sheet1.getCell("A1").font = { bold: true, size: 16 };
-  sheet1.getCell("A1").alignment = { horizontal: "center" };
+  const titleCell = sheet1.getCell("A1");
+  titleCell.value = "TAX INVOICE";
+  titleCell.font = { bold: true, size: 16, color: { argb: "1F4E79" } };
+  titleCell.alignment = { horizontal: "center", vertical: "middle" };
+  sheet1.getRow(1).height = 30;
 
   sheet1.addRow(["To,", "", `Date : ${billDate}`]);
   sheet1.addRow([clientName.toUpperCase(), "", `Invoice No. ${billNo}`]);
@@ -41,37 +92,72 @@ export async function generateRABillExcelWorkbook(data: {
   if (site.gstNo) sheet1.addRow([`GST No. : ${site.gstNo}`]);
   sheet1.addRow([]);
 
-  sheet1.addRow([`Name of Work: Reinforcement Work`]);
+  sheet1.addRow([`Name of Work: Concrete & Reinforcement Construction Work`]);
   sheet1.addRow([`Name Of Project : ${projectName}`]);
   sheet1.addRow([`Subject :- REF NO. : ${refNo}`]);
   sheet1.addRow([]);
 
-  // Calculate bill total amounts
   const lines = runningBill?.lines || [];
   const currentTotal = lines.reduce((sum: number, l: any) => sum + (l.currentAmount || 0), 0);
-  const cgst = currentTotal * ((runningBill?.cgstPct || 9) / 100);
-  const sgst = currentTotal * ((runningBill?.sgstPct || 9) / 100);
+  const cgst = currentTotal * (cgstPct / 100);
+  const sgst = currentTotal * (sgstPct / 100);
   const netPayable = currentTotal + cgst + sgst;
 
-  const invoiceHeaderRow = sheet1.addRow(["Sr. No.", "Description", "Amount (₹)"]);
-  invoiceHeaderRow.font = { bold: true };
+  const invoiceHeaderRow = sheet1.addRow(["Sr. No.", "Particulars / Work Description", "Amount (₹)"]);
+  formatHeaderRow(invoiceHeaderRow);
 
-  sheet1.addRow([1, `${projectName} Work done Amount`, currentTotal]);
-  sheet1.addRow(["", "Taxable Amount", currentTotal]);
-  sheet1.addRow(["", `Add CGST@${runningBill?.cgstPct || 9}%`, cgst]);
-  sheet1.addRow(["", `Add SGST@${runningBill?.sgstPct || 9}%`, sgst]);
-  const netRow = sheet1.addRow(["", "Net Payable Amount", netPayable]);
-  netRow.font = { bold: true };
+  let sr = 1;
+  towers.forEach((b: any) => {
+    const towerWorkAmt = (b.workItems || []).reduce((s: number, i: any) => {
+      return s + ((i.currentAmt !== undefined && i.currentAmt !== null) ? i.currentAmt : ((i.currentQty || 0) * i.rate));
+    }, 0);
+
+    if (towerWorkAmt > 0) {
+      const r = sheet1.addRow([sr++, `${projectName} — ${b.name} Reinforcement & Civil Work`, towerWorkAmt]);
+      r.getCell(3).numFmt = "₹ #,##0.00";
+      r.getCell(3).alignment = { horizontal: "right" };
+    }
+  });
+
+  const supplyTotal = supplyEntries.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0);
+  if (supplyTotal > 0) {
+    const r = sheet1.addRow([sr++, "Departmental Extra Labour Supply Amount", supplyTotal]);
+    r.getCell(3).numFmt = "₹ #,##0.00";
+    r.getCell(3).alignment = { horizontal: "right" };
+  }
+
+  sheet1.addRow([]);
+  const rTaxable = sheet1.addRow(["", "Taxable Amount", currentTotal]);
+  rTaxable.font = { bold: true };
+  rTaxable.getCell(3).numFmt = "₹ #,##0.00";
+  rTaxable.getCell(3).alignment = { horizontal: "right" };
+
+  const rCgst = sheet1.addRow(["", `Add CGST @ ${cgstPct}%`, cgst]);
+  rCgst.getCell(3).numFmt = "₹ #,##0.00";
+  rCgst.getCell(3).alignment = { horizontal: "right" };
+
+  const rSgst = sheet1.addRow(["", `Add SGST @ ${sgstPct}%`, sgst]);
+  rSgst.getCell(3).numFmt = "₹ #,##0.00";
+  rSgst.getCell(3).alignment = { horizontal: "right" };
+
+  const netRow = sheet1.addRow(["", "Net Payable Amount (With 18% GST)", netPayable]);
+  netRow.font = { bold: true, size: 11, color: { argb: "1F4E79" } };
+  netRow.getCell(2).fill = highlightFill;
+  netRow.getCell(3).fill = highlightFill;
+  netRow.getCell(3).numFmt = "₹ #,##0.00";
+  netRow.getCell(3).alignment = { horizontal: "right" };
 
   sheet1.addRow([]);
   sheet1.addRow(["NAME :- RCR ENTERPRISES", "", "FOR RCR ENTERPRISES"]);
   sheet1.addRow(["A/C :- 088405500559"]);
   sheet1.addRow(["IFSC :- ICIC0000884", "", "AUTHORISED SIGNATORY"]);
 
+  finalizeSheet(sheet1);
+
   // ==========================================
   // SHEET 2: ABSTRACT SUMMARY
   // ==========================================
-  const sheet2 = workbook.addWorksheet("Sheet2");
+  const sheet2 = workbook.addWorksheet("Sheet2 (Abstract Summary)");
   sheet2.addRow([`To, ${clientName}`, "", "", "", "", "", "", "", "", `Date : ${billDate}`]);
   sheet2.addRow([`Invoice No. ${billNo}`, "", "", "", "", "", "", "", "", `W. O. No. :- ${workOrderNo}`]);
   sheet2.addRow([`Name Of Project :- ${projectName}`]);
@@ -79,15 +165,15 @@ export async function generateRABillExcelWorkbook(data: {
   sheet2.addRow([]);
 
   const absHeaders = [
-    "Sr. No", "Description", "Unit", "W.O. Qty", "Rate",
+    "Sr. No", "Description", "Unit", "W.O. Qty", "Rate (₹)",
     "Previous Qty", "This Bill Qty", "Cumulative Qty",
-    "Previous Amount", "This Bill Amount", "Cumulative Amount"
+    "Previous Amount (₹)", "This Bill Amount (₹)", "Cumulative Amount (₹)"
   ];
   const hRow = sheet2.addRow(absHeaders);
-  hRow.font = { bold: true };
+  formatHeaderRow(hRow);
 
   lines.forEach((line: any, idx: number) => {
-    sheet2.addRow([
+    const r = sheet2.addRow([
       idx + 1,
       line.description,
       line.unit,
@@ -100,6 +186,15 @@ export async function generateRABillExcelWorkbook(data: {
       line.currentAmount || 0,
       (line.previousAmount || 0) + (line.currentAmount || 0),
     ]);
+
+    r.getCell(1).alignment = { horizontal: "center" };
+    r.getCell(3).alignment = { horizontal: "center" };
+    r.getCell(5).numFmt = "₹ #,##0.00";
+    r.getCell(9).numFmt = "₹ #,##0.00";
+    r.getCell(10).numFmt = "₹ #,##0.00";
+    r.getCell(11).numFmt = "₹ #,##0.00";
+
+    r.eachCell((cell) => { cell.border = thinBorder; });
   });
 
   const totPrevAmt = lines.reduce((s: number, l: any) => s + (l.previousAmount || 0), 0);
@@ -108,11 +203,10 @@ export async function generateRABillExcelWorkbook(data: {
 
   const totalRow = sheet2.addRow(["", "Total Amount", "", "", "", "", "", "", totPrevAmt, totCurrAmt, totCumAmt]);
   totalRow.font = { bold: true };
-
-  const retPct = runningBill?.retentionPct ?? site.retentionPct ?? 2;
-  const tdsPct = runningBill?.tdsPct ?? site.tdsPct ?? 1;
-  const cgstPct = runningBill?.cgstPct ?? site.cgstPct ?? 9;
-  const sgstPct = runningBill?.sgstPct ?? site.sgstPct ?? 9;
+  totalRow.eachCell((cell) => { cell.fill = subHeaderFill; cell.border = thinBorder; });
+  totalRow.getCell(9).numFmt = "₹ #,##0.00";
+  totalRow.getCell(10).numFmt = "₹ #,##0.00";
+  totalRow.getCell(11).numFmt = "₹ #,##0.00";
 
   const retAmt = totCurrAmt * (retPct / 100);
   const tdsAmt = totCurrAmt * (tdsPct / 100);
@@ -121,13 +215,26 @@ export async function generateRABillExcelWorkbook(data: {
   const cgstAmt = totCurrAmt * (cgstPct / 100);
   const sgstAmt = totCurrAmt * (sgstPct / 100);
 
-  sheet2.addRow(["", `ADD CGST @${cgstPct}%`, "", "", "", "", "", "", totPrevAmt * (cgstPct / 100), cgstAmt, (totPrevAmt * (cgstPct / 100)) + cgstAmt]);
-  sheet2.addRow(["", `ADD SGST @${sgstPct}%`, "", "", "", "", "", "", totPrevAmt * (sgstPct / 100), sgstAmt, (totPrevAmt * (sgstPct / 100)) + sgstAmt]);
-  sheet2.addRow(["", `LESS RETENTION @${retPct}%`, "", "", "", "", "", "", 0, retAmt, retAmt]);
-  sheet2.addRow(["", `LESS TDS @${tdsPct}%`, "", "", "", "", "", "", 0, tdsAmt, tdsAmt]);
-  const finalBalRow = sheet2.addRow(["", "Net Payable Balance", "", "", "", "", "", "", totPrevAmt, balAmt, totPrevAmt + balAmt]);
-  finalBalRow.font = { bold: true };
+  const rCgst2 = sheet2.addRow(["", `ADD CGST @ ${cgstPct}%`, "", "", "", "", "", "", totPrevAmt * (cgstPct / 100), cgstAmt, (totPrevAmt * (cgstPct / 100)) + cgstAmt]);
+  rCgst2.getCell(9).numFmt = "₹ #,##0.00"; rCgst2.getCell(10).numFmt = "₹ #,##0.00"; rCgst2.getCell(11).numFmt = "₹ #,##0.00";
 
+  const rSgst2 = sheet2.addRow(["", `ADD SGST @ ${sgstPct}%`, "", "", "", "", "", "", totPrevAmt * (sgstPct / 100), sgstAmt, (totPrevAmt * (sgstPct / 100)) + sgstAmt]);
+  rSgst2.getCell(9).numFmt = "₹ #,##0.00"; rSgst2.getCell(10).numFmt = "₹ #,##0.00"; rSgst2.getCell(11).numFmt = "₹ #,##0.00";
+
+  const rRet = sheet2.addRow(["", `LESS RETENTION @ ${retPct}%`, "", "", "", "", "", "", 0, retAmt, retAmt]);
+  rRet.getCell(9).numFmt = "₹ #,##0.00"; rRet.getCell(10).numFmt = "₹ #,##0.00"; rRet.getCell(11).numFmt = "₹ #,##0.00";
+
+  const rTds = sheet2.addRow(["", `LESS TDS @ ${tdsPct}%`, "", "", "", "", "", "", 0, tdsAmt, tdsAmt]);
+  rTds.getCell(9).numFmt = "₹ #,##0.00"; rTds.getCell(10).numFmt = "₹ #,##0.00"; rTds.getCell(11).numFmt = "₹ #,##0.00";
+
+  const finalBalRow = sheet2.addRow(["", "Net Payable Balance", "", "", "", "", "", "", totPrevAmt, balAmt, totPrevAmt + balAmt]);
+  finalBalRow.font = { bold: true, size: 11, color: { argb: "1F4E79" } };
+  finalBalRow.eachCell((cell) => { cell.fill = highlightFill; cell.border = thinBorder; });
+  finalBalRow.getCell(9).numFmt = "₹ #,##0.00";
+  finalBalRow.getCell(10).numFmt = "₹ #,##0.00";
+  finalBalRow.getCell(11).numFmt = "₹ #,##0.00";
+
+  finalizeSheet(sheet2);
 
   // ==========================================
   // SHEET 3, 4... TOWER SHEETS
@@ -145,6 +252,7 @@ export async function generateRABillExcelWorkbook(data: {
     const totalTowerVal = approxArea * contractRate;
     const buaRow = towerSheet.addRow(["CIVIL WORK", "Sft", approxArea, "@", contractRate, "", totalTowerVal]);
     buaRow.font = { bold: true };
+    buaRow.getCell(7).numFmt = "₹ #,##0.00";
     towerSheet.addRow([]);
 
     const tHeaders = [
@@ -153,7 +261,7 @@ export async function generateRABillExcelWorkbook(data: {
       "Previous Amount (₹)", "This Bill Amount (₹)", "Cumulative Amount (₹)"
     ];
     const thRow = towerSheet.addRow(tHeaders);
-    thRow.font = { bold: true };
+    formatHeaderRow(thRow);
 
     const items = tower.workItems || [];
     let tPrevTotal = 0;
@@ -171,21 +279,34 @@ export async function generateRABillExcelWorkbook(data: {
       tPrevTotal += prevA;
       tCurrTotal += currA;
 
-      towerSheet.addRow([
+      const r = towerSheet.addRow([
         i + 1, item.name, item.unit || "%",
         prevQ, currQ, cumQ,
         prevA, currA, cumA
       ]);
+
+      r.getCell(1).alignment = { horizontal: "center" };
+      r.getCell(3).alignment = { horizontal: "center" };
+      r.getCell(7).numFmt = "₹ #,##0.00";
+      r.getCell(8).numFmt = "₹ #,##0.00";
+      r.getCell(9).numFmt = "₹ #,##0.00";
+      r.eachCell((cell) => { cell.border = thinBorder; });
     });
 
     const tTotRow = towerSheet.addRow(["", "TOTAL AMOUNT", "", "", "", "", tPrevTotal, tCurrTotal, tPrevTotal + tCurrTotal]);
     tTotRow.font = { bold: true };
+    tTotRow.eachCell((cell) => { cell.fill = subHeaderFill; cell.border = thinBorder; });
+    tTotRow.getCell(7).numFmt = "₹ #,##0.00";
+    tTotRow.getCell(8).numFmt = "₹ #,##0.00";
+    tTotRow.getCell(9).numFmt = "₹ #,##0.00";
+
+    finalizeSheet(towerSheet);
   }
 
   // ==========================================
   // SHEET 5: SUPPLY LABOUR SHEET
   // ==========================================
-  const supplySheet = workbook.addWorksheet("supply");
+  const supplySheet = workbook.addWorksheet("Supply Sheet");
   supplySheet.addRow([`To, ${clientName}`, "", "", "", "", "", "", "", `Date : ${billDate}`]);
   supplySheet.addRow([`Invoice No. ${billNo}`, "", "", "", "", "", "", "", `W. O. No. :- ${workOrderNo}`]);
   supplySheet.addRow([`Name Of Project :- ${projectName}`]);
@@ -199,7 +320,7 @@ export async function generateRABillExcelWorkbook(data: {
     "Fitter Helper", "Hours", "Total Helper Hours", "Amount (₹)"
   ];
   const shRow = supplySheet.addRow(sHeaders);
-  shRow.font = { bold: true };
+  formatHeaderRow(shRow);
 
   let totalFitterHours = 0;
   let totalHelperHours = 0;
@@ -212,7 +333,7 @@ export async function generateRABillExcelWorkbook(data: {
     totalHelperHours += hHrs;
     totalSupplyAmount += se.totalAmount || 0;
 
-    supplySheet.addRow([
+    const r = supplySheet.addRow([
       se.date ? new Date(se.date).toLocaleDateString("en-IN") : "-",
       se.challanNo || "-",
       se.description,
@@ -224,27 +345,41 @@ export async function generateRABillExcelWorkbook(data: {
       hHrs,
       se.totalAmount || 0
     ]);
+
+    r.getCell(1).alignment = { horizontal: "center" };
+    r.getCell(2).alignment = { horizontal: "center" };
+    r.getCell(10).numFmt = "₹ #,##0.00";
+    r.eachCell((cell) => { cell.border = thinBorder; });
   });
 
   supplySheet.addRow([]);
   const sTotHrsRow = supplySheet.addRow(["", "", "Total Hours", "", "", totalFitterHours, "", "", totalHelperHours, ""]);
   sTotHrsRow.font = { bold: true };
+  sTotHrsRow.eachCell((cell) => { cell.fill = subHeaderFill; cell.border = thinBorder; });
 
   const fitterDays = Math.round((totalFitterHours / 8) * 100) / 100;
   const helperDays = Math.round((totalHelperHours / 8) * 100) / 100;
-  supplySheet.addRow(["", "", "Total Days (Nos = Hrs / 8)", "", "", fitterDays, "", "", helperDays, ""]);
+  const sDaysRow = supplySheet.addRow(["", "", "Total Days (Nos = Hrs / 8)", "", "", fitterDays, "", "", helperDays, ""]);
+  sDaysRow.eachCell((cell) => { cell.border = thinBorder; });
 
   const fitterTotalAmt = fitterDays * 1100;
   const helperTotalAmt = helperDays * 800;
 
   const sRateRow = supplySheet.addRow(["", "", "Rate (₹)", "", "", 1100, "", "", 800, ""]);
   sRateRow.font = { bold: true };
+  sRateRow.eachCell((cell) => { cell.border = thinBorder; });
 
   const sFinalRow = supplySheet.addRow(["", "", "TOTAL SUPPLY AMOUNT (₹)", "", "", fitterTotalAmt, "", "", helperTotalAmt, totalSupplyAmount]);
-  sFinalRow.font = { bold: true };
+  sFinalRow.font = { bold: true, size: 11, color: { argb: "1F4E79" } };
+  sFinalRow.eachCell((cell) => { cell.fill = highlightFill; cell.border = thinBorder; });
+  sFinalRow.getCell(6).numFmt = "₹ #,##0.00";
+  sFinalRow.getCell(9).numFmt = "₹ #,##0.00";
+  sFinalRow.getCell(10).numFmt = "₹ #,##0.00";
+
+  finalizeSheet(supplySheet);
 
   // ==========================================
-  // SHEET 6: BALANCE SHEET
+  // SHEET 6: BALANCE SHEET & CLIENT LEDGER
   // ==========================================
   const balSheet = workbook.addWorksheet("Balance sheet");
   const bHeaders = [
@@ -253,9 +388,8 @@ export async function generateRABillExcelWorkbook(data: {
     "1% TDS Deducted", "Cumulative Recd / Advance", "Running Balance", "GST Amount (18%)", "Balance with GST"
   ];
   const bhRow = balSheet.addRow(bHeaders);
-  bhRow.font = { bold: true };
+  formatHeaderRow(bhRow);
 
-  // Build unified chronological ledger (Bills + Payments)
   const allBills = site.bills || [];
   const allPayments = payments || [];
   const ledger: any[] = [];
@@ -319,7 +453,7 @@ export async function generateRABillExcelWorkbook(data: {
     const runBal = runCumNetBilled - runCumRecd;
     const balWithGst = runBal + item.gstAmt;
 
-    balSheet.addRow([
+    const r = balSheet.addRow([
       idx + 1,
       item.date ? item.date.toLocaleDateString("en-IN") : "-",
       item.refName,
@@ -333,9 +467,36 @@ export async function generateRABillExcelWorkbook(data: {
       item.type === "BILL" ? item.gstAmt : "-",
       balWithGst,
     ]);
+
+    r.getCell(1).alignment = { horizontal: "center" };
+    r.getCell(2).alignment = { horizontal: "center" };
+
+    if (item.type === "BILL") {
+      r.getCell(4).numFmt = "₹ #,##0.00";
+      r.getCell(5).numFmt = "₹ #,##0.00";
+      r.getCell(6).numFmt = "₹ #,##0.00";
+      r.getCell(8).numFmt = "₹ #,##0.00";
+      r.getCell(11).numFmt = "₹ #,##0.00";
+    }
+
+    r.getCell(9).numFmt = "₹ #,##0.00";
+    r.getCell(10).numFmt = "₹ #,##0.00";
+    r.getCell(12).numFmt = "₹ #,##0.00";
+
+    // Format Running Balance cell color
+    if (runBal > 0) {
+      r.getCell(10).font = { color: { argb: "9C0006" }, bold: true }; // Soft Red for Dues
+      r.getCell(12).font = { color: { argb: "9C0006" }, bold: true };
+    } else {
+      r.getCell(10).font = { color: { argb: "006100" }, bold: true }; // Soft Green for Cleared
+      r.getCell(12).font = { color: { argb: "006100" }, bold: true };
+    }
+
+    r.eachCell((cell) => { cell.border = thinBorder; });
   });
+
+  finalizeSheet(balSheet);
 
   const arrayBuffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(arrayBuffer);
 }
-
