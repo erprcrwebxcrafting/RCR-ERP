@@ -10,6 +10,40 @@ import { formatINR, formatDate } from "@/lib/utils";
 import { generateRunningBillAction } from "../bill-actions";
 import { Receipt, FileSpreadsheet, Printer, Plus, CheckCircle2, Building2, Users, DollarSign } from "lucide-react";
 
+function BillHeaderBanner({ site, latestBill, sheetTitle }: { site: any; latestBill: any; sheetTitle?: string }) {
+  return (
+    <div className="space-y-4 border-b pb-4">
+      <div className="flex items-center justify-between border-b pb-3">
+        <div>
+          <h2 className="text-base font-bold uppercase tracking-wider">{sheetTitle || "RA Bill Document"}</h2>
+          <p className="text-xs text-muted-foreground">RCR ENTERPRISES / SSHIVAAY CONSTRUCTIONS</p>
+        </div>
+        <div className="text-right font-mono text-xs">
+          <p><span className="text-muted-foreground">Invoice No:</span> <span className="font-bold">{latestBill?.billNo || "007/2026-27"}</span></p>
+          <p><span className="text-muted-foreground">Date:</span> {formatDate(latestBill?.billDate || new Date())}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 text-xs gap-4 bg-muted/20 p-4 rounded-lg">
+        <div className="space-y-1">
+          <p className="font-semibold text-muted-foreground">To,</p>
+          <p className="font-bold text-sm text-foreground">{site.client?.name || "Client Name"}</p>
+          <p className="text-muted-foreground">{site.address || "Client Office Address"}</p>
+          {site.gstNo && <p className="font-mono text-[11px] pt-1">GST No: {site.gstNo}</p>}
+        </div>
+        <div className="text-right space-y-1">
+          <p><span className="font-semibold text-muted-foreground">Ref No:</span> <span className="font-semibold">{latestBill?.refNo || "01"}</span></p>
+          <p><span className="font-semibold text-muted-foreground">W.O. No:</span> <span className="font-mono text-xs">{site.workOrderNo || "PARKSITE/SSHIVAAY/2026-27"}</span></p>
+        </div>
+        <div className="col-span-2 pt-2 border-t flex items-center justify-between text-xs font-semibold flex-wrap gap-2">
+          <p>Name of Work: <span className="font-normal text-muted-foreground">Reinforcement & Concrete Construction Work</span></p>
+          <p>Name of Project: <span className="font-bold text-indigo-500">{site.projectName}</span></p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function RABillViewer({ site }: { site: any }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeSheetTab, setActiveSheetTab] = useState<"sheet1" | "sheet2" | "towers" | "supply" | "balance">("sheet1");
@@ -25,9 +59,8 @@ export function RABillViewer({ site }: { site: any }) {
     tdsPct: site.tdsPct ?? 1,
   });
 
-  // Calculate live site totals
   const totalTowerWork = site.buildings.reduce((sum: number, b: any) => {
-    return sum + (b.workItems || []).reduce((ws: number, item: any) => ws + ((item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : (item.currentQty * item.rate)), 0);
+    return sum + (b.workItems || []).reduce((ws: number, item: any) => ws + ((item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : ((item.currentQty || 0) * item.rate)), 0);
   }, 0);
 
   const totalSupplyWork = (site.supplyLabourEntries || []).reduce((sum: number, se: any) => sum + (se.totalAmount || 0), 0);
@@ -49,7 +82,6 @@ export function RABillViewer({ site }: { site: any }) {
 
   return (
     <div className="space-y-6">
-      {/* Top Action Bar */}
       <div className="flex items-center justify-between flex-wrap gap-4 bg-muted/40 p-4 rounded-xl border">
         <div>
           <h2 className="text-lg font-bold flex items-center gap-2">
@@ -76,7 +108,6 @@ export function RABillViewer({ site }: { site: any }) {
         </div>
       </div>
 
-      {/* Generate Bill Form */}
       {isGenerating && (
         <Card className="border-emerald-500/30 bg-emerald-500/5">
           <CardHeader>
@@ -127,74 +158,18 @@ export function RABillViewer({ site }: { site: any }) {
         </Card>
       )}
 
-      {/* Multi-Sheet Viewer Sub-Tabs */}
       <div className="border-b flex items-center gap-2 overflow-x-auto pb-2">
-        <Button
-          variant={activeSheetTab === "sheet1" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setActiveSheetTab("sheet1")}
-        >
-          Sheet 1: Tax Invoice
-        </Button>
-        <Button
-          variant={activeSheetTab === "sheet2" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setActiveSheetTab("sheet2")}
-        >
-          Sheet 2: Abstract Summary
-        </Button>
-        <Button
-          variant={activeSheetTab === "towers" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setActiveSheetTab("towers")}
-        >
-          Tower Work Sheets ({site.buildings?.length || 0})
-        </Button>
-        <Button
-          variant={activeSheetTab === "supply" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setActiveSheetTab("supply")}
-        >
-          Supply Sheet
-        </Button>
-        <Button
-          variant={activeSheetTab === "balance" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setActiveSheetTab("balance")}
-        >
-          Balance Sheet
-        </Button>
+        <Button variant={activeSheetTab === "sheet1" ? "default" : "ghost"} size="sm" onClick={() => setActiveSheetTab("sheet1")}>Sheet 1: Tax Invoice</Button>
+        <Button variant={activeSheetTab === "sheet2" ? "default" : "ghost"} size="sm" onClick={() => setActiveSheetTab("sheet2")}>Sheet 2: Abstract Summary</Button>
+        <Button variant={activeSheetTab === "towers" ? "default" : "ghost"} size="sm" onClick={() => setActiveSheetTab("towers")}>Tower Work Sheets ({site.buildings?.length || 0})</Button>
+        <Button variant={activeSheetTab === "supply" ? "default" : "ghost"} size="sm" onClick={() => setActiveSheetTab("supply")}>Supply Sheet</Button>
+        <Button variant={activeSheetTab === "balance" ? "default" : "ghost"} size="sm" onClick={() => setActiveSheetTab("balance")}>Balance Sheet</Button>
       </div>
 
-      {/* TAB CONTENT: SHEET 1 (TAX INVOICE) */}
       {activeSheetTab === "sheet1" && (
         <Card className="max-w-4xl mx-auto shadow-md border p-6 bg-background space-y-6">
-          <div className="text-center border-b pb-4">
-            <h1 className="text-2xl font-black tracking-wider uppercase text-foreground">TAX INVOICE</h1>
-            <p className="text-xs text-muted-foreground mt-1">RCR ENTERPRISES / SSHIVAAY CONSTRUCTIONS</p>
-          </div>
+          <BillHeaderBanner site={site} latestBill={latestBill} sheetTitle="TAX INVOICE" />
 
-          <div className="grid grid-cols-2 text-sm gap-4 border-b pb-4">
-            <div>
-              <p className="font-semibold text-muted-foreground">To,</p>
-              <p className="font-bold text-base">{site.client?.name || "Client Name"}</p>
-              <p className="text-xs text-muted-foreground">{site.address || "Client Address"}</p>
-              {site.gstNo && <p className="text-xs font-mono mt-1">GST No: {site.gstNo}</p>}
-            </div>
-            <div className="text-right">
-              <p><span className="font-semibold text-muted-foreground">Invoice No:</span> <span className="font-bold">{latestBill?.billNo || "007/2026-27"}</span></p>
-              <p><span className="font-semibold text-muted-foreground">Date:</span> {formatDate(latestBill?.billDate || new Date())}</p>
-              <p><span className="font-semibold text-muted-foreground">Ref No:</span> {latestBill?.refNo || "01"}</p>
-              <p className="text-xs text-muted-foreground mt-1">W.O. No: {site.workOrderNo || "PARKSITE/SSHIVAAY/2026-27"}</p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-sm font-semibold">Name of Work: <span className="font-normal">Reinforcement & Concrete Construction Work</span></p>
-            <p className="text-sm font-semibold">Project Name: <span className="font-normal">{site.projectName}</span></p>
-          </div>
-
-          {/* Invoice Summary Table */}
           <div className="border rounded-md overflow-hidden">
             <Table>
               <THead className="bg-muted/60">
@@ -234,7 +209,6 @@ export function RABillViewer({ site }: { site: any }) {
             </Table>
           </div>
 
-          {/* Bank Details & Authorized Signatory */}
           <div className="grid grid-cols-2 gap-4 pt-6 border-t text-xs">
             <div className="space-y-1">
               <p className="font-bold text-sm">BANK DETAILS FOR PAYMENT:</p>
@@ -250,78 +224,35 @@ export function RABillViewer({ site }: { site: any }) {
         </Card>
       )}
 
-      {/* TAB CONTENT: SHEET 2 (CONSOLIDATED ABSTRACT) */}
       {activeSheetTab === "sheet2" && (
         <Card className="p-6 overflow-x-auto space-y-6 bg-background">
           <CardHeader className="px-0 pt-0 flex flex-row items-center justify-between flex-wrap gap-3 border-b pb-4">
             <div>
               <CardTitle className="text-lg font-bold">Sheet 2: Consolidated Bill Abstract</CardTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">RCR ENTERPRISES / SSHIVAAY CONSTRUCTIONS</p>
             </div>
             <div className="flex items-center gap-3 bg-muted/40 p-2.5 rounded-lg border text-xs flex-wrap">
               <span className="font-bold text-muted-foreground uppercase tracking-wider">Live Tax & Deductions Edit:</span>
               <label className="flex items-center gap-1 font-semibold">
                 CGST %:
-                <Input
-                  type="number"
-                  step="0.5"
-                  value={taxPcts.cgstPct}
-                  onChange={(e) => setTaxPcts((p) => ({ ...p, cgstPct: parseFloat(e.target.value) || 0 }))}
-                  className="w-16 h-7 text-xs font-mono bg-background"
-                />
+                <Input type="number" step="0.5" value={taxPcts.cgstPct} onChange={(e) => setTaxPcts((p) => ({ ...p, cgstPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background" />
               </label>
               <label className="flex items-center gap-1 font-semibold">
                 SGST %:
-                <Input
-                  type="number"
-                  step="0.5"
-                  value={taxPcts.sgstPct}
-                  onChange={(e) => setTaxPcts((p) => ({ ...p, sgstPct: parseFloat(e.target.value) || 0 }))}
-                  className="w-16 h-7 text-xs font-mono bg-background"
-                />
+                <Input type="number" step="0.5" value={taxPcts.sgstPct} onChange={(e) => setTaxPcts((p) => ({ ...p, sgstPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background" />
               </label>
               <label className="flex items-center gap-1 font-semibold text-orange-600">
                 Retention %:
-                <Input
-                  type="number"
-                  step="0.5"
-                  value={taxPcts.retentionPct}
-                  onChange={(e) => setTaxPcts((p) => ({ ...p, retentionPct: parseFloat(e.target.value) || 0 }))}
-                  className="w-16 h-7 text-xs font-mono bg-background text-orange-600 border-orange-300"
-                />
+                <Input type="number" step="0.5" value={taxPcts.retentionPct} onChange={(e) => setTaxPcts((p) => ({ ...p, retentionPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background text-orange-600 border-orange-300" />
               </label>
               <label className="flex items-center gap-1 font-semibold text-orange-600">
                 TDS %:
-                <Input
-                  type="number"
-                  step="0.5"
-                  value={taxPcts.tdsPct}
-                  onChange={(e) => setTaxPcts((p) => ({ ...p, tdsPct: parseFloat(e.target.value) || 0 }))}
-                  className="w-16 h-7 text-xs font-mono bg-background text-orange-600 border-orange-300"
-                />
+                <Input type="number" step="0.5" value={taxPcts.tdsPct} onChange={(e) => setTaxPcts((p) => ({ ...p, tdsPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background text-orange-600 border-orange-300" />
               </label>
             </div>
           </CardHeader>
 
-          {/* Full Client & Project Header Details matching Excel Sheet2 & PDF */}
-          <div className="grid grid-cols-2 text-xs gap-4 border-b pb-4 bg-muted/20 p-4 rounded-lg">
-            <div className="space-y-1">
-              <p className="font-semibold text-muted-foreground">To,</p>
-              <p className="font-bold text-sm text-foreground">{site.client?.name || "Client Name"}</p>
-              <p className="text-muted-foreground">{site.address || "Client Office Address"}</p>
-              {site.gstNo && <p className="font-mono text-[11px] pt-1">GST No: {site.gstNo}</p>}
-            </div>
-            <div className="text-right space-y-1">
-              <p><span className="font-semibold text-muted-foreground">Invoice No:</span> <span className="font-bold text-sm font-mono">{latestBill?.billNo || "007/2026-27"}</span></p>
-              <p><span className="font-semibold text-muted-foreground">Date:</span> {formatDate(latestBill?.billDate || new Date())}</p>
-              <p><span className="font-semibold text-muted-foreground">Ref No:</span> <span className="font-semibold">{latestBill?.refNo || "01"}</span></p>
-              <p><span className="font-semibold text-muted-foreground">W.O. No:</span> <span className="font-mono text-xs">{site.workOrderNo || "PARKSITE/SSHIVAAY/2026-27"}</span></p>
-            </div>
-            <div className="col-span-2 pt-2 border-t flex items-center justify-between text-xs font-semibold flex-wrap gap-2">
-              <p>Name of Work: <span className="font-normal text-muted-foreground">Reinforcement & Concrete Construction Work</span></p>
-              <p>Name of Project: <span className="font-bold text-indigo-500">{site.projectName}</span></p>
-            </div>
-          </div>
+          <BillHeaderBanner site={site} latestBill={latestBill} sheetTitle="Sheet 2: Consolidated Abstract Summary" />
+
           <Table className="border">
             <THead className="bg-muted/60">
               <TR>
@@ -339,21 +270,19 @@ export function RABillViewer({ site }: { site: any }) {
               </TR>
             </THead>
             <TBody>
-              {/* Render tower totals */}
               {site.buildings.map((b: any, idx: number) => {
-                const prevA = (b.workItems || []).reduce((s: number, i: any) => s + ((i.previousQty || 0) * i.rate), 0);
-                const currA = (b.workItems || []).reduce((s: number, i: any) => s + ((i.currentQty || 0) * i.rate), 0);
-
+                const prevA = (b.workItems || []).reduce((s: number, i: any) => s + ((i.previousAmt !== undefined && i.previousAmt !== null) ? i.previousAmt : ((i.previousQty || 0) * i.rate)), 0);
+                const currA = (b.workItems || []).reduce((s: number, i: any) => s + ((i.currentAmt !== undefined && i.currentAmt !== null) ? i.currentAmt : ((i.currentQty || 0) * i.rate)), 0);
                 return (
                   <TR key={b.id}>
                     <TD>{idx + 1}</TD>
                     <TD className="font-bold">{b.name} Reinforcement Work Done.</TD>
                     <TD>Sft.</TD>
-                    <TD>314,554</TD>
-                    <TD>₹53</TD>
+                    <TD>{(b.approxArea || 0).toLocaleString()}</TD>
+                    <TD>₹{b.contractRate || 0}</TD>
                     <TD>0</TD>
-                    <TD className="font-mono text-emerald-500 font-semibold">{currA > 0 ? (currA / 53).toFixed(0) : 0}</TD>
-                    <TD className="font-mono">{currA > 0 ? (currA / 53).toFixed(0) : 0}</TD>
+                    <TD className="font-mono text-emerald-500 font-semibold">{currA > 0 ? (currA / (b.contractRate || 1)).toFixed(0) : 0}</TD>
+                    <TD className="font-mono">{currA > 0 ? (currA / (b.contractRate || 1)).toFixed(0) : 0}</TD>
                     <TD className="font-mono">{formatINR(prevA)}</TD>
                     <TD className="font-mono text-emerald-500 font-bold">{formatINR(currA)}</TD>
                     <TD className="font-mono font-bold">{formatINR(prevA + currA)}</TD>
@@ -361,7 +290,6 @@ export function RABillViewer({ site }: { site: any }) {
                 );
               })}
 
-              {/* Supply Labours */}
               {totalSupplyWork > 0 && (
                 <TR>
                   <TD>{site.buildings.length + 1}</TD>
@@ -378,7 +306,6 @@ export function RABillViewer({ site }: { site: any }) {
                 </TR>
               )}
 
-              {/* Summary Calculations */}
               <TR className="bg-muted/80 font-bold border-t-2">
                 <TD colSpan={8} className="text-right">TOTAL AMOUNT</TD>
                 <TD className="font-mono">₹0.00</TD>
@@ -420,17 +347,11 @@ export function RABillViewer({ site }: { site: any }) {
         </Card>
       )}
 
-      {/* TAB CONTENT: TOWER SHEETS */}
       {activeSheetTab === "towers" && (
-        <Card className="p-4 space-y-4">
-          <div className="flex items-center gap-2">
+        <Card className="p-6 space-y-6 bg-background">
+          <div className="flex items-center gap-2 flex-wrap">
             {site.buildings.map((b: any) => (
-              <Button
-                key={b.id}
-                variant={b.id === selectedTowerId ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedTowerId(b.id)}
-              >
+              <Button key={b.id} variant={b.id === selectedTowerId ? "default" : "outline"} size="sm" onClick={() => setSelectedTowerId(b.id)}>
                 {b.name}
               </Button>
             ))}
@@ -440,55 +361,69 @@ export function RABillViewer({ site }: { site: any }) {
             const b = site.buildings.find((x: any) => x.id === selectedTowerId) || site.buildings[0];
             if (!b) return <div>No tower selected</div>;
 
-            return (
-              <Table className="border">
-                <THead className="bg-muted/60">
-                  <TR>
-                    <TH>#</TH>
-                    <TH>Particulars of Item</TH>
-                    <TH>Unit</TH>
-                    <TH>Previous Qty</TH>
-                    <TH>This Bill Qty</TH>
-                    <TH>Cumulative Qty</TH>
-                    <TH>Previous Amt</TH>
-                    <TH>This Bill Amt</TH>
-                    <TH>Cumulative Amt</TH>
-                  </TR>
-                </THead>
-                <TBody>
-                  {(b.workItems || []).map((item: any, i: number) => {
-                    const prevQ = item.previousQty || 0;
-                    const currQ = item.currentQty || 0;
-                    const prevA = prevQ * item.rate;
-                    const currA = currQ * item.rate;
+            const approxArea = b.approxArea || 0;
+            const contractRate = b.contractRate || 0;
+            const totalVal = approxArea * contractRate;
 
-                    return (
-                      <TR key={item.id}>
-                        <TD>{i + 1}</TD>
-                        <TD className="font-medium">{item.name}</TD>
-                        <TD>{item.unit}</TD>
-                        <TD className="font-mono">{prevQ}</TD>
-                        <TD className="font-mono text-emerald-500 font-semibold">{currQ}</TD>
-                        <TD className="font-mono">{prevQ + currQ}</TD>
-                        <TD className="font-mono">{formatINR(prevA)}</TD>
-                        <TD className="font-mono text-emerald-500 font-bold">{formatINR(currA)}</TD>
-                        <TD className="font-mono font-bold">{formatINR(prevA + currA)}</TD>
-                      </TR>
-                    );
-                  })}
-                </TBody>
-              </Table>
+            return (
+              <div className="space-y-6">
+                <BillHeaderBanner site={site} latestBill={latestBill} sheetTitle={`BUA Building Sheet - ${b.name}`} />
+
+                <div className="bg-indigo-500/10 border border-indigo-500/30 p-3 rounded-lg flex items-center justify-between text-xs font-semibold flex-wrap gap-2">
+                  <span className="text-indigo-400">CIVIL WORK (BUA)</span>
+                  <span>Approx Area: <span className="font-bold font-mono">{approxArea.toLocaleString()} Sft</span></span>
+                  <span>Contract Rate: <span className="font-bold font-mono">₹{contractRate}/Sft</span></span>
+                  <span>Tower Contract Value: <span className="font-bold font-mono text-emerald-500">{formatINR(totalVal)}</span></span>
+                </div>
+
+                <Table className="border">
+                  <THead className="bg-muted/60">
+                    <TR>
+                      <TH>#</TH>
+                      <TH>Particulars of Item</TH>
+                      <TH>Unit</TH>
+                      <TH className="text-center">Previous Qty (%)</TH>
+                      <TH className="text-center">This Bill Qty (%)</TH>
+                      <TH className="text-center">Cumulative Qty (%)</TH>
+                      <TH className="text-right">Previous Amt (₹)</TH>
+                      <TH className="text-right">This Bill Amt (₹)</TH>
+                      <TH className="text-right">Cumulative Amt (₹)</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {(b.workItems || []).map((item: any, i: number) => {
+                      const prevQ = item.previousPct ?? item.previousQty ?? 0;
+                      const currQ = item.currentPct ?? item.currentQty ?? 0;
+                      const cumQ = item.cumulativePct ?? (prevQ + currQ);
+                      const prevA = (item.previousAmt !== undefined && item.previousAmt !== null) ? item.previousAmt : (prevQ > 0 ? (item.partAmount * prevQ / 100) : 0);
+                      const currA = (item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : (currQ > 0 ? (item.partAmount * currQ / 100) : 0);
+                      const cumA = item.cumulativeAmt ?? (prevA + currA);
+                      return (
+                        <TR key={item.id}>
+                          <TD>{i + 1}</TD>
+                          <TD className="font-medium">{item.name}</TD>
+                          <TD>{item.unit || "%"}</TD>
+                          <TD className="font-mono text-center">{prevQ}%</TD>
+                          <TD className="font-mono text-emerald-500 font-semibold text-center">{currQ}%</TD>
+                          <TD className="font-mono text-center font-bold">{cumQ}%</TD>
+                          <TD className="font-mono text-right">{formatINR(prevA)}</TD>
+                          <TD className="font-mono text-emerald-500 font-bold text-right">{formatINR(currA)}</TD>
+                          <TD className="font-mono font-bold text-right">{formatINR(cumA)}</TD>
+                        </TR>
+                      );
+                    })}
+                  </TBody>
+                </Table>
+              </div>
             );
           })()}
         </Card>
       )}
 
-      {/* TAB CONTENT: SUPPLY SHEET */}
       {activeSheetTab === "supply" && (
-        <Card className="p-4">
-          <CardHeader className="px-0 pt-0">
-            <CardTitle className="text-base font-bold">Sheet 5: Extra Labour Supply Log</CardTitle>
-          </CardHeader>
+        <Card className="p-6 space-y-6 bg-background">
+          <BillHeaderBanner site={site} latestBill={latestBill} sheetTitle="Sheet 5: Client Extra Supply Labour Log" />
+
           <Table className="border">
             <THead className="bg-muted/60">
               <TR>
@@ -499,7 +434,7 @@ export function RABillViewer({ site }: { site: any }) {
                 <TH>Fitter Hours</TH>
                 <TH>Helper Count</TH>
                 <TH>Helper Hours</TH>
-                <TH>Total Amount (₹)</TH>
+                <TH className="text-right">Total Amount (₹)</TH>
               </TR>
             </THead>
             <TBody>
@@ -512,20 +447,23 @@ export function RABillViewer({ site }: { site: any }) {
                   <TD className="font-mono text-xs">{se.fitterHours}</TD>
                   <TD className="font-mono text-xs">{se.helperQty}</TD>
                   <TD className="font-mono text-xs">{se.helperHours}</TD>
-                  <TD className="font-mono font-bold text-emerald-500">{formatINR(se.totalAmount)}</TD>
+                  <TD className="font-mono font-bold text-emerald-500 text-right">{formatINR(se.totalAmount)}</TD>
                 </TR>
               ))}
+
+              <TR className="bg-emerald-500/10 font-bold text-base border-t-2">
+                <TD colSpan={7} className="text-right uppercase tracking-wider text-xs">Total Extra Supply Amount</TD>
+                <TD className="font-mono text-emerald-500 text-right font-black">{formatINR(totalSupplyWork)}</TD>
+              </TR>
             </TBody>
           </Table>
         </Card>
       )}
 
-      {/* TAB CONTENT: BALANCE SHEET */}
       {activeSheetTab === "balance" && (
-        <Card className="p-4">
-          <CardHeader className="px-0 pt-0">
-            <CardTitle className="text-base font-bold">Sheet 6: Site Payment & Balance Sheet</CardTitle>
-          </CardHeader>
+        <Card className="p-6 space-y-6 bg-background">
+          <BillHeaderBanner site={site} latestBill={latestBill} sheetTitle="Sheet 6: Client Ledger & Balance Sheet" />
+
           <Table className="border">
             <THead className="bg-muted/60">
               <TR>
@@ -534,7 +472,7 @@ export function RABillViewer({ site }: { site: any }) {
                 <TH>Payment Mode</TH>
                 <TH>Account Credited</TH>
                 <TH>Remarks</TH>
-                <TH>Amount Received (₹)</TH>
+                <TH className="text-right">Amount Received (₹)</TH>
               </TR>
             </THead>
             <TBody>
@@ -545,7 +483,7 @@ export function RABillViewer({ site }: { site: any }) {
                   <TD><Badge variant="outline">{p.mode}</Badge></TD>
                   <TD className="font-mono text-xs">{p.accountCredited || "—"}</TD>
                   <TD className="font-medium">{p.remarks || "Client Payment"}</TD>
-                  <TD className="font-mono font-bold text-emerald-500">{formatINR(p.amount)}</TD>
+                  <TD className="font-mono font-bold text-emerald-500 text-right">{formatINR(p.amount)}</TD>
                 </TR>
               ))}
             </TBody>

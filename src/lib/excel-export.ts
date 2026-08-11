@@ -128,6 +128,10 @@ export async function generateRABillExcelWorkbook(data: {
   for (const tower of towers) {
     const sheetName = (tower.name || "Tower").slice(0, 30);
     const towerSheet = workbook.addWorksheet(sheetName);
+    towerSheet.addRow([`To, ${clientName}`, "", "", "", "", "", "", "", `Date : ${billDate}`]);
+    towerSheet.addRow([`Invoice No. ${billNo}`, "", "", "", "", "", "", "", `W. O. No. :- ${workOrderNo}`]);
+    towerSheet.addRow([`Name Of Project :- ${projectName}`]);
+    towerSheet.addRow([`Subject :- REF NO. : ${refNo}`]);
     towerSheet.addRow([`BUA Building - ${tower.name.toUpperCase()}`]);
     const approxArea = tower.approxArea || 0;
     const contractRate = tower.contractRate || 0;
@@ -138,8 +142,8 @@ export async function generateRABillExcelWorkbook(data: {
 
     const tHeaders = [
       "Sr. No.", "Particulars of Item", "Unit",
-      "Previous Qty", "This Bill Qty", "Cumulative Qty",
-      "Previous Amount", "This Bill Amount", "Cumulative Amount"
+      "Previous Qty (%)", "This Bill Qty (%)", "Cumulative Qty (%)",
+      "Previous Amount (₹)", "This Bill Amount (₹)", "Cumulative Amount (₹)"
     ];
     const thRow = towerSheet.addRow(tHeaders);
     thRow.font = { bold: true };
@@ -149,18 +153,19 @@ export async function generateRABillExcelWorkbook(data: {
     let tCurrTotal = 0;
 
     items.forEach((item: any, i: number) => {
-      const prevQ = item.previousQty || 0;
-      const currQ = item.currentQty || 0;
-      const cumQ = prevQ + currQ;
-      const prevA = prevQ * item.rate;
-      const currA = currQ * item.rate;
-      const cumA = prevA + currA;
+      const prevQ = item.previousPct ?? item.previousQty ?? 0;
+      const currQ = item.currentPct ?? item.currentQty ?? 0;
+      const cumQ = item.cumulativePct ?? (prevQ + currQ);
+
+      const prevA = (item.previousAmt !== undefined && item.previousAmt !== null) ? item.previousAmt : (prevQ > 0 ? (item.partAmount * prevQ / 100) : 0);
+      const currA = (item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : (currQ > 0 ? (item.partAmount * currQ / 100) : 0);
+      const cumA = item.cumulativeAmt ?? (prevA + currA);
 
       tPrevTotal += prevA;
       tCurrTotal += currA;
 
       towerSheet.addRow([
-        i + 1, item.name, item.unit,
+        i + 1, item.name, item.unit || "%",
         prevQ, currQ, cumQ,
         prevA, currA, cumA
       ]);
@@ -174,6 +179,9 @@ export async function generateRABillExcelWorkbook(data: {
   // SHEET 5: SUPPLY LABOUR SHEET
   // ==========================================
   const supplySheet = workbook.addWorksheet("supply");
+  supplySheet.addRow([`To, ${clientName}`, "", "", "", "", "", "", "", `Date : ${billDate}`]);
+  supplySheet.addRow([`Invoice No. ${billNo}`, "", "", "", "", "", "", "", `W. O. No. :- ${workOrderNo}`]);
+  supplySheet.addRow([`Name Of Project :- ${projectName}`]);
   supplySheet.addRow([`Labour's Supply - ${billDate}`]);
   supplySheet.addRow([`Contractor : RCR ENTERPRISES`]);
   supplySheet.addRow([]);
