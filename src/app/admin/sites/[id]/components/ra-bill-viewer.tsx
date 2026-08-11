@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatINR, formatDate } from "@/lib/utils";
 import { generateRunningBillAction } from "../bill-actions";
+import { SiteBalanceSheet } from "./site-balance-sheet";
 import { Receipt, FileSpreadsheet, Printer, Plus, CheckCircle2, Building2, Users, DollarSign } from "lucide-react";
+
 
 function BillHeaderBanner({ site, latestBill, sheetTitle }: { site: any; latestBill: any; sheetTitle?: string }) {
   return (
@@ -58,6 +60,16 @@ export function RABillViewer({ site }: { site: any }) {
     retentionPct: site.retentionPct ?? 2,
     tdsPct: site.tdsPct ?? 1,
   });
+
+  useEffect(() => {
+    setTaxPcts({
+      cgstPct: site.cgstPct ?? 9,
+      sgstPct: site.sgstPct ?? 9,
+      retentionPct: site.retentionPct ?? 2,
+      tdsPct: site.tdsPct ?? 1,
+    });
+  }, [site.retentionPct, site.cgstPct, site.sgstPct, site.tdsPct]);
+
 
   const totalTowerWork = site.buildings.reduce((sum: number, b: any) => {
     return sum + (b.workItems || []).reduce((ws: number, item: any) => ws + ((item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : ((item.currentQty || 0) * item.rate)), 0);
@@ -526,35 +538,12 @@ export function RABillViewer({ site }: { site: any }) {
       )}
 
       {activeSheetTab === "balance" && (
-        <Card className="p-6 space-y-6 bg-background">
+        <div className="space-y-6">
           <BillHeaderBanner site={site} latestBill={latestBill} sheetTitle="Sheet 6: Client Ledger & Balance Sheet" />
-
-          <Table className="border">
-            <THead className="bg-muted/60">
-              <TR>
-                <TH>#</TH>
-                <TH>Date</TH>
-                <TH>Payment Mode</TH>
-                <TH>Account Credited</TH>
-                <TH>Remarks</TH>
-                <TH className="text-right">Amount Received (₹)</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {(site.payments || []).map((p: any, i: number) => (
-                <TR key={p.id}>
-                  <TD>{i + 1}</TD>
-                  <TD className="font-mono text-xs">{formatDate(p.date)}</TD>
-                  <TD><Badge variant="outline">{p.mode}</Badge></TD>
-                  <TD className="font-mono text-xs">{p.accountCredited || "—"}</TD>
-                  <TD className="font-medium">{p.remarks || "Client Payment"}</TD>
-                  <TD className="font-mono font-bold text-emerald-500 text-right">{formatINR(p.amount)}</TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
-        </Card>
+          <SiteBalanceSheet site={site} />
+        </div>
       )}
+
     </div>
   );
 }

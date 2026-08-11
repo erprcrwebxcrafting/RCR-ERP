@@ -109,18 +109,25 @@ export async function generateRABillExcelWorkbook(data: {
   const totalRow = sheet2.addRow(["", "Total Amount", "", "", "", "", "", "", totPrevAmt, totCurrAmt, totCumAmt]);
   totalRow.font = { bold: true };
 
-  const retPct = runningBill?.retentionPct || 2;
-  const tdsPct = runningBill?.tdsPct || 1;
+  const retPct = runningBill?.retentionPct ?? site.retentionPct ?? 2;
+  const tdsPct = runningBill?.tdsPct ?? site.tdsPct ?? 1;
+  const cgstPct = runningBill?.cgstPct ?? site.cgstPct ?? 9;
+  const sgstPct = runningBill?.sgstPct ?? site.sgstPct ?? 9;
+
   const retAmt = totCurrAmt * (retPct / 100);
   const tdsAmt = totCurrAmt * (tdsPct / 100);
   const balAmt = totCurrAmt - retAmt - tdsAmt;
 
-  sheet2.addRow(["", `ADD CGST @${runningBill?.cgstPct || 9}%`, "", "", "", "", "", "", totPrevAmt * 0.09, cgst, (totPrevAmt * 0.09) + cgst]);
-  sheet2.addRow(["", `ADD SGST @${runningBill?.sgstPct || 9}%`, "", "", "", "", "", "", totPrevAmt * 0.09, sgst, (totPrevAmt * 0.09) + sgst]);
+  const cgstAmt = totCurrAmt * (cgstPct / 100);
+  const sgstAmt = totCurrAmt * (sgstPct / 100);
+
+  sheet2.addRow(["", `ADD CGST @${cgstPct}%`, "", "", "", "", "", "", totPrevAmt * (cgstPct / 100), cgstAmt, (totPrevAmt * (cgstPct / 100)) + cgstAmt]);
+  sheet2.addRow(["", `ADD SGST @${sgstPct}%`, "", "", "", "", "", "", totPrevAmt * (sgstPct / 100), sgstAmt, (totPrevAmt * (sgstPct / 100)) + sgstAmt]);
   sheet2.addRow(["", `LESS RETENTION @${retPct}%`, "", "", "", "", "", "", 0, retAmt, retAmt]);
   sheet2.addRow(["", `LESS TDS @${tdsPct}%`, "", "", "", "", "", "", 0, tdsAmt, tdsAmt]);
   const finalBalRow = sheet2.addRow(["", "Net Payable Balance", "", "", "", "", "", "", totPrevAmt, balAmt, totPrevAmt + balAmt]);
   finalBalRow.font = { bold: true };
+
 
   // ==========================================
   // SHEET 3, 4... TOWER SHEETS

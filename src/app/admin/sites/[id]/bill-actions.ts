@@ -257,3 +257,23 @@ export async function recordClientPaymentAction(siteId: string, formData: FormDa
 
   revalidatePath(`/admin/sites/${siteId}`);
 }
+
+export async function updateSiteTaxSettingsAction(siteId: string, formData: FormData) {
+  const retentionPct = parseFloat((formData.get("retentionPct") as string) || "2");
+  const cgstPct = parseFloat((formData.get("cgstPct") as string) || "9");
+  const sgstPct = parseFloat((formData.get("sgstPct") as string) || "9");
+  const tdsPct = parseFloat((formData.get("tdsPct") as string) || "1");
+
+  await prisma.site.update({
+    where: { id: siteId },
+    data: {
+      retentionPct: isNaN(retentionPct) ? 2 : retentionPct,
+      cgstPct: isNaN(cgstPct) ? 9 : cgstPct,
+      sgstPct: isNaN(sgstPct) ? 9 : sgstPct,
+      tdsPct: isNaN(tdsPct) ? 1 : tdsPct,
+    },
+  });
+
+  revalidatePath(`/admin/sites/${siteId}`);
+}
+
