@@ -106,6 +106,44 @@ export async function deleteSupplyLabourEntryAction(siteId: string, entryId: str
   revalidatePath(`/admin/sites/${siteId}`);
 }
 
+export async function updateSupplyLabourEntriesAction(
+  siteId: string,
+  entries: {
+    id: string;
+    date?: string;
+    challanNo?: string;
+    description?: string;
+    fitterQty?: number;
+    fitterHours?: number;
+    fitterRate?: number;
+    helperQty?: number;
+    helperHours?: number;
+    helperRate?: number;
+    totalAmount?: number;
+  }[]
+) {
+  for (const entry of entries) {
+    const dateVal = entry.date ? new Date(entry.date) : undefined;
+    await prisma.supplyLabourEntry.update({
+      where: { id: entry.id },
+      data: {
+        ...(dateVal ? { date: dateVal } : {}),
+        challanNo: entry.challanNo ?? "",
+        description: entry.description ?? "",
+        fitterQty: entry.fitterQty ?? 0,
+        fitterHours: entry.fitterHours ?? 0,
+        fitterRate: entry.fitterRate ?? 1100,
+        helperQty: entry.helperQty ?? 0,
+        helperHours: entry.helperHours ?? 0,
+        helperRate: entry.helperRate ?? 800,
+        totalAmount: entry.totalAmount ?? 0,
+      },
+    });
+  }
+
+  revalidatePath(`/admin/sites/${siteId}`);
+}
+
 export async function generateRunningBillAction(siteId: string, formData: FormData) {
   const billNo = formData.get("billNo") as string || `BILL-${Date.now()}`;
   const refNo = formData.get("refNo") as string || "01";

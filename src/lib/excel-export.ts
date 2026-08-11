@@ -180,8 +180,8 @@ export async function generateRABillExcelWorkbook(data: {
 
   const sHeaders = [
     "Date", "Challan No.", "Description Contract basis work",
-    "Fitter Count", "Fitter Hours", "Total Fitter Hours",
-    "Helper Count", "Helper Hours", "Total Helper Hours", "Amount (₹)"
+    "Fitter Count", "Hours", "Total Fitter Hours",
+    "Fitter Helper", "Hours", "Total Helper Hours", "Amount (₹)"
   ];
   const shRow = supplySheet.addRow(sHeaders);
   shRow.font = { bold: true };
@@ -191,8 +191,8 @@ export async function generateRABillExcelWorkbook(data: {
   let totalSupplyAmount = 0;
 
   supplyEntries.forEach((se: any) => {
-    const fHrs = se.fitterQty * se.fitterHours;
-    const hHrs = se.helperQty * se.helperHours;
+    const fHrs = (se.fitterQty || 0) * (se.fitterHours || 0);
+    const hHrs = (se.helperQty || 0) * (se.helperHours || 0);
     totalFitterHours += fHrs;
     totalHelperHours += hHrs;
     totalSupplyAmount += se.totalAmount || 0;
@@ -201,15 +201,32 @@ export async function generateRABillExcelWorkbook(data: {
       se.date ? new Date(se.date).toLocaleDateString("en-IN") : "-",
       se.challanNo || "-",
       se.description,
-      se.fitterQty, se.fitterHours, fHrs,
-      se.helperQty, se.helperHours, hHrs,
-      se.totalAmount
+      se.fitterQty || 0,
+      se.fitterHours || 0,
+      fHrs,
+      se.helperQty || 0,
+      se.helperHours || 0,
+      hHrs,
+      se.totalAmount || 0
     ]);
   });
 
   supplySheet.addRow([]);
-  const sSumRow = supplySheet.addRow(["", "", "TOTAL SUPPLY AMOUNT", "", "", totalFitterHours, "", "", totalHelperHours, totalSupplyAmount]);
-  sSumRow.font = { bold: true };
+  const sTotHrsRow = supplySheet.addRow(["", "", "Total Hours", "", "", totalFitterHours, "", "", totalHelperHours, ""]);
+  sTotHrsRow.font = { bold: true };
+
+  const fitterDays = Math.round((totalFitterHours / 8) * 100) / 100;
+  const helperDays = Math.round((totalHelperHours / 8) * 100) / 100;
+  supplySheet.addRow(["", "", "Total Days (Nos = Hrs / 8)", "", "", fitterDays, "", "", helperDays, ""]);
+
+  const fitterTotalAmt = fitterDays * 1100;
+  const helperTotalAmt = helperDays * 800;
+
+  const sRateRow = supplySheet.addRow(["", "", "Rate (₹)", "", "", 1100, "", "", 800, ""]);
+  sRateRow.font = { bold: true };
+
+  const sFinalRow = supplySheet.addRow(["", "", "TOTAL SUPPLY AMOUNT (₹)", "", "", fitterTotalAmt, "", "", helperTotalAmt, totalSupplyAmount]);
+  sFinalRow.font = { bold: true };
 
   // ==========================================
   // SHEET 6: BALANCE SHEET
