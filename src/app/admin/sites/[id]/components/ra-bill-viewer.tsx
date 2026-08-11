@@ -18,18 +18,25 @@ export function RABillViewer({ site }: { site: any }) {
   const bills = site.bills || [];
   const latestBill = bills[0] || null;
 
+  const [taxPcts, setTaxPcts] = useState({
+    cgstPct: site.cgstPct ?? 9,
+    sgstPct: site.sgstPct ?? 9,
+    retentionPct: site.retentionPct ?? 2,
+    tdsPct: site.tdsPct ?? 1,
+  });
+
   // Calculate live site totals
   const totalTowerWork = site.buildings.reduce((sum: number, b: any) => {
-    return sum + (b.workItems || []).reduce((ws: number, item: any) => ws + (item.currentQty * item.rate), 0);
+    return sum + (b.workItems || []).reduce((ws: number, item: any) => ws + ((item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : (item.currentQty * item.rate)), 0);
   }, 0);
 
   const totalSupplyWork = (site.supplyLabourEntries || []).reduce((sum: number, se: any) => sum + (se.totalAmount || 0), 0);
   const grossBillTotal = totalTowerWork + totalSupplyWork;
 
-  const cgst = grossBillTotal * 0.09;
-  const sgst = grossBillTotal * 0.09;
-  const retention = grossBillTotal * 0.02;
-  const tds = grossBillTotal * 0.01;
+  const cgst = grossBillTotal * (taxPcts.cgstPct / 100);
+  const sgst = grossBillTotal * (taxPcts.sgstPct / 100);
+  const retention = grossBillTotal * (taxPcts.retentionPct / 100);
+  const tds = grossBillTotal * (taxPcts.tdsPct / 100);
   const netPayable = grossBillTotal + cgst + sgst - retention - tds;
 
   const handleDownloadExcel = () => {
@@ -97,19 +104,19 @@ export function RABillViewer({ site }: { site: any }) {
               </div>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">Retention %</label>
-                <Input name="retentionPct" type="number" step="0.5" defaultValue="2" />
+                <Input name="retentionPct" type="number" step="0.5" value={taxPcts.retentionPct} onChange={(e) => setTaxPcts(p => ({ ...p, retentionPct: parseFloat(e.target.value) || 0 }))} />
               </div>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">CGST %</label>
-                <Input name="cgstPct" type="number" step="0.5" defaultValue="9" />
+                <Input name="cgstPct" type="number" step="0.5" value={taxPcts.cgstPct} onChange={(e) => setTaxPcts(p => ({ ...p, cgstPct: parseFloat(e.target.value) || 0 }))} />
               </div>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">SGST %</label>
-                <Input name="sgstPct" type="number" step="0.5" defaultValue="9" />
+                <Input name="sgstPct" type="number" step="0.5" value={taxPcts.sgstPct} onChange={(e) => setTaxPcts(p => ({ ...p, sgstPct: parseFloat(e.target.value) || 0 }))} />
               </div>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">TDS %</label>
-                <Input name="tdsPct" type="number" step="0.5" defaultValue="1" />
+                <Input name="tdsPct" type="number" step="0.5" value={taxPcts.tdsPct} onChange={(e) => setTaxPcts(p => ({ ...p, tdsPct: parseFloat(e.target.value) || 0 }))} />
               </div>
               <div className="flex items-end justify-end gap-2">
                 <Button type="button" variant="ghost" onClick={() => setIsGenerating(false)}>Cancel</Button>
@@ -210,12 +217,12 @@ export function RABillViewer({ site }: { site: any }) {
                 </TR>
                 <TR>
                   <TD></TD>
-                  <TD className="text-xs text-muted-foreground">Add CGST @ 9%</TD>
+                  <TD className="text-xs text-muted-foreground">Add CGST @ {taxPcts.cgstPct}%</TD>
                   <TD className="text-right font-mono text-xs">{formatINR(cgst)}</TD>
                 </TR>
                 <TR>
                   <TD></TD>
-                  <TD className="text-xs text-muted-foreground">Add SGST @ 9%</TD>
+                  <TD className="text-xs text-muted-foreground">Add SGST @ {taxPcts.sgstPct}%</TD>
                   <TD className="text-right font-mono text-xs">{formatINR(sgst)}</TD>
                 </TR>
                 <TR className="border-t-2 bg-emerald-500/10 font-bold text-base">
@@ -245,9 +252,52 @@ export function RABillViewer({ site }: { site: any }) {
 
       {/* TAB CONTENT: SHEET 2 (CONSOLIDATED ABSTRACT) */}
       {activeSheetTab === "sheet2" && (
-        <Card className="p-4 overflow-x-auto">
-          <CardHeader className="px-0 pt-0">
+        <Card className="p-4 overflow-x-auto space-y-4">
+          <CardHeader className="px-0 pt-0 flex flex-row items-center justify-between flex-wrap gap-3">
             <CardTitle className="text-base font-bold">Sheet 2: Consolidated Bill Abstract</CardTitle>
+            <div className="flex items-center gap-3 bg-muted/40 p-2.5 rounded-lg border text-xs flex-wrap">
+              <span className="font-bold text-muted-foreground uppercase tracking-wider">Live Tax & Deductions Edit:</span>
+              <label className="flex items-center gap-1 font-semibold">
+                CGST %:
+                <Input
+                  type="number"
+                  step="0.5"
+                  value={taxPcts.cgstPct}
+                  onChange={(e) => setTaxPcts((p) => ({ ...p, cgstPct: parseFloat(e.target.value) || 0 }))}
+                  className="w-16 h-7 text-xs font-mono bg-background"
+                />
+              </label>
+              <label className="flex items-center gap-1 font-semibold">
+                SGST %:
+                <Input
+                  type="number"
+                  step="0.5"
+                  value={taxPcts.sgstPct}
+                  onChange={(e) => setTaxPcts((p) => ({ ...p, sgstPct: parseFloat(e.target.value) || 0 }))}
+                  className="w-16 h-7 text-xs font-mono bg-background"
+                />
+              </label>
+              <label className="flex items-center gap-1 font-semibold text-orange-600">
+                Retention %:
+                <Input
+                  type="number"
+                  step="0.5"
+                  value={taxPcts.retentionPct}
+                  onChange={(e) => setTaxPcts((p) => ({ ...p, retentionPct: parseFloat(e.target.value) || 0 }))}
+                  className="w-16 h-7 text-xs font-mono bg-background text-orange-600 border-orange-300"
+                />
+              </label>
+              <label className="flex items-center gap-1 font-semibold text-orange-600">
+                TDS %:
+                <Input
+                  type="number"
+                  step="0.5"
+                  value={taxPcts.tdsPct}
+                  onChange={(e) => setTaxPcts((p) => ({ ...p, tdsPct: parseFloat(e.target.value) || 0 }))}
+                  className="w-16 h-7 text-xs font-mono bg-background text-orange-600 border-orange-300"
+                />
+              </label>
+            </div>
           </CardHeader>
           <Table className="border">
             <THead className="bg-muted/60">
@@ -313,25 +363,25 @@ export function RABillViewer({ site }: { site: any }) {
                 <TD className="font-mono">{formatINR(grossBillTotal)}</TD>
               </TR>
               <TR>
-                <TD colSpan={8} className="text-right text-xs">ADD CGST @ 9%</TD>
+                <TD colSpan={8} className="text-right text-xs">ADD CGST @ {taxPcts.cgstPct}%</TD>
                 <TD></TD>
                 <TD className="font-mono text-xs">{formatINR(cgst)}</TD>
                 <TD className="font-mono text-xs">{formatINR(cgst)}</TD>
               </TR>
               <TR>
-                <TD colSpan={8} className="text-right text-xs">ADD SGST @ 9%</TD>
+                <TD colSpan={8} className="text-right text-xs">ADD SGST @ {taxPcts.sgstPct}%</TD>
                 <TD></TD>
                 <TD className="font-mono text-xs">{formatINR(sgst)}</TD>
                 <TD className="font-mono text-xs">{formatINR(sgst)}</TD>
               </TR>
               <TR>
-                <TD colSpan={8} className="text-right text-xs text-orange-500">LESS RETENTION @ 2%</TD>
+                <TD colSpan={8} className="text-right text-xs text-orange-500">LESS RETENTION @ {taxPcts.retentionPct}%</TD>
                 <TD></TD>
                 <TD className="font-mono text-xs text-orange-500">-{formatINR(retention)}</TD>
                 <TD className="font-mono text-xs text-orange-500">-{formatINR(retention)}</TD>
               </TR>
               <TR>
-                <TD colSpan={8} className="text-right text-xs text-orange-500">LESS TDS @ 1%</TD>
+                <TD colSpan={8} className="text-right text-xs text-orange-500">LESS TDS @ {taxPcts.tdsPct}%</TD>
                 <TD></TD>
                 <TD className="font-mono text-xs text-orange-500">-{formatINR(tds)}</TD>
                 <TD className="font-mono text-xs text-orange-500">-{formatINR(tds)}</TD>
