@@ -402,12 +402,52 @@ export function SupplyLabourManager({ site }: { site: any }) {
                     );
                   })}
 
-                  <TR className="bg-muted/80 font-bold border-t-2">
-                    <TD colSpan={6} className="text-right uppercase tracking-wider text-xs">Total Supply Summary</TD>
-                    <TD className="font-mono text-blue-500 text-xs">{totalFitterHours} hrs</TD>
+                  {/* Summary Rows matching Excel Format step-by-step */}
+                  {/* Row 1: Total Hours */}
+                  <TR className="bg-muted/40 font-semibold border-t-2">
+                    <TD colSpan={6} className="text-right uppercase tracking-wider text-xs text-muted-foreground">Total Hours (Sum)</TD>
+                    <TD className="font-mono text-blue-600 font-bold text-xs">{totalFitterHours} hrs</TD>
                     <TD colSpan={3}></TD>
-                    <TD className="font-mono text-purple-500 text-xs">{totalHelperHours} hrs</TD>
-                    <TD className="font-mono text-emerald-600 font-bold text-right text-sm">{formatINR(totalSupplyAmount)}</TD>
+                    <TD className="font-mono text-purple-600 font-bold text-xs">{totalHelperHours} hrs</TD>
+                    <TD colSpan={2}></TD>
+                  </TR>
+
+                  {/* Row 2: Equivalent Days (Hours / 8) */}
+                  <TR className="bg-muted/40 font-semibold">
+                    <TD colSpan={6} className="text-right uppercase tracking-wider text-xs text-muted-foreground">Equivalent Days (Nos = Hrs ÷ 8)</TD>
+                    <TD className="font-mono text-blue-600 font-bold text-xs">{(totalFitterHours / 8).toFixed(2)} Nos</TD>
+                    <TD colSpan={3}></TD>
+                    <TD className="font-mono text-purple-600 font-bold text-xs">{(totalHelperHours / 8).toFixed(2)} Nos</TD>
+                    <TD colSpan={2}></TD>
+                  </TR>
+
+                  {/* Row 3: Rate */}
+                  <TR className="bg-muted/40 font-semibold">
+                    <TD colSpan={6} className="text-right uppercase tracking-wider text-xs text-muted-foreground">Standard Rate (@ ₹)</TD>
+                    <TD className="font-mono text-blue-600 text-xs">₹1,100 /day</TD>
+                    <TD colSpan={3}></TD>
+                    <TD className="font-mono text-purple-600 text-xs">₹800 /day</TD>
+                    <TD colSpan={2}></TD>
+                  </TR>
+
+                  {/* Row 4: Category Amount Subtotals */}
+                  <TR className="bg-muted/70 font-bold border-t">
+                    <TD colSpan={6} className="text-right uppercase tracking-wider text-xs">Calculated Subtotals</TD>
+                    <TD className="font-mono text-blue-600 text-xs font-bold">{formatINR((totalFitterHours / 8) * 1100)}</TD>
+                    <TD colSpan={3}></TD>
+                    <TD className="font-mono text-purple-600 text-xs font-bold">{formatINR((totalHelperHours / 8) * 800)}</TD>
+                    <TD className="font-mono text-emerald-600 text-right text-xs font-bold">{formatINR(totalSupplyAmount)}</TD>
+                    <TD></TD>
+                  </TR>
+
+                  {/* Row 5: Grand Total */}
+                  <TR className="bg-emerald-500/10 font-bold border-t-2 border-emerald-500/30 text-sm">
+                    <TD colSpan={11} className="text-right uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                      TOTAL SUPPLY AMOUNT BILLED TO CLIENT (SHEET `supply`)
+                    </TD>
+                    <TD className="font-mono text-emerald-600 dark:text-emerald-400 text-right text-base font-black">
+                      {formatINR(totalSupplyAmount)}
+                    </TD>
                     <TD></TD>
                   </TR>
                 </TBody>
@@ -417,6 +457,37 @@ export function SupplyLabourManager({ site }: { site: any }) {
             <div className="text-center py-8 text-muted-foreground">
               <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
               No extra supply labour entries logged yet. Click "Log Supply Labour" to add challan entries.
+            </div>
+          )}
+
+          {/* Visual Step-by-step Excel Formula Explanation Box */}
+          {rawEntries.length > 0 && (
+            <div className="p-4 bg-muted/30 border rounded-lg space-y-2 mt-4 text-xs font-mono">
+              <div className="font-bold text-sm text-foreground flex items-center justify-between">
+                <span>Excel Step-by-Step Calculation Formula Breakdown</span>
+                <Badge variant="outline" className="font-mono text-[10px]">1 Day = 8 Hours</Badge>
+              </div>
+
+              <div className="grid gap-2 md:grid-cols-2 pt-1">
+                <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-md space-y-1">
+                  <span className="font-bold text-blue-600 uppercase text-[11px] block">1. Fitter Amount Calculation:</span>
+                  <p className="text-muted-foreground">Total Hours = <span className="font-bold text-foreground">{totalFitterHours} hrs</span></p>
+                  <p className="text-muted-foreground">Days (Nos) = {totalFitterHours} ÷ 8 = <span className="font-bold text-foreground">{(totalFitterHours / 8).toFixed(2)} Nos</span></p>
+                  <p className="text-muted-foreground">Amount = {(totalFitterHours / 8).toFixed(2)} Nos × ₹1,100 = <span className="font-bold text-blue-600">{formatINR((totalFitterHours / 8) * 1100)}</span></p>
+                </div>
+
+                <div className="p-3 bg-purple-500/5 border border-purple-500/20 rounded-md space-y-1">
+                  <span className="font-bold text-purple-600 uppercase text-[11px] block">2. Helper Amount Calculation:</span>
+                  <p className="text-muted-foreground">Total Hours = <span className="font-bold text-foreground">{totalHelperHours} hrs</span></p>
+                  <p className="text-muted-foreground">Days (Nos) = {totalHelperHours} ÷ 8 = <span className="font-bold text-foreground">{(totalHelperHours / 8).toFixed(2)} Nos</span></p>
+                  <p className="text-muted-foreground">Amount = {(totalHelperHours / 8).toFixed(2)} Nos × ₹800 = <span className="font-bold text-purple-600">{formatINR((totalHelperHours / 8) * 800)}</span></p>
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-md flex items-center justify-between font-bold text-emerald-600 dark:text-emerald-400">
+                <span>Grand Total = Fitter Amt ({formatINR((totalFitterHours / 8) * 1100)}) + Helper Amt ({formatINR((totalHelperHours / 8) * 800)})</span>
+                <span className="text-base">{formatINR(totalSupplyAmount)}</span>
+              </div>
             </div>
           )}
         </CardContent>
