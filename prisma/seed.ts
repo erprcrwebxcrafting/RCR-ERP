@@ -10,7 +10,7 @@ async function main() {
   console.log("Cleaning up old test data across all tables...");
   try { await prisma.workItem.deleteMany({}); } catch (e) {}
   try { await prisma.building.deleteMany({}); } catch (e) {}
-  try { await prisma.runningBillLine.deleteMany({}); } catch (e) {}
+  try { await prisma.billLine.deleteMany({}); } catch (e) {}
   try { await prisma.runningBill.deleteMany({}); } catch (e) {}
   try { await prisma.payment.deleteMany({}); } catch (e) {}
   try { await prisma.supplyLabourEntry.deleteMany({}); } catch (e) {}
