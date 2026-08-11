@@ -46,7 +46,6 @@ export async function generateBillPdfPackage(data: {
   const black = rgb(0.1, 0.1, 0.1);
   const darkGray = rgb(0.3, 0.3, 0.3);
   const lightGray = rgb(0.93, 0.95, 0.97);
-  const zebraColor = rgb(0.97, 0.98, 0.99);
 
   let logoImage: any = null;
   try {
@@ -84,18 +83,13 @@ export async function generateBillPdfPackage(data: {
   const cgstPct = runningBill?.cgstPct ?? site.cgstPct ?? 9;
   const sgstPct = runningBill?.sgstPct ?? site.sgstPct ?? 9;
 
-  let page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+  let page!: PDFPage;
   let y = PAGE_H - MARGIN;
 
-  const newPageIfNeeded = (minSpace = 60) => {
-    if (y < minSpace) {
-      page = pdfDoc.addPage([PAGE_W, PAGE_H]);
-      y = PAGE_H - MARGIN;
-    }
-  };
 
-  const drawHeaderBanner = (sheetTitle: string) => {
-    newPageIfNeeded(120);
+  const startNewPage = (sheetTitle: string) => {
+    page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+    y = PAGE_H - MARGIN;
 
     if (logoImage) {
       const dims = logoImage.scale(0.22);
@@ -113,9 +107,9 @@ export async function generateBillPdfPackage(data: {
     });
 
     page.drawText(sheetTitle.toUpperCase(), {
-      x: PAGE_W - MARGIN - bold.widthOfTextAtSize(sheetTitle.toUpperCase(), 11),
+      x: PAGE_W - MARGIN - bold.widthOfTextAtSize(sheetTitle.toUpperCase(), 10.5),
       y: y - 18,
-      size: 11,
+      size: 10.5,
       font: bold,
       color: teal,
     });
@@ -142,10 +136,16 @@ export async function generateBillPdfPackage(data: {
     y -= 48;
   };
 
+  const newPageIfNeeded = (minSpace = 60, sheetTitle = "CONTINUATION") => {
+    if (y < minSpace) {
+      startNewPage(sheetTitle);
+    }
+  };
+
   // ==========================================
-  // SECTION 1: TAX INVOICE
+  // SECTION 1: TAX INVOICE (PAGE 1)
   // ==========================================
-  drawHeaderBanner("SECTION 1: TAX INVOICE");
+  startNewPage("SECTION 1: TAX INVOICE");
 
   const lines = runningBill?.lines || [];
   const currentTotal = lines.reduce((sum: number, l: any) => sum + (l.currentAmount || 0), 0);
@@ -202,13 +202,11 @@ export async function generateBillPdfPackage(data: {
   page.drawRectangle({ x: MARGIN + 170, y: y - 18, width: PAGE_W - MARGIN - 170 - MARGIN, height: 20, color: lightGray });
   page.drawText("NET PAYABLE AMOUNT (WITH 18% GST):", { x: MARGIN + 180, y: y - 13, size: 10, font: bold, color: teal });
   page.drawText(formatCurrency(netPayable), { x: PAGE_W - MARGIN - 100, y: y - 13, size: 10, font: bold, color: teal });
-  y -= 35;
 
   // ==========================================
-  // SECTION 2: ABSTRACT SUMMARY
+  // SECTION 2: ABSTRACT SUMMARY (SEPARATE PAGE)
   // ==========================================
-  newPageIfNeeded(250);
-  drawHeaderBanner("SECTION 2: ABSTRACT SUMMARY");
+  startNewPage("SECTION 2: ABSTRACT SUMMARY");
 
   page.drawRectangle({ x: MARGIN, y: y - 20, width: PAGE_W - 2 * MARGIN, height: 20, color: lightGray });
   page.drawText("Sr.", { x: MARGIN + 4, y: y - 14, size: 8, font: bold, color: black });
@@ -224,7 +222,7 @@ export async function generateBillPdfPackage(data: {
   let totCurrAmt = 0;
 
   lines.forEach((line: any, idx: number) => {
-    newPageIfNeeded(30);
+    newPageIfNeeded(30, "SECTION 2: ABSTRACT SUMMARY");
     const pAmt = line.previousAmount || 0;
     const cAmt = line.currentAmount || 0;
     const cumAmt = pAmt + cAmt;
@@ -266,14 +264,12 @@ export async function generateBillPdfPackage(data: {
   page.drawRectangle({ x: MARGIN + 170, y: y - 16, width: PAGE_W - MARGIN - 170 - MARGIN, height: 18, color: lightGray });
   page.drawText("NET PAYABLE BALANCE:", { x: MARGIN + 180, y: y - 12, size: 9, font: bold, color: teal });
   page.drawText(formatCurrency(netBalAmt), { x: PAGE_W - MARGIN - 90, y: y - 12, size: 9, font: bold, color: teal });
-  y -= 30;
 
   // ==========================================
-  // SECTION 3: TOWER PROGRESS BREAKDOWN
+  // SECTION 3: TOWER PROGRESS BREAKDOWN (SEPARATE PAGE PER TOWER)
   // ==========================================
   for (const tower of towers) {
-    newPageIfNeeded(200);
-    drawHeaderBanner(`SECTION 3: BUILDING - ${tower.name.toUpperCase()}`);
+    startNewPage(`SECTION 3: BUILDING - ${tower.name.toUpperCase()}`);
 
     const approxArea = tower.approxArea || 0;
     const contractRate = tower.contractRate || 0;
@@ -297,7 +293,7 @@ export async function generateBillPdfPackage(data: {
     let tCurrTotal = 0;
 
     items.forEach((item: any, i: number) => {
-      newPageIfNeeded(25);
+      newPageIfNeeded(25, `BUILDING - ${tower.name.toUpperCase()}`);
       const prevQ = item.previousPct ?? item.previousQty ?? 0;
       const currQ = item.currentPct ?? item.currentQty ?? 0;
       const currA = (item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : (currQ > 0 ? (item.partAmount * currQ / 100) : 0);
@@ -317,15 +313,13 @@ export async function generateBillPdfPackage(data: {
     y -= 14;
     page.drawText(`TOTAL ${tower.name.toUpperCase()} WORK DONE:`, { x: MARGIN + 180, y, size: 8.5, font: bold, color: black });
     page.drawText(formatCurrency(tCurrTotal), { x: PAGE_W - MARGIN - 100, y, size: 8.5, font: bold, color: teal });
-    y -= 25;
   }
 
   // ==========================================
-  // SECTION 4: EXTRA SUPPLY LABOUR SHEET
+  // SECTION 4: EXTRA SUPPLY LABOUR SHEET (SEPARATE PAGE)
   // ==========================================
   if (supplyEntries.length > 0) {
-    newPageIfNeeded(200);
-    drawHeaderBanner("SECTION 4: EXTRA SUPPLY LABOUR SHEET");
+    startNewPage("SECTION 4: EXTRA SUPPLY LABOUR SHEET");
 
     page.drawRectangle({ x: MARGIN, y: y - 18, width: PAGE_W - 2 * MARGIN, height: 18, color: lightGray });
     page.drawText("Date", { x: MARGIN + 4, y: y - 13, size: 8, font: bold, color: black });
@@ -338,7 +332,7 @@ export async function generateBillPdfPackage(data: {
 
     let totSupplyAmt = 0;
     supplyEntries.forEach((se: any) => {
-      newPageIfNeeded(25);
+      newPageIfNeeded(25, "EXTRA SUPPLY LABOUR SHEET");
       const dateStr = se.date ? new Date(se.date).toLocaleDateString("en-IN") : "-";
       totSupplyAmt += se.totalAmount || 0;
 
@@ -356,14 +350,12 @@ export async function generateBillPdfPackage(data: {
     y -= 14;
     page.drawText("TOTAL EXTRA LABOUR SUPPLY AMOUNT:", { x: MARGIN + 180, y, size: 8.5, font: bold, color: black });
     page.drawText(formatCurrency(totSupplyAmt), { x: PAGE_W - MARGIN - 75, y, size: 8.5, font: bold, color: teal });
-    y -= 25;
   }
 
   // ==========================================
-  // SECTION 5: CLIENT BALANCE SHEET & LEDGER
+  // SECTION 5: CLIENT BALANCE SHEET & LEDGER (SEPARATE PAGE)
   // ==========================================
-  newPageIfNeeded(220);
-  drawHeaderBanner("SECTION 5: CLIENT BALANCE SHEET & LEDGER");
+  startNewPage("SECTION 5: CLIENT BALANCE SHEET & LEDGER");
 
   page.drawRectangle({ x: MARGIN, y: y - 18, width: PAGE_W - 2 * MARGIN, height: 18, color: lightGray });
   page.drawText("Date", { x: MARGIN + 4, y: y - 13, size: 8, font: bold, color: black });
@@ -411,7 +403,7 @@ export async function generateBillPdfPackage(data: {
   let runCumRecd = 0;
 
   ledger.forEach((item) => {
-    newPageIfNeeded(25);
+    newPageIfNeeded(25, "CLIENT BALANCE SHEET & LEDGER");
     if (item.type === "BILL") runCumNet += item.netBilledAmt;
     else runCumRecd += item.paymentRecd;
 
@@ -433,43 +425,15 @@ export async function generateBillPdfPackage(data: {
   });
 
   // ==========================================
-  // FOOTER & STAMP (sign&logo.png)
+  // PAGE BORDERS, FOOTERS & SEAL STAMP ON EVERY SINGLE PAGE
   // ==========================================
-  newPageIfNeeded(140);
-  y -= 30;
-
-  page.drawText("FOR RCR ENTERPRISES", { x: MARGIN, y, size: 10, font: bold, color: black });
-  page.drawText(`FOR ${clientName.toUpperCase()}`, {
-    x: PAGE_W - MARGIN - bold.widthOfTextAtSize(`FOR ${clientName.toUpperCase()}`, 10),
-    y, size: 10, font: bold, color: black
-  });
-
-  if (signImage) {
-    try {
-      const signDims = signImage.scale(0.25);
-      page.drawImage(signImage, {
-        x: MARGIN - 5,
-        y: y - signDims.height - 5,
-        width: signDims.width,
-        height: signDims.height,
-      });
-    } catch (e) {
-      console.error("Sign image draw error", e);
-    }
-  }
-
-  y -= 95;
-  page.drawText("AUTHORISED SIGNATORY", { x: MARGIN, y, size: 9.5, font: bold, color: darkGray });
-  const authW = bold.widthOfTextAtSize("AUTHORISED SIGNATORY", 9.5);
-  page.drawText("CLIENT SIGNATURE", { x: PAGE_W - MARGIN - authW, y, size: 9.5, font: bold, color: darkGray });
-
-  // Page borders & footers across all pages
   const allPages = pdfDoc.getPages();
   const totalPages = allPages.length;
   const BORDER_M = 15;
   const addressText = "Office No- 04, Raipada, Nr. Anand Gaushalla, Chandansar Road, Virar (E) - 401305";
 
   allPages.forEach((p, pageIdx) => {
+    // Draw Border Frame
     p.drawRectangle({
       x: BORDER_M,
       y: BORDER_M,
@@ -479,19 +443,40 @@ export async function generateBillPdfPackage(data: {
       borderColor: teal,
     });
 
+    // Draw Footer Divider Line
     p.drawLine({
-      start: { x: BORDER_M, y: BORDER_M + 20 },
-      end: { x: PAGE_W - BORDER_M, y: BORDER_M + 20 },
+      start: { x: BORDER_M, y: BORDER_M + 22 },
+      end: { x: PAGE_W - BORDER_M, y: BORDER_M + 22 },
       thickness: 1,
       color: teal,
     });
 
-    const addrW = font.widthOfTextAtSize(addressText, 8.5);
-    p.drawText(addressText, { x: PAGE_W / 2 - addrW / 2, y: BORDER_M + 6, size: 8.5, font, color: teal });
+    // Address & Page Numbers in Footer
+    const addrW = font.widthOfTextAtSize(addressText, 8);
+    p.drawText(addressText, { x: PAGE_W / 2 - addrW / 2, y: BORDER_M + 6, size: 8, font, color: teal });
 
     const pNumStr = `Page ${pageIdx + 1} of ${totalPages}`;
     const pNumW = font.widthOfTextAtSize(pNumStr, 8);
     p.drawText(pNumStr, { x: PAGE_W - BORDER_M - 15 - pNumW, y: BORDER_M + 6, size: 8, font, color: darkGray });
+
+    // Draw Official Company Seal & Signature Stamp (sign&logo.png) on EVERY PAGE
+    p.drawText("FOR RCR ENTERPRISES", { x: PAGE_W - BORDER_M - 160, y: BORDER_M + 90, size: 8.5, font: bold, color: black });
+
+    if (signImage) {
+      try {
+        const signDims = signImage.scale(0.22);
+        p.drawImage(signImage, {
+          x: PAGE_W - BORDER_M - 165,
+          y: BORDER_M + 28,
+          width: signDims.width,
+          height: signDims.height,
+        });
+      } catch (e) {
+        console.error("Failed to draw seal stamp on page", e);
+      }
+    }
+
+    p.drawText("AUTHORISED SIGNATORY", { x: PAGE_W - BORDER_M - 160, y: BORDER_M + 26, size: 8, font: bold, color: darkGray });
   });
 
   return pdfDoc.save();
