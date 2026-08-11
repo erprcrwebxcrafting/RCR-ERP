@@ -88,13 +88,17 @@ export function RABillViewer({ site }: { site: any }) {
     window.open(`/api/sites/${site.id}/export-excel`, "_blank");
   };
 
+  const handleDownloadPdfPackage = () => {
+    window.open(`/api/sites/${site.id}/export-pdf`, "_blank");
+  };
+
   const handlePrintPDF = () => {
     window.print();
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4 bg-muted/40 p-4 rounded-xl border">
+      <div className="flex items-center justify-between flex-wrap gap-4 bg-muted/40 p-4 rounded-xl border print:hidden">
         <div>
           <h2 className="text-lg font-bold flex items-center gap-2">
             <Receipt className="h-5 w-5 text-emerald-500" />
@@ -110,9 +114,14 @@ export function RABillViewer({ site }: { site: any }) {
             <FileSpreadsheet className="h-4 w-4" /> Download Complete Excel (.xlsx)
           </Button>
 
-          <Button onClick={handlePrintPDF} variant="outline" className="gap-2">
-            <Printer className="h-4 w-4" /> Print / Export PDF Package
+          <Button onClick={handleDownloadPdfPackage} variant="outline" className="gap-2 border-indigo-500/40 text-indigo-600 hover:bg-indigo-500/10">
+            <Printer className="h-4 w-4" /> Download Official PDF Package (.pdf)
           </Button>
+
+          <Button onClick={handlePrintPDF} variant="outline" className="gap-2">
+            <Printer className="h-4 w-4" /> Quick Print
+          </Button>
+
 
           <Button onClick={() => setIsGenerating(!isGenerating)} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
             <Plus className="h-4 w-4" /> Generate New RA Bill
