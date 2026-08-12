@@ -19,7 +19,10 @@ export function SiteBalanceSheet({ site }: { site: any }) {
 
   // Calculate live tower + supply total
   const totalTowerWork = (site.buildings || []).reduce((sum: number, b: any) => {
-    return sum + (b.workItems || []).reduce((ws: number, item: any) => ws + (item.currentQty * item.rate), 0);
+    return sum + (b.workItems || []).reduce((ws: number, item: any) => {
+      const cumAmt = (item.cumulativeAmt !== undefined && item.cumulativeAmt !== null) ? item.cumulativeAmt : ((item.previousQty || 0) + (item.currentQty || 0)) * item.rate;
+      return ws + cumAmt;
+    }, 0);
   }, 0);
   const totalSupplyWork = (site.supplyLabourEntries || []).reduce((sum: number, se: any) => sum + (se.totalAmount || 0), 0);
   const grossBilledTotal = totalTowerWork + totalSupplyWork;
@@ -91,18 +94,20 @@ export function SiteBalanceSheet({ site }: { site: any }) {
   let runningCumNetBilled = 0;
   let runningCumRecd = 0;
   let runningCumTds = 0;
+  let runningCumGst = 0;
 
   const calculatedRows = ledgerTimeline.map((item) => {
     if (item.type === "BILL") {
       runningCumNetBilled += item.netBilledAmt;
       runningCumTds += item.tdsAmt;
+      runningCumGst += item.gstAmt;
     } else {
       runningCumRecd += item.paymentRecd;
     }
 
     const cumAdvanceTotal = runningCumRecd + runningCumTds;
-    const runningBal = runningCumNetBilled - runningCumRecd;
-    const balanceWithGst = runningBal + item.gstAmt;
+    const runningBal = runningCumNetBilled - cumAdvanceTotal;
+    const balanceWithGst = runningBal + runningCumGst;
 
     return {
       ...item,
@@ -404,8 +409,8 @@ export function SiteBalanceSheet({ site }: { site: any }) {
                       {formatINR(netOutstandingBalance)}
                     </TD>
                     <TD className="font-mono text-right text-muted-foreground">{formatINR(totalGstAmount)}</TD>
-                    <TD className={`font-mono text-right text-sm font-extrabold ${netOutstandingBalance > 0 ? "text-rose-500" : "text-emerald-500"}`}>
-                      {formatINR(netOutstandingBalance + (totalGstAmount - (totalPaymentsReceived * 0.18)))}
+                    <TD className={`font-mono text-right text-sm font-extrabold ${(netOutstandingBalance + totalGstAmount) > 0 ? "text-rose-500" : "text-emerald-500"}`}>
+                      {formatINR(netOutstandingBalance + totalGstAmount)}
                     </TD>
                   </TR>
                 </TBody>

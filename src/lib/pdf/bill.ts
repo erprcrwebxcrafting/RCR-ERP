@@ -174,8 +174,13 @@ export async function generateBillPdfPackage(data: {
       y -= 18;
     }
   }
+  
+  const currentSupplyEntries = supplyEntries.filter((e: any) => e.runningBillId === runningBill?.id || (!runningBill && !e.runningBillId));
+  const previousSupplyEntries = supplyEntries.filter((e: any) => e.runningBillId && e.runningBillId !== runningBill?.id);
 
-  const supplyTotal = supplyEntries.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0);
+  const supplyTotal = currentSupplyEntries.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0);
+  const prevSupplyTotal = previousSupplyEntries.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0);
+
   if (supplyTotal > 0) {
     page.drawText(String(sr++), { x: MARGIN + 5, y: y - 14, size: 9, font, color: darkGray });
     page.drawText(`Departmental Extra Labour Supply Amount`, { x: MARGIN + 35, y: y - 14, size: 9, font, color: black });
@@ -241,6 +246,20 @@ export async function generateBillPdfPackage(data: {
     y -= 15;
   });
 
+  // Supply Labour on Abstract Summary (Page 2)
+  if (supplyTotal > 0 || prevSupplyTotal > 0) {
+    newPageIfNeeded(30, "SECTION 2: ABSTRACT SUMMARY");
+    page.drawText(String(lines.length + 1), { x: MARGIN + 4, y: y - 12, size: 8, font, color: darkGray });
+    page.drawText("Departmental Extra Labour Supply Amount", { x: MARGIN + 25, y: y - 12, size: 8, font, color: black });
+    page.drawText("—", { x: MARGIN + 180, y: y - 12, size: 8, font, color: darkGray });
+    page.drawText("—", { x: MARGIN + 215, y: y - 12, size: 8, font, color: darkGray });
+
+    page.drawText(formatCurrency(prevSupplyTotal), { x: MARGIN + 265, y: y - 12, size: 8, font, color: darkGray });
+    page.drawText(formatCurrency(supplyTotal), { x: MARGIN + 340, y: y - 12, size: 8, font: bold, color: teal });
+    page.drawText(formatCurrency(prevSupplyTotal + supplyTotal), { x: PAGE_W - MARGIN - 75, y: y - 12, size: 8, font: bold, color: black });
+    y -= 15;
+  }
+  
   y -= 10;
   page.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_W - MARGIN, y }, thickness: 1, color: teal });
   y -= 16;

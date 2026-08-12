@@ -31,7 +31,10 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
 
   // Compute stats for overview
   const totalTowerWork = site.buildings.reduce((sum: number, b: any) => {
-    return sum + (b.workItems || []).reduce((ws: number, item: any) => ws + ((item.currentQty || 0) * item.rate), 0);
+    return sum + (b.workItems || []).reduce((ws: number, item: any) => {
+      const cumAmt = (item.cumulativeAmt !== undefined && item.cumulativeAmt !== null) ? item.cumulativeAmt : ((item.previousQty || 0) + (item.currentQty || 0)) * item.rate;
+      return ws + cumAmt;
+    }, 0);
   }, 0);
   const totalSupplyWork = (site.supplyLabourEntries || []).reduce((sum: number, se: any) => sum + (se.totalAmount || 0), 0);
   const grossBilledTotal = totalTowerWork + totalSupplyWork;

@@ -48,6 +48,7 @@ function BillHeaderBanner({ site, latestBill, sheetTitle }: { site: any; latestB
 
 export function RABillViewer({ site }: { site: any }) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeSheetTab, setActiveSheetTab] = useState<"sheet1" | "sheet2" | "towers" | "supply" | "balance">("sheet1");
   const [selectedTowerId, setSelectedTowerId] = useState<string>(site.buildings[0]?.id || "");
 
@@ -75,7 +76,12 @@ export function RABillViewer({ site }: { site: any }) {
     return sum + (b.workItems || []).reduce((ws: number, item: any) => ws + ((item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : ((item.currentQty || 0) * item.rate)), 0);
   }, 0);
 
-  const totalSupplyWork = (site.supplyLabourEntries || []).reduce((sum: number, se: any) => sum + (se.totalAmount || 0), 0);
+  const unbilledSupply = (site.supplyLabourEntries || []).filter((se: any) => !se.runningBillId);
+  const previouslyBilledSupply = (site.supplyLabourEntries || []).filter((se: any) => se.runningBillId);
+  
+  const totalSupplyWork = unbilledSupply.reduce((sum: number, se: any) => sum + se.totalAmount, 0);
+  const previousSupplyWork = previouslyBilledSupply.reduce((sum: number, se: any) => sum + se.totalAmount, 0);
+
   const grossBillTotal = totalTowerWork + totalSupplyWork;
 
   const cgst = grossBillTotal * (taxPcts.cgstPct / 100);
@@ -137,7 +143,9 @@ export function RABillViewer({ site }: { site: any }) {
           <CardContent>
             <form
               action={async (formData) => {
+                setIsSubmitting(true);
                 await generateRunningBillAction(site.id, formData);
+                setIsSubmitting(false);
                 setIsGenerating(false);
               }}
               className="grid gap-4 md:grid-cols-4"
@@ -161,23 +169,25 @@ export function RABillViewer({ site }: { site: any }) {
 
               <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">Retention %</label>
-                <Input name="retentionPct" type="number" step="0.5" value={taxPcts.retentionPct} onChange={(e) => setTaxPcts(p => ({ ...p, retentionPct: parseFloat(e.target.value) || 0 }))} />
+                <Input name="retentionPct" type="number" step="0.5" value={taxPcts.retentionPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts(p => ({ ...p, retentionPct: parseFloat(e.target.value) || 0 }))} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">CGST %</label>
-                <Input name="cgstPct" type="number" step="0.5" value={taxPcts.cgstPct} onChange={(e) => setTaxPcts(p => ({ ...p, cgstPct: parseFloat(e.target.value) || 0 }))} />
+                <Input name="cgstPct" type="number" step="0.5" value={taxPcts.cgstPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts(p => ({ ...p, cgstPct: parseFloat(e.target.value) || 0 }))} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">SGST %</label>
-                <Input name="sgstPct" type="number" step="0.5" value={taxPcts.sgstPct} onChange={(e) => setTaxPcts(p => ({ ...p, sgstPct: parseFloat(e.target.value) || 0 }))} />
+                <Input name="sgstPct" type="number" step="0.5" value={taxPcts.sgstPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts(p => ({ ...p, sgstPct: parseFloat(e.target.value) || 0 }))} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">TDS %</label>
-                <Input name="tdsPct" type="number" step="0.5" value={taxPcts.tdsPct} onChange={(e) => setTaxPcts(p => ({ ...p, tdsPct: parseFloat(e.target.value) || 0 }))} />
+                <Input name="tdsPct" type="number" step="0.5" value={taxPcts.tdsPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts(p => ({ ...p, tdsPct: parseFloat(e.target.value) || 0 }))} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
               </div>
               <div className="flex items-end justify-end gap-2">
-                <Button type="button" variant="ghost" onClick={() => setIsGenerating(false)}>Cancel</Button>
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">Snapshot & Create Bill</Button>
+                <Button type="button" variant="ghost" onClick={() => setIsGenerating(false)} disabled={isSubmitting}>Cancel</Button>
+                <Button type="submit" disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700">
+                  {isSubmitting ? "Generating..." : "Snapshot & Create Bill"}
+                </Button>
               </div>
             </form>
           </CardContent>
@@ -289,19 +299,19 @@ export function RABillViewer({ site }: { site: any }) {
               <span className="font-bold text-muted-foreground uppercase tracking-wider">Live Tax & Deductions Edit:</span>
               <label className="flex items-center gap-1 font-semibold">
                 CGST %:
-                <Input type="number" step="0.5" value={taxPcts.cgstPct} onChange={(e) => setTaxPcts((p) => ({ ...p, cgstPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background" />
+                <Input type="number" step="0.5" value={taxPcts.cgstPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts((p) => ({ ...p, cgstPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
               </label>
               <label className="flex items-center gap-1 font-semibold">
                 SGST %:
-                <Input type="number" step="0.5" value={taxPcts.sgstPct} onChange={(e) => setTaxPcts((p) => ({ ...p, sgstPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background" />
+                <Input type="number" step="0.5" value={taxPcts.sgstPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts((p) => ({ ...p, sgstPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
               </label>
               <label className="flex items-center gap-1 font-semibold text-orange-600">
                 Retention %:
-                <Input type="number" step="0.5" value={taxPcts.retentionPct} onChange={(e) => setTaxPcts((p) => ({ ...p, retentionPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background text-orange-600 border-orange-300" />
+                <Input type="number" step="0.5" value={taxPcts.retentionPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts((p) => ({ ...p, retentionPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background text-orange-600 border-orange-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
               </label>
               <label className="flex items-center gap-1 font-semibold text-orange-600">
                 TDS %:
-                <Input type="number" step="0.5" value={taxPcts.tdsPct} onChange={(e) => setTaxPcts((p) => ({ ...p, tdsPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background text-orange-600 border-orange-300" />
+                <Input type="number" step="0.5" value={taxPcts.tdsPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts((p) => ({ ...p, tdsPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background text-orange-600 border-orange-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
               </label>
             </div>
           </CardHeader>
@@ -335,9 +345,9 @@ export function RABillViewer({ site }: { site: any }) {
                     <TD>Sft.</TD>
                     <TD>{(b.approxArea || 0).toLocaleString()}</TD>
                     <TD>₹{b.contractRate || 0}</TD>
-                    <TD>0</TD>
+                    <TD>{prevA > 0 ? (prevA / (b.contractRate || 1)).toFixed(0) : 0}</TD>
                     <TD className="font-mono text-emerald-500 font-semibold">{currA > 0 ? (currA / (b.contractRate || 1)).toFixed(0) : 0}</TD>
-                    <TD className="font-mono">{currA > 0 ? (currA / (b.contractRate || 1)).toFixed(0) : 0}</TD>
+                    <TD className="font-mono">{(prevA + currA) > 0 ? ((prevA + currA) / (b.contractRate || 1)).toFixed(0) : 0}</TD>
                     <TD className="font-mono">{formatINR(prevA)}</TD>
                     <TD className="font-mono text-emerald-500 font-bold">{formatINR(currA)}</TD>
                     <TD className="font-mono font-bold">{formatINR(prevA + currA)}</TD>
@@ -345,19 +355,19 @@ export function RABillViewer({ site }: { site: any }) {
                 );
               })}
 
-              {totalSupplyWork > 0 && (
+              {(totalSupplyWork > 0 || previousSupplyWork > 0) && (
                 <TR>
                   <TD>{site.buildings.length + 1}</TD>
                   <TD className="font-bold">Extra Labour Supply Billed</TD>
                   <TD>Nos/Hrs</TD>
                   <TD>—</TD>
                   <TD>—</TD>
-                  <TD>0</TD>
-                  <TD>1</TD>
-                  <TD>1</TD>
-                  <TD>₹0.00</TD>
+                  <TD>—</TD>
+                  <TD>—</TD>
+                  <TD>—</TD>
+                  <TD className="font-mono">{formatINR(previousSupplyWork)}</TD>
                   <TD className="font-mono text-emerald-500 font-bold">{formatINR(totalSupplyWork)}</TD>
-                  <TD className="font-mono font-bold">{formatINR(totalSupplyWork)}</TD>
+                  <TD className="font-mono font-bold">{formatINR(previousSupplyWork + totalSupplyWork)}</TD>
                 </TR>
               )}
 

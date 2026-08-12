@@ -45,13 +45,42 @@ export function TowerWorkManager({ site }: { site: any }) {
   });
 
   const handleFieldChange = (itemId: string, field: string, value: string | number) => {
-    setProgressState((prev) => ({
-      ...prev,
-      [itemId]: {
-        ...prev[itemId],
-        [field]: typeof value === "number" && value < 0 ? 0 : value,
-      },
-    }));
+    setProgressState((prev) => {
+      const currentItem = prev[itemId] || {};
+      let updatedValue = typeof value === "number" && value < 0 ? 0 : value;
+      
+      // Enforce max 100% combined
+      if (field === "currentPct" && typeof updatedValue === "number") {
+        const prevPct = currentItem.previousPct || 0;
+        if (updatedValue + prevPct > 100) updatedValue = 100 - prevPct;
+      }
+      if (field === "previousPct" && typeof updatedValue === "number") {
+        const currPct = currentItem.currentPct || 0;
+        if (updatedValue + currPct > 100) updatedValue = 100 - currPct;
+      }
+      
+      let newState = {
+        ...currentItem,
+        [field]: updatedValue,
+      };
+
+      // Auto-calculate dependent fields if relevant fields change
+      if (["partAmount", "previousPct", "currentPct"].includes(field)) {
+        const partAmt = newState.partAmount || 0;
+        const prevPct = newState.previousPct || 0;
+        const currPct = newState.currentPct || 0;
+
+        newState.previousAmt = (prevPct / 100) * partAmt;
+        newState.currentAmt = (currPct / 100) * partAmt;
+        newState.cumulativePct = prevPct + currPct;
+        newState.cumulativeAmt = newState.previousAmt + newState.currentAmt;
+      }
+
+      return {
+        ...prev,
+        [itemId]: newState,
+      };
+    });
   };
 
   const handleSaveProgress = async () => {
@@ -199,11 +228,11 @@ export function TowerWorkManager({ site }: { site: any }) {
                     >
                       <div>
                         <label className="text-xs font-medium text-indigo-200 block mb-1">Approximate BUA Area (Sft / Sq) *</label>
-                        <Input name="approxArea" type="number" step="0.01" defaultValue={approxArea} required className="bg-slate-900 text-white" />
+                        <Input name="approxArea" type="number" step="0.01" defaultValue={approxArea} onFocus={(e) => e.target.select()} required className="bg-slate-900 text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                       </div>
                       <div>
                         <label className="text-xs font-medium text-indigo-200 block mb-1">Contract Rate (₹ / Sft) *</label>
-                        <Input name="contractRate" type="number" step="0.01" defaultValue={contractRate} required className="bg-slate-900 text-white" />
+                        <Input name="contractRate" type="number" step="0.01" defaultValue={contractRate} onFocus={(e) => e.target.select()} required className="bg-slate-900 text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                       </div>
                       <div>
                         <Button type="submit" className="w-full bg-indigo-500 hover:bg-indigo-600">
@@ -275,12 +304,12 @@ export function TowerWorkManager({ site }: { site: any }) {
                     <Input name="unit" placeholder="%" defaultValue="%" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground block mb-1">Stage Part Amount (₹) *</label>
-                    <Input name="partAmount" type="number" step="0.01" placeholder="340000" required />
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1">Part Amount (₹)</label>
+                    <Input name="partAmount" type="number" step="0.01" placeholder="e.g. 50000" onFocus={(e) => e.target.select()} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground block mb-1">Rate / W.O. Qty (Optional)</label>
-                    <Input name="rate" type="number" step="0.01" placeholder="0" defaultValue="0" />
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1">Rate (Optional)</label>
+                    <Input name="rate" type="number" step="0.01" placeholder="e.g. 1500" onFocus={(e) => e.target.select()} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                   </div>
                   <div className="md:col-span-4 flex justify-end gap-2 mt-2">
                     <Button type="button" variant="ghost" onClick={() => setIsAddingItem(false)}>Cancel</Button>
@@ -333,9 +362,10 @@ export function TowerWorkManager({ site }: { site: any }) {
                               <Input
                                 type="number"
                                 step="0.01"
-                                value={partAmt}
-                                onChange={(e) => handleFieldChange(item.id, "partAmount", parseFloat(e.target.value) || 0)}
-                                className="w-28 h-8 font-mono text-xs text-right font-semibold"
+                                value={partAmt === 0 ? "" : partAmt}
+                                onFocus={(e) => e.target.select()}
+                                onChange={(e) => handleFieldChange(item.id, "partAmount", e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                                className="w-28 h-8 font-mono text-xs text-right font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
                             </TD>
                             <TD className="text-center">
@@ -343,9 +373,10 @@ export function TowerWorkManager({ site }: { site: any }) {
                                 <Input
                                   type="number"
                                   step="1"
-                                  value={prevPct}
-                                  onChange={(e) => handleFieldChange(item.id, "previousPct", parseFloat(e.target.value) || 0)}
-                                  className="w-16 h-8 font-mono text-xs text-center"
+                                  value={prevPct === 0 ? "" : prevPct}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => handleFieldChange(item.id, "previousPct", e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                                  className="w-16 h-8 font-mono text-xs text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                                 <span className="text-xs text-muted-foreground">%</span>
                               </div>
@@ -355,9 +386,10 @@ export function TowerWorkManager({ site }: { site: any }) {
                                 <Input
                                   type="number"
                                   step="1"
-                                  value={currPct}
-                                  onChange={(e) => handleFieldChange(item.id, "currentPct", parseFloat(e.target.value) || 0)}
-                                  className="w-16 h-8 font-mono text-xs text-center bg-emerald-500/10 border-emerald-500/30 font-bold text-emerald-600"
+                                  value={currPct === 0 ? "" : currPct}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => handleFieldChange(item.id, "currentPct", e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                                  className="w-16 h-8 font-mono text-xs text-center bg-emerald-500/10 border-emerald-500/30 font-bold text-emerald-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                                 <span className="text-xs text-emerald-600 font-bold">%</span>
                               </div>
@@ -368,8 +400,8 @@ export function TowerWorkManager({ site }: { site: any }) {
                                   type="number"
                                   step="1"
                                   value={cumPct}
-                                  onChange={(e) => handleFieldChange(item.id, "cumulativePct", parseFloat(e.target.value) || 0)}
-                                  className="w-16 h-8 font-mono text-xs text-center font-semibold"
+                                  disabled
+                                  className="w-16 h-8 font-mono text-xs text-center font-semibold bg-muted/50 cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                                 <span className="text-xs font-semibold">%</span>
                               </div>
@@ -379,8 +411,8 @@ export function TowerWorkManager({ site }: { site: any }) {
                                 type="number"
                                 step="0.01"
                                 value={prevA}
-                                onChange={(e) => handleFieldChange(item.id, "previousAmt", parseFloat(e.target.value) || 0)}
-                                className="w-28 h-8 font-mono text-xs text-right"
+                                disabled
+                                className="w-28 h-8 font-mono text-xs text-right bg-muted/50 cursor-not-allowed"
                               />
                             </TD>
                             <TD className="text-right">
@@ -388,8 +420,8 @@ export function TowerWorkManager({ site }: { site: any }) {
                                 type="number"
                                 step="0.01"
                                 value={currA}
-                                onChange={(e) => handleFieldChange(item.id, "currentAmt", parseFloat(e.target.value) || 0)}
-                                className="w-28 h-8 font-mono text-xs text-right font-bold text-emerald-600 bg-emerald-500/10 border-emerald-500/30"
+                                disabled
+                                className="w-28 h-8 font-mono text-xs text-right font-bold text-emerald-600 bg-emerald-500/5 border-emerald-500/30 cursor-not-allowed"
                               />
                             </TD>
                             <TD className="text-right">
@@ -397,8 +429,8 @@ export function TowerWorkManager({ site }: { site: any }) {
                                 type="number"
                                 step="0.01"
                                 value={cumA}
-                                onChange={(e) => handleFieldChange(item.id, "cumulativeAmt", parseFloat(e.target.value) || 0)}
-                                className="w-28 h-8 font-mono text-xs text-right font-bold"
+                                disabled
+                                className="w-28 h-8 font-mono text-xs text-right font-bold bg-muted/50 cursor-not-allowed"
                               />
                             </TD>
                             <TD className="text-right">

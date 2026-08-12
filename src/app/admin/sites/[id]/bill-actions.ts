@@ -23,19 +23,28 @@ export async function updateTowerWorkProgressAction(
   itemsProgress: { id: string; name?: string; previousQty: number; currentQty: number; previousPct?: number; currentPct?: number; cumulativePct?: number; partAmount?: number; previousAmt?: number; currentAmt?: number; cumulativeAmt?: number }[]
 ) {
   for (const item of itemsProgress) {
+    const prevPct = item.previousPct ?? 0;
+    const currPct = item.currentPct ?? 0;
+    const partAmt = item.partAmount ?? 0;
+    
+    const previousAmt = (prevPct / 100) * partAmt;
+    const currentAmt = (currPct / 100) * partAmt;
+    const cumulativePct = prevPct + currPct;
+    const cumulativeAmt = previousAmt + currentAmt;
+
     await prisma.workItem.update({
       where: { id: item.id },
       data: {
         previousQty: item.previousQty,
         currentQty: item.currentQty,
-        previousPct: item.previousPct ?? 0,
-        currentPct: item.currentPct ?? 0,
+        previousPct: prevPct,
+        currentPct: currPct,
         ...(item.name !== undefined ? { name: item.name } : {}),
-        ...(item.partAmount !== undefined ? { partAmount: item.partAmount } : {}),
-        ...(item.cumulativePct !== undefined ? { cumulativePct: item.cumulativePct } : {}),
-        ...(item.previousAmt !== undefined ? { previousAmt: item.previousAmt } : {}),
-        ...(item.currentAmt !== undefined ? { currentAmt: item.currentAmt } : {}),
-        ...(item.cumulativeAmt !== undefined ? { cumulativeAmt: item.cumulativeAmt } : {}),
+        partAmount: partAmt,
+        previousAmt,
+        currentAmt,
+        cumulativePct,
+        cumulativeAmt,
       },
     });
   }
@@ -158,9 +167,10 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
     where: { id: siteId },
     include: {
       buildings: {
-        include: { workItems: true },
+        include: { workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] } },
+        orderBy: { createdAt: "asc" },
       },
-      supplyLabourEntries: true,
+      supplyLabourEntries: { orderBy: { date: "asc" } },
     },
   });
 
@@ -189,10 +199,16 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
   let order = 0;
   for (const b of site.buildings) {
     for (const item of b.workItems) {
-      if (item.currentQty > 0 || item.previousQty > 0) {
-        const previousAmount = item.previousQty * item.rate;
-        const currentAmount = item.currentQty * item.rate;
-        const cumulativeAmount = (item.previousQty + item.currentQty) * item.rate;
+      const currentPct = item.currentPct ?? 0;
+      const previousPct = item.previousPct ?? 0;
+      const currentAmt = item.currentAmt ?? 0;
+      const previousAmt = item.previousAmt ?? 0;
+      const cumulativeAmt = item.cumulativeAmt ?? 0;
+
+      if (item.currentQty > 0 || item.previousQty > 0 || currentPct > 0 || previousPct > 0) {
+        const previousAmount = previousAmt > 0 ? previousAmt : (item.previousQty * item.rate);
+        const currentAmount = currentAmt > 0 ? currentAmt : (item.currentQty * item.rate);
+        const cumulativeAmount = cumulativeAmt > 0 ? cumulativeAmt : ((item.previousQty + item.currentQty) * item.rate);
 
         await prisma.billLine.create({
           data: {
@@ -203,21 +219,37 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
             unit: item.unit,
             woQty: item.buWork,
             rate: item.rate,
-            previousQty: item.previousQty,
-            currentQty: item.currentQty,
-            cumulativeQty: item.previousQty + item.currentQty,
+            previousQty: previousPct > 0 ? previousPct : item.previousQty,
+            currentQty: currentPct > 0 ? currentPct : item.currentQty,
+            cumulativeQty: (previousPct > 0 || currentPct > 0) ? (previousPct + currentPct) : (item.previousQty + item.currentQty),
             previousAmount,
             currentAmount,
             cumulativeAmount,
             order: order++,
           },
         });
+
+        // Transition current to previous for the next bill
+        await prisma.workItem.update({
+          where: { id: item.id },
+          data: {
+            previousQty: item.previousQty + item.currentQty,
+            currentQty: 0,
+            previousPct: previousPct + currentPct,
+            currentPct: 0,
+            previousAmt: previousAmt + currentAmt,
+            currentAmt: 0,
+          }
+        });
       }
     }
   }
 
   // Create bill line for Supply Labour total
-  const supplyTotal = site.supplyLabourEntries.reduce((sum, se) => sum + se.totalAmount, 0);
+  // Only sum entries that haven't been billed yet (runningBillId is null)
+  const unbilledSupply = site.supplyLabourEntries.filter((se: any) => !se.runningBillId);
+  const supplyTotal = unbilledSupply.reduce((sum: number, se: any) => sum + se.totalAmount, 0);
+  
   if (supplyTotal > 0) {
     await prisma.billLine.create({
       data: {

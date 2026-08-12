@@ -5,14 +5,16 @@ import { Badge } from "@/components/ui/badge";
 import { TransferResourcesModal } from "./transfer-resources-modal";
 import { SiteProgressEdit } from "./site-progress-edit";
 
+export const dynamic = 'force-dynamic';
+
 export default async function SiteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const site = await prisma.site.findUnique({
     where: { id },
     include: {
       client: true,
-      buildings: { orderBy: { order: "asc" }, include: { workItems: { orderBy: { order: "asc" } } } },
-      workItems: { orderBy: { order: "asc" } },
+      buildings: { orderBy: [{ order: "asc" }, { createdAt: "asc" }], include: { workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] } } },
+      workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
       supplyLabourEntries: { orderBy: { date: "asc" } },
       labourCategories: { orderBy: { order: "asc" }, include: { labours: true } },
       supervisors: { include: { supervisor: true } },

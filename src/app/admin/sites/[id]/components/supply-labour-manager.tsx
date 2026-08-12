@@ -373,14 +373,14 @@ export function SupplyLabourManager({ site }: { site: any }) {
                         <TD className="font-mono text-xs font-semibold text-purple-500 align-middle">
                           {hTotalHrs}h
                         </TD>
-                        {/* Total Amount (Auto-Calculated or Manual Editable) */}
+                        {/* Total Amount (Auto-Calculated) */}
                         <TD>
                           <Input
                             type="number"
                             step="0.01"
                             value={st.totalAmount}
-                            onChange={(ev) => handleFieldChange(e.id, "totalAmount", parseFloat(ev.target.value) || 0)}
-                            className="h-8 text-xs font-mono font-bold text-emerald-600 text-right bg-emerald-500/10 border-emerald-500/30 w-28"
+                            disabled
+                            className="h-8 text-xs font-mono font-bold text-emerald-600 text-right bg-emerald-500/5 border-emerald-500/30 w-28 cursor-not-allowed"
                           />
                         </TD>
                         {/* Actions */}
