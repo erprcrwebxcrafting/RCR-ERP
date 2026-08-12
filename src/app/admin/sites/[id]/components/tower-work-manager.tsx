@@ -360,22 +360,30 @@ export function TowerWorkManager({ site }: { site: any }) {
                             </TD>
                             <TD className="text-right">
                               <Input
-                                type="number"
-                                step="0.01"
-                                value={partAmt === 0 ? "" : partAmt}
+                                type="text"
+                                inputMode="decimal"
+                                value={partAmt}
                                 onFocus={(e) => e.target.select()}
-                                onChange={(e) => handleFieldChange(item.id, "partAmount", e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                                onChange={(e) => {
+                                  let val = e.target.value.replace(/^0+(?=\d)/, '');
+                                  if (val === '') val = '0';
+                                  handleFieldChange(item.id, "partAmount", parseFloat(val));
+                                }}
                                 className="w-28 h-8 font-mono text-xs text-right font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
                             </TD>
                             <TD className="text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <Input
-                                  type="number"
-                                  step="1"
-                                  value={prevPct === 0 ? "" : prevPct}
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={prevPct}
                                   onFocus={(e) => e.target.select()}
-                                  onChange={(e) => handleFieldChange(item.id, "previousPct", e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                                  onChange={(e) => {
+                                    let val = e.target.value.replace(/^0+(?=\d)/, '');
+                                    if (val === '') val = '0';
+                                    handleFieldChange(item.id, "previousPct", parseFloat(val));
+                                  }}
                                   className="w-16 h-8 font-mono text-xs text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                                 <span className="text-xs text-muted-foreground">%</span>
@@ -384,11 +392,15 @@ export function TowerWorkManager({ site }: { site: any }) {
                             <TD className="text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <Input
-                                  type="number"
-                                  step="1"
-                                  value={currPct === 0 ? "" : currPct}
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={currPct}
                                   onFocus={(e) => e.target.select()}
-                                  onChange={(e) => handleFieldChange(item.id, "currentPct", e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                                  onChange={(e) => {
+                                    let val = e.target.value.replace(/^0+(?=\d)/, '');
+                                    if (val === '') val = '0';
+                                    handleFieldChange(item.id, "currentPct", parseFloat(val));
+                                  }}
                                   className="w-16 h-8 font-mono text-xs text-center bg-emerald-500/10 border-emerald-500/30 font-bold text-emerald-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                                 <span className="text-xs text-emerald-600 font-bold">%</span>
