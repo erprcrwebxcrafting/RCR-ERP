@@ -350,9 +350,17 @@ export async function generateBillPdfPackage(data: {
     y -= 18;
 
     let totSupplyAmt = 0;
+    let sumFitterHrs = 0;
+    let sumHelperHrs = 0;
+
     supplyEntries.forEach((se: any) => {
       newPageIfNeeded(25, "EXTRA SUPPLY LABOUR SHEET");
       const dateStr = se.date ? new Date(se.date).toLocaleDateString("en-IN") : "-";
+      
+      const fHrs = (se.fitterQty || 0) * (se.fitterHours || 0);
+      const hHrs = (se.helperQty || 0) * (se.helperHours || 0);
+      sumFitterHrs += fHrs;
+      sumHelperHrs += hHrs;
       totSupplyAmt += se.totalAmount || 0;
 
       page.drawText(dateStr, { x: MARGIN + 4, y: y - 11, size: 7.5, font, color: darkGray });
@@ -367,6 +375,18 @@ export async function generateBillPdfPackage(data: {
     y -= 8;
     page.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_W - MARGIN, y }, thickness: 1, color: teal });
     y -= 14;
+    
+    // Subtotals Fitter & Helper
+    const fAmtStr = formatCurrency((sumFitterHrs / 8) * 1100);
+    const hAmtStr = formatCurrency((sumHelperHrs / 8) * 800);
+    
+    page.drawText("FITTER AMOUNT:", { x: MARGIN + 180, y, size: 8, font: bold, color: darkGray });
+    page.drawText(fAmtStr, { x: MARGIN + 310, y, size: 8, font: bold, color: black });
+    
+    page.drawText("HELPER AMOUNT:", { x: MARGIN + 395, y, size: 8, font: bold, color: darkGray });
+    page.drawText(hAmtStr, { x: PAGE_W - MARGIN - 75, y, size: 8, font: bold, color: black });
+    
+    y -= 16;
     page.drawText("TOTAL EXTRA LABOUR SUPPLY AMOUNT:", { x: MARGIN + 180, y, size: 8.5, font: bold, color: black });
     page.drawText(formatCurrency(totSupplyAmt), { x: PAGE_W - MARGIN - 75, y, size: 8.5, font: bold, color: teal });
   }

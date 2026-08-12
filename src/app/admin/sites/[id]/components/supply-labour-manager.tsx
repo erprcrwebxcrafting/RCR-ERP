@@ -216,15 +216,15 @@ export function SupplyLabourManager({ site }: { site: any }) {
                 <div className="md:col-span-3 font-semibold text-xs text-blue-500 uppercase tracking-wider">Fitter Details</div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Fitter Count (Nos)</label>
-                  <Input name="fitterQty" type="number" step="0.01" placeholder="2" defaultValue="0" />
+                  <Input name="fitterQty" type="number" step="0.01" placeholder="2" defaultValue="0" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Hours / Day</label>
-                  <Input name="fitterHours" type="number" step="0.5" placeholder="8" defaultValue="8" />
+                  <Input name="fitterHours" type="number" step="0.5" placeholder="8" defaultValue="8" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Fitter Rate (₹)</label>
-                  <Input name="fitterRate" type="number" step="1" defaultValue="1100" />
+                  <Input name="fitterRate" type="number" step="1" defaultValue="1100" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                 </div>
               </div>
 
@@ -232,15 +232,15 @@ export function SupplyLabourManager({ site }: { site: any }) {
                 <div className="md:col-span-3 font-semibold text-xs text-purple-500 uppercase tracking-wider">Fitter Helper Details</div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Helper Count (Nos)</label>
-                  <Input name="helperQty" type="number" step="0.01" placeholder="1" defaultValue="0" />
+                  <Input name="helperQty" type="number" step="0.01" placeholder="1" defaultValue="0" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Hours / Day</label>
-                  <Input name="helperHours" type="number" step="0.5" placeholder="8" defaultValue="8" />
+                  <Input name="helperHours" type="number" step="0.5" placeholder="8" defaultValue="8" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Helper Rate (₹)</label>
-                  <Input name="helperRate" type="number" step="1" defaultValue="800" />
+                  <Input name="helperRate" type="number" step="1" defaultValue="800" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                 </div>
               </div>
 
@@ -264,11 +264,12 @@ export function SupplyLabourManager({ site }: { site: any }) {
                     <TH className="w-16">F. Hrs</TH>
                     <TH className="w-20">F. Rate</TH>
                     <TH className="w-16 text-blue-500">Tot F.Hrs</TH>
+                    <TH className="w-24 text-right text-blue-500">F. Amt (₹)</TH>
                     <TH className="w-16">Helper</TH>
                     <TH className="w-16">H. Hrs</TH>
                     <TH className="w-20">H. Rate</TH>
                     <TH className="w-16 text-purple-500">Tot H.Hrs</TH>
-                    <TH className="w-28 text-right">Amount (₹)</TH>
+                    <TH className="w-24 text-right text-purple-500">H. Amt (₹)</TH>
                     <TH className="w-12 text-right">Actions</TH>
                   </TR>
                 </THead>
@@ -312,7 +313,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
                             step="0.1"
                             value={st.fitterQty}
                             onChange={(ev) => handleFieldChange(e.id, "fitterQty", parseFloat(ev.target.value) || 0)}
-                            className="h-8 text-xs font-mono w-16"
+                            className="h-8 text-xs font-mono w-16 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </TD>
                         {/* Fitter Hours */}
@@ -322,7 +323,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
                             step="0.5"
                             value={st.fitterHours}
                             onChange={(ev) => handleFieldChange(e.id, "fitterHours", parseFloat(ev.target.value) || 0)}
-                            className="h-8 text-xs font-mono w-16"
+                            className="h-8 text-xs font-mono w-16 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </TD>
                         {/* Fitter Rate */}
@@ -332,12 +333,16 @@ export function SupplyLabourManager({ site }: { site: any }) {
                             step="1"
                             value={st.fitterRate}
                             onChange={(ev) => handleFieldChange(e.id, "fitterRate", parseFloat(ev.target.value) || 0)}
-                            className="h-8 text-xs font-mono w-20 text-blue-600 font-semibold"
+                            className="h-8 text-xs font-mono w-20 text-blue-600 font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </TD>
                         {/* Calculated Fitter Total Hrs */}
                         <TD className="font-mono text-xs font-semibold text-blue-500 align-middle">
                           {fTotalHrs}h
+                        </TD>
+                        {/* F. Amt (Calculated) */}
+                        <TD className="text-right font-mono text-xs font-bold text-blue-600 align-middle">
+                          {formatINR(fTotalHrs > 0 ? (fTotalHrs / 8) * (st.fitterRate || 1100) : (st.fitterQty || 0) * (st.fitterRate || 1100))}
                         </TD>
                         {/* Helper Qty */}
                         <TD>
@@ -346,7 +351,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
                             step="0.1"
                             value={st.helperQty}
                             onChange={(ev) => handleFieldChange(e.id, "helperQty", parseFloat(ev.target.value) || 0)}
-                            className="h-8 text-xs font-mono w-16"
+                            className="h-8 text-xs font-mono w-16 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </TD>
                         {/* Helper Hours */}
@@ -356,7 +361,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
                             step="0.5"
                             value={st.helperHours}
                             onChange={(ev) => handleFieldChange(e.id, "helperHours", parseFloat(ev.target.value) || 0)}
-                            className="h-8 text-xs font-mono w-16"
+                            className="h-8 text-xs font-mono w-16 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </TD>
                         {/* Helper Rate */}
@@ -366,22 +371,16 @@ export function SupplyLabourManager({ site }: { site: any }) {
                             step="1"
                             value={st.helperRate}
                             onChange={(ev) => handleFieldChange(e.id, "helperRate", parseFloat(ev.target.value) || 0)}
-                            className="h-8 text-xs font-mono w-20 text-purple-600 font-semibold"
+                            className="h-8 text-xs font-mono w-20 text-purple-600 font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </TD>
                         {/* Calculated Helper Total Hrs */}
                         <TD className="font-mono text-xs font-semibold text-purple-500 align-middle">
                           {hTotalHrs}h
                         </TD>
-                        {/* Total Amount (Auto-Calculated) */}
-                        <TD>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={st.totalAmount}
-                            disabled
-                            className="h-8 text-xs font-mono font-bold text-emerald-600 text-right bg-emerald-500/5 border-emerald-500/30 w-28 cursor-not-allowed"
-                          />
+                        {/* H. Amt (Calculated) */}
+                        <TD className="text-right font-mono text-xs font-bold text-purple-600 align-middle">
+                          {formatINR(hTotalHrs > 0 ? (hTotalHrs / 8) * (st.helperRate || 800) : (st.helperQty || 0) * (st.helperRate || 800))}
                         </TD>
                         {/* Actions */}
                         <TD className="text-right">
@@ -407,6 +406,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
                   <TR className="bg-muted/40 font-semibold border-t-2">
                     <TD colSpan={6} className="text-right uppercase tracking-wider text-xs text-muted-foreground">Total Hours (Sum)</TD>
                     <TD className="font-mono text-blue-600 font-bold text-xs">{totalFitterHours} hrs</TD>
+                    <TD></TD>
                     <TD colSpan={3}></TD>
                     <TD className="font-mono text-purple-600 font-bold text-xs">{totalHelperHours} hrs</TD>
                     <TD colSpan={2}></TD>
@@ -416,6 +416,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
                   <TR className="bg-muted/40 font-semibold">
                     <TD colSpan={6} className="text-right uppercase tracking-wider text-xs text-muted-foreground">Equivalent Days (Nos = Hrs ÷ 8)</TD>
                     <TD className="font-mono text-blue-600 font-bold text-xs">{(totalFitterHours / 8).toFixed(2)} Nos</TD>
+                    <TD></TD>
                     <TD colSpan={3}></TD>
                     <TD className="font-mono text-purple-600 font-bold text-xs">{(totalHelperHours / 8).toFixed(2)} Nos</TD>
                     <TD colSpan={2}></TD>
@@ -425,6 +426,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
                   <TR className="bg-muted/40 font-semibold">
                     <TD colSpan={6} className="text-right uppercase tracking-wider text-xs text-muted-foreground">Standard Rate (@ ₹)</TD>
                     <TD className="font-mono text-blue-600 text-xs">₹1,100 /day</TD>
+                    <TD></TD>
                     <TD colSpan={3}></TD>
                     <TD className="font-mono text-purple-600 text-xs">₹800 /day</TD>
                     <TD colSpan={2}></TD>
@@ -433,19 +435,20 @@ export function SupplyLabourManager({ site }: { site: any }) {
                   {/* Row 4: Category Amount Subtotals */}
                   <TR className="bg-muted/70 font-bold border-t">
                     <TD colSpan={6} className="text-right uppercase tracking-wider text-xs">Calculated Subtotals</TD>
-                    <TD className="font-mono text-blue-600 text-xs font-bold">{formatINR((totalFitterHours / 8) * 1100)}</TD>
+                    <TD></TD>
+                    <TD className="font-mono text-blue-600 text-xs font-bold text-right">{formatINR((totalFitterHours / 8) * 1100)}</TD>
                     <TD colSpan={3}></TD>
-                    <TD className="font-mono text-purple-600 text-xs font-bold">{formatINR((totalHelperHours / 8) * 800)}</TD>
-                    <TD className="font-mono text-emerald-600 text-right text-xs font-bold">{formatINR(totalSupplyAmount)}</TD>
+                    <TD></TD>
+                    <TD className="font-mono text-purple-600 text-xs font-bold text-right">{formatINR((totalHelperHours / 8) * 800)}</TD>
                     <TD></TD>
                   </TR>
 
                   {/* Row 5: Grand Total */}
                   <TR className="bg-emerald-500/10 font-bold border-t-2 border-emerald-500/30 text-sm">
-                    <TD colSpan={11} className="text-right uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                    <TD colSpan={12} className="text-right uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                       TOTAL SUPPLY AMOUNT BILLED TO CLIENT (SHEET `supply`)
                     </TD>
-                    <TD className="font-mono text-emerald-600 dark:text-emerald-400 text-right text-base font-black">
+                    <TD colSpan={2} className="font-mono text-emerald-600 dark:text-emerald-400 text-right text-base font-black">
                       {formatINR(totalSupplyAmount)}
                     </TD>
                     <TD></TD>
