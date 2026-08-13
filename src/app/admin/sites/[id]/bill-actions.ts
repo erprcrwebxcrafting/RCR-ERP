@@ -157,10 +157,6 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
   const billNo = formData.get("billNo") as string || `BILL-${Date.now()}`;
   const refNo = formData.get("refNo") as string || "01";
   const periodLabel = formData.get("periodLabel") as string || new Date().toLocaleString("en-US", { month: "short", year: "numeric" });
-  const cgstPct = parseFloat((formData.get("cgstPct") as string) || "9");
-  const sgstPct = parseFloat((formData.get("sgstPct") as string) || "9");
-  const retentionPct = parseFloat((formData.get("retentionPct") as string) || "2");
-  const tdsPct = parseFloat((formData.get("tdsPct") as string) || "1");
 
   // Fetch all towers & supply entries for this site
   const site = await prisma.site.findUnique({
@@ -186,10 +182,10 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
       refNo,
       periodLabel,
       billDate,
-      cgstPct,
-      sgstPct,
-      retentionPct,
-      tdsPct,
+      cgstPct: site.cgstPct ?? 9,
+      sgstPct: site.sgstPct ?? 9,
+      retentionPct: site.retentionPct ?? 2,
+      tdsPct: site.tdsPct ?? 1,
       status: "GENERATED",
     },
   });

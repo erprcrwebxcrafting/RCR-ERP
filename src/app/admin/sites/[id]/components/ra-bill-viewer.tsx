@@ -167,23 +167,7 @@ export function RABillViewer({ site }: { site: any }) {
                 <Input name="periodLabel" defaultValue={new Date().toLocaleString("en-US", { month: "long", year: "numeric" })} />
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Retention %</label>
-                <Input name="retentionPct" type="number" step="0.5" value={taxPcts.retentionPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts(p => ({ ...p, retentionPct: parseFloat(e.target.value) || 0 }))} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">CGST %</label>
-                <Input name="cgstPct" type="number" step="0.5" value={taxPcts.cgstPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts(p => ({ ...p, cgstPct: parseFloat(e.target.value) || 0 }))} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">SGST %</label>
-                <Input name="sgstPct" type="number" step="0.5" value={taxPcts.sgstPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts(p => ({ ...p, sgstPct: parseFloat(e.target.value) || 0 }))} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">TDS %</label>
-                <Input name="tdsPct" type="number" step="0.5" value={taxPcts.tdsPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts(p => ({ ...p, tdsPct: parseFloat(e.target.value) || 0 }))} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-              </div>
-              <div className="flex items-end justify-end gap-2">
+              <div className="flex items-end justify-end gap-2 md:col-span-4">
                 <Button type="button" variant="ghost" onClick={() => setIsGenerating(false)} disabled={isSubmitting}>Cancel</Button>
                 <Button type="submit" disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700">
                   {isSubmitting ? "Generating..." : "Snapshot & Create Bill"}
@@ -294,25 +278,6 @@ export function RABillViewer({ site }: { site: any }) {
           <CardHeader className="px-0 pt-0 flex flex-row items-center justify-between flex-wrap gap-3 border-b pb-4">
             <div>
               <CardTitle className="text-lg font-bold">Sheet 2: Consolidated Bill Abstract</CardTitle>
-            </div>
-            <div className="flex items-center gap-3 bg-muted/40 p-2.5 rounded-lg border text-xs flex-wrap">
-              <span className="font-bold text-muted-foreground uppercase tracking-wider">Live Tax & Deductions Edit:</span>
-              <label className="flex items-center gap-1 font-semibold">
-                CGST %:
-                <Input type="number" step="0.5" value={taxPcts.cgstPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts((p) => ({ ...p, cgstPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-              </label>
-              <label className="flex items-center gap-1 font-semibold">
-                SGST %:
-                <Input type="number" step="0.5" value={taxPcts.sgstPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts((p) => ({ ...p, sgstPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-              </label>
-              <label className="flex items-center gap-1 font-semibold text-orange-600">
-                Retention %:
-                <Input type="number" step="0.5" value={taxPcts.retentionPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts((p) => ({ ...p, retentionPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background text-orange-600 border-orange-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-              </label>
-              <label className="flex items-center gap-1 font-semibold text-orange-600">
-                TDS %:
-                <Input type="number" step="0.5" value={taxPcts.tdsPct} onFocus={(e) => e.target.select()} onChange={(e) => setTaxPcts((p) => ({ ...p, tdsPct: parseFloat(e.target.value) || 0 }))} className="w-16 h-7 text-xs font-mono bg-background text-orange-600 border-orange-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-              </label>
             </div>
           </CardHeader>
 
