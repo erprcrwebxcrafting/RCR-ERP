@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { IndianNumberInput } from "@/components/ui/indian-number-input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatINR, formatDate } from "@/lib/utils";
@@ -256,7 +257,7 @@ export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any,
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground block mb-1">Amount Received (₹) *</label>
-                  <Input name="amount" type="number" step="0.01" placeholder="15000" required />
+                  <IndianNumberInput name="amount" placeholder="e.g. 1,50,000" required />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground block mb-1">Payment Mode</label>
@@ -310,29 +311,32 @@ export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any,
                   </TR>
                 </THead>
                 <TBody>
-                  {displayRows.map((row, idx) => {
-                    if (row.type === "TOTAL_ROW") {
-                      return (
-                        <TR key={row.id} className="bg-indigo-500/10 font-bold border-y-2 border-primary/20">
-                          <TD></TD>
-                          <TD colSpan={2} className="uppercase tracking-wider">TOTAL AMOUNT</TD>
-                          <TD className="font-mono text-right text-blue-600">{formatINR(row.grossAmount)}</TD>
-                          <TD className="font-mono text-right text-orange-600">{formatINR(row.retentionAmt)}</TD>
-                          <TD className="font-mono text-right">{formatINR(row.netBilledAmt)}</TD>
-                          <TD className="font-mono text-right text-emerald-600">{formatINR(row.paymentRecd)}</TD>
-                          <TD className="font-mono text-right text-indigo-600">{formatINR(row.tdsAmt)}</TD>
-                          <TD className="font-mono text-right text-emerald-600">{formatINR(row.cumAdvanceTotal)}</TD>
-                          <TD className={`font-mono text-right ${row.runningBal > 0 ? "text-rose-500" : "text-emerald-500"}`}>{formatINR(row.runningBal)}</TD>
-                          <TD className="font-mono text-right text-muted-foreground">{formatINR(row.gstAmt)}</TD>
-                          <TD className={`font-mono text-right ${row.balanceWithGst > 0 ? "text-rose-500" : "text-emerald-500"}`}>{formatINR(row.balanceWithGst)}</TD>
-                        </TR>
-                      );
-                    }
+                  {(() => {
+                    const itemRows = displayRows.filter(r => r.type !== "TOTAL_ROW");
+                    return displayRows.map((row, idx) => {
+                      if (row.type === "TOTAL_ROW") {
+                        return (
+                          <TR key={row.id} className="bg-indigo-500/10 font-bold border-y-2 border-primary/20">
+                            <TD></TD>
+                            <TD colSpan={2} className="uppercase tracking-wider">TOTAL AMOUNT</TD>
+                            <TD className="font-mono text-right text-blue-600">{formatINR(row.grossAmount)}</TD>
+                            <TD className="font-mono text-right text-orange-600">{formatINR(row.retentionAmt)}</TD>
+                            <TD className="font-mono text-right">{formatINR(row.netBilledAmt)}</TD>
+                            <TD className="font-mono text-right text-emerald-600">{formatINR(row.paymentRecd)}</TD>
+                            <TD className="font-mono text-right text-indigo-600">{formatINR(row.tdsAmt)}</TD>
+                            <TD className="font-mono text-right text-emerald-600">{formatINR(row.cumAdvanceTotal)}</TD>
+                            <TD className={`font-mono text-right ${row.runningBal > 0 ? "text-rose-500" : "text-emerald-500"}`}>{formatINR(row.runningBal)}</TD>
+                            <TD className="font-mono text-right text-muted-foreground">{formatINR(row.gstAmt)}</TD>
+                            <TD className={`font-mono text-right ${row.balanceWithGst > 0 ? "text-rose-500" : "text-emerald-500"}`}>{formatINR(row.balanceWithGst)}</TD>
+                          </TR>
+                        );
+                      }
 
-                    const isBill = row.type === "BILL";
-                    return (
-                      <TR key={row.id} className={isBill ? "bg-amber-500/5" : ""}>
-                        <TD className="font-mono text-center font-medium text-muted-foreground">{!isBill ? (displayRows.filter(r => r.type === "PAYMENT").indexOf(row) + 1) : ""}</TD>
+                      const isBill = row.type === "BILL";
+                      const srNo = itemRows.indexOf(row) + 1;
+                      return (
+                        <TR key={row.id} className={isBill ? "bg-amber-500/5" : ""}>
+                          <TD className="font-mono text-center font-bold text-foreground">{srNo}</TD>
                         <TD className="font-mono whitespace-nowrap">{formatDate(row.date)}</TD>
                         <TD className="font-semibold text-muted-foreground">
                           {isBill ? (
@@ -366,7 +370,8 @@ export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any,
                         <TD className={`font-mono text-right font-black ${row.balanceWithGst > 0 ? "text-rose-500" : "text-emerald-500"}`}>{formatINR(row.balanceWithGst)}</TD>
                       </TR>
                     );
-                  })}
+                  });
+                })()}
                 </TBody>
               </Table>
             </div>

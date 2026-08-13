@@ -300,38 +300,56 @@ export async function generateBillPdfPackage(data: {
     y -= 20;
 
     page.drawRectangle({ x: MARGIN, y: y - 18, width: PAGE_W - 2 * MARGIN, height: 18, color: lightGray });
-    page.drawText("Sr.", { x: MARGIN + 4, y: y - 13, size: 8, font: bold, color: black });
-    page.drawText("Particulars of Item", { x: MARGIN + 25, y: y - 13, size: 8, font: bold, color: black });
-    page.drawText("Unit", { x: MARGIN + 220, y: y - 13, size: 8, font: bold, color: black });
-    page.drawText("Prev %", { x: MARGIN + 265, y: y - 13, size: 8, font: bold, color: black });
-    page.drawText("Curr %", { x: MARGIN + 315, y: y - 13, size: 8, font: bold, color: black });
-    page.drawText("Curr Amount (Rs)", { x: PAGE_W - MARGIN - 100, y: y - 13, size: 8, font: bold, color: black });
+    page.drawText("Sr.", { x: MARGIN + 4, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Particulars of Item", { x: MARGIN + 20, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Unit", { x: MARGIN + 168, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Prev %", { x: MARGIN + 192, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Curr %", { x: MARGIN + 230, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Cum %", { x: MARGIN + 268, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Prev Amt", { x: MARGIN + 305, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Curr Amt", { x: MARGIN + 375, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Cum Amt", { x: MARGIN + 450, y: y - 13, size: 7.5, font: bold, color: black });
     y -= 18;
 
     const items = tower.workItems || [];
+    let tPrevTotal = 0;
     let tCurrTotal = 0;
+    let tCumTotal = 0;
 
     items.forEach((item: any, i: number) => {
       newPageIfNeeded(25, `BUILDING - ${tower.name.toUpperCase()}`);
       const prevQ = item.previousPct ?? item.previousQty ?? 0;
       const currQ = item.currentPct ?? item.currentQty ?? 0;
-      const currA = (item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : (currQ > 0 ? (item.partAmount * currQ / 100) : 0);
-      tCurrTotal += currA;
+      const cumQ = item.cumulativePct ?? (prevQ + currQ);
 
-      page.drawText(String(i + 1), { x: MARGIN + 4, y: y - 11, size: 8, font, color: darkGray });
-      page.drawText((item.name || "").slice(0, 38), { x: MARGIN + 25, y: y - 11, size: 8, font, color: black });
-      page.drawText(item.unit || "%", { x: MARGIN + 220, y: y - 11, size: 8, font, color: darkGray });
-      page.drawText(`${prevQ}%`, { x: MARGIN + 265, y: y - 11, size: 8, font, color: darkGray });
-      page.drawText(`${currQ}%`, { x: MARGIN + 315, y: y - 11, size: 8, font: bold, color: teal });
-      page.drawText(formatCurrency(currA), { x: PAGE_W - MARGIN - 100, y: y - 11, size: 8, font: bold, color: black });
+      const prevA = (item.previousAmt !== undefined && item.previousAmt !== null) ? item.previousAmt : (prevQ > 0 ? (item.partAmount * prevQ / 100) : 0);
+      const currA = (item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : (currQ > 0 ? (item.partAmount * currQ / 100) : 0);
+      const cumA = item.cumulativeAmt ?? (prevA + currA);
+
+      tPrevTotal += prevA;
+      tCurrTotal += currA;
+      tCumTotal += cumA;
+
+      page.drawText(String(i + 1), { x: MARGIN + 4, y: y - 11, size: 7.5, font, color: darkGray });
+      page.drawText((item.name || "").slice(0, 28), { x: MARGIN + 20, y: y - 11, size: 7.5, font, color: black });
+      page.drawText(item.unit || "%", { x: MARGIN + 168, y: y - 11, size: 7.5, font, color: darkGray });
+      page.drawText(`${prevQ}%`, { x: MARGIN + 192, y: y - 11, size: 7.5, font, color: darkGray });
+      page.drawText(`${currQ}%`, { x: MARGIN + 230, y: y - 11, size: 7.5, font: bold, color: teal });
+      page.drawText(`${cumQ}%`, { x: MARGIN + 268, y: y - 11, size: 7.5, font: bold, color: black });
+
+      page.drawText(formatCurrency(prevA), { x: MARGIN + 305, y: y - 11, size: 7.5, font, color: darkGray });
+      page.drawText(formatCurrency(currA), { x: MARGIN + 375, y: y - 11, size: 7.5, font: bold, color: teal });
+      page.drawText(formatCurrency(cumA), { x: MARGIN + 450, y: y - 11, size: 7.5, font: bold, color: black });
       y -= 14;
     });
 
     y -= 8;
     page.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_W - MARGIN, y }, thickness: 1, color: teal });
     y -= 14;
-    page.drawText(`TOTAL ${tower.name.toUpperCase()} WORK DONE:`, { x: MARGIN + 180, y, size: 8.5, font: bold, color: black });
-    page.drawText(formatCurrency(tCurrTotal), { x: PAGE_W - MARGIN - 100, y, size: 8.5, font: bold, color: teal });
+    page.drawText(`TOTAL ${tower.name.toUpperCase()} WORK DONE:`, { x: MARGIN + 150, y, size: 8, font: bold, color: black });
+    page.drawText(formatCurrency(tPrevTotal), { x: MARGIN + 305, y, size: 8, font: bold, color: darkGray });
+    page.drawText(formatCurrency(tCurrTotal), { x: MARGIN + 375, y, size: 8, font: bold, color: teal });
+    page.drawText(formatCurrency(tCumTotal), { x: MARGIN + 450, y, size: 8, font: bold, color: black });
   }
 
   // ==========================================
@@ -341,12 +359,16 @@ export async function generateBillPdfPackage(data: {
     startNewPage("SECTION 4: EXTRA SUPPLY LABOUR SHEET");
 
     page.drawRectangle({ x: MARGIN, y: y - 18, width: PAGE_W - 2 * MARGIN, height: 18, color: lightGray });
-    page.drawText("Date", { x: MARGIN + 4, y: y - 13, size: 8, font: bold, color: black });
-    page.drawText("Challan", { x: MARGIN + 60, y: y - 13, size: 8, font: bold, color: black });
-    page.drawText("Description of Extra Work", { x: MARGIN + 120, y: y - 13, size: 8, font: bold, color: black });
-    page.drawText("Fitter (Nos/Hrs)", { x: MARGIN + 310, y: y - 13, size: 8, font: bold, color: black });
-    page.drawText("Helper (Nos/Hrs)", { x: MARGIN + 395, y: y - 13, size: 8, font: bold, color: black });
-    page.drawText("Amount (Rs)", { x: PAGE_W - MARGIN - 75, y: y - 13, size: 8, font: bold, color: black });
+    page.drawText("Date", { x: MARGIN + 4, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Challan", { x: MARGIN + 55, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Description", { x: MARGIN + 110, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Fitter", { x: MARGIN + 245, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Hrs", { x: MARGIN + 280, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Tot F.Hrs", { x: MARGIN + 310, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Helper", { x: MARGIN + 360, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Hrs", { x: MARGIN + 395, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Tot H.Hrs", { x: MARGIN + 425, y: y - 13, size: 7.5, font: bold, color: black });
+    page.drawText("Amount (Rs)", { x: PAGE_W - MARGIN - 55, y: y - 13, size: 7.5, font: bold, color: black });
     y -= 18;
 
     let totSupplyAmt = 0;
@@ -356,38 +378,41 @@ export async function generateBillPdfPackage(data: {
     supplyEntries.forEach((se: any) => {
       newPageIfNeeded(25, "EXTRA SUPPLY LABOUR SHEET");
       const dateStr = se.date ? new Date(se.date).toLocaleDateString("en-IN") : "-";
-      
-      const fHrs = (se.fitterQty || 0) * (se.fitterHours || 0);
-      const hHrs = (se.helperQty || 0) * (se.helperHours || 0);
+
+      const fHrs = (se.fitterQty || 0) * (se.fitterHours || 8);
+      const hHrs = (se.helperQty || 0) * (se.helperHours || 8);
       sumFitterHrs += fHrs;
       sumHelperHrs += hHrs;
       totSupplyAmt += se.totalAmount || 0;
 
       page.drawText(dateStr, { x: MARGIN + 4, y: y - 11, size: 7.5, font, color: darkGray });
-      page.drawText(se.challanNo || "-", { x: MARGIN + 60, y: y - 11, size: 7.5, font, color: darkGray });
-      page.drawText((se.description || "").slice(0, 35), { x: MARGIN + 120, y: y - 11, size: 7.5, font, color: black });
-      page.drawText(`${se.fitterQty || 0} / ${se.fitterHours || 0}h`, { x: MARGIN + 310, y: y - 11, size: 7.5, font, color: darkGray });
-      page.drawText(`${se.helperQty || 0} / ${se.helperHours || 0}h`, { x: MARGIN + 395, y: y - 11, size: 7.5, font, color: darkGray });
-      page.drawText(formatCurrency(se.totalAmount || 0), { x: PAGE_W - MARGIN - 75, y: y - 11, size: 7.5, font: bold, color: black });
+      page.drawText(se.challanNo || "-", { x: MARGIN + 55, y: y - 11, size: 7.5, font, color: darkGray });
+      page.drawText((se.description || "").slice(0, 24), { x: MARGIN + 110, y: y - 11, size: 7.5, font, color: black });
+      page.drawText(String(se.fitterQty || 0), { x: MARGIN + 245, y: y - 11, size: 7.5, font, color: darkGray });
+      page.drawText(`${se.fitterHours || 8}h`, { x: MARGIN + 280, y: y - 11, size: 7.5, font, color: darkGray });
+      page.drawText(`${fHrs}h`, { x: MARGIN + 310, y: y - 11, size: 7.5, font: bold, color: teal });
+      page.drawText(String(se.helperQty || 0), { x: MARGIN + 360, y: y - 11, size: 7.5, font, color: darkGray });
+      page.drawText(`${se.helperHours || 8}h`, { x: MARGIN + 395, y: y - 11, size: 7.5, font, color: darkGray });
+      page.drawText(`${hHrs}h`, { x: MARGIN + 425, y: y - 11, size: 7.5, font: bold, color: teal });
+      page.drawText(formatCurrency(se.totalAmount || 0), { x: PAGE_W - MARGIN - 55, y: y - 11, size: 7.5, font: bold, color: black });
       y -= 14;
     });
 
     y -= 8;
     page.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_W - MARGIN, y }, thickness: 1, color: teal });
     y -= 14;
-    
-    // Subtotals Fitter & Helper
-    const fAmtStr = formatCurrency((sumFitterHrs / 8) * 1100);
-    const hAmtStr = formatCurrency((sumHelperHrs / 8) * 800);
-    
-    page.drawText("FITTER AMOUNT:", { x: MARGIN + 180, y, size: 8, font: bold, color: darkGray });
-    page.drawText(fAmtStr, { x: MARGIN + 310, y, size: 8, font: bold, color: black });
-    
-    page.drawText("HELPER AMOUNT:", { x: MARGIN + 395, y, size: 8, font: bold, color: darkGray });
-    page.drawText(hAmtStr, { x: PAGE_W - MARGIN - 75, y, size: 8, font: bold, color: black });
-    
+
+    const fDays = Math.round((sumFitterHrs / 8) * 100) / 100;
+    const hDays = Math.round((sumHelperHrs / 8) * 100) / 100;
+    const fAmtStr = formatCurrency(fDays * 1100);
+    const hAmtStr = formatCurrency(hDays * 800);
+
+    page.drawText(`Total Hours: ${sumFitterHrs} Hrs (Fitter)  |  ${sumHelperHrs} Hrs (Helper)`, { x: MARGIN + 110, y, size: 8, font: bold, color: darkGray });
+    y -= 14;
+    page.drawText(`Total Days: ${fDays} Nos (Fitter @ Rs.1,100)  |  ${hDays} Nos (Helper @ Rs.800)`, { x: MARGIN + 110, y, size: 8, font: bold, color: darkGray });
     y -= 16;
-    page.drawText("TOTAL EXTRA LABOUR SUPPLY AMOUNT:", { x: MARGIN + 180, y, size: 8.5, font: bold, color: black });
+
+    page.drawText("TOTAL EXTRA LABOUR SUPPLY AMOUNT:", { x: MARGIN + 110, y, size: 8.5, font: bold, color: black });
     page.drawText(formatCurrency(totSupplyAmt), { x: PAGE_W - MARGIN - 75, y, size: 8.5, font: bold, color: teal });
   }
 
@@ -397,13 +422,17 @@ export async function generateBillPdfPackage(data: {
   startNewPage("SECTION 5: CLIENT BALANCE SHEET & LEDGER");
 
   page.drawRectangle({ x: MARGIN, y: y - 18, width: PAGE_W - 2 * MARGIN, height: 18, color: lightGray });
-  page.drawText("Date", { x: MARGIN + 4, y: y - 13, size: 8, font: bold, color: black });
-  page.drawText("Reference / Description", { x: MARGIN + 60, y: y - 13, size: 8, font: bold, color: black });
-  page.drawText("Bill Gross", { x: MARGIN + 210, y: y - 13, size: 8, font: bold, color: black });
-  page.drawText("Net Bill", { x: MARGIN + 270, y: y - 13, size: 8, font: bold, color: black });
-  page.drawText("Recd Amt", { x: MARGIN + 330, y: y - 13, size: 8, font: bold, color: black });
-  page.drawText("1% TDS", { x: MARGIN + 395, y: y - 13, size: 8, font: bold, color: black });
-  page.drawText("Running Bal (Rs)", { x: PAGE_W - MARGIN - 90, y: y - 13, size: 8, font: bold, color: black });
+  page.drawText("Sr.", { x: MARGIN + 2, y: y - 13, size: 7, font: bold, color: black });
+  page.drawText("Date", { x: MARGIN + 18, y: y - 13, size: 7, font: bold, color: black });
+  page.drawText("RA Bills / Remarks", { x: MARGIN + 62, y: y - 13, size: 7, font: bold, color: black });
+  page.drawText("Bill Gross", { x: MARGIN + 165, y: y - 13, size: 7, font: bold, color: black });
+  page.drawText("Retention", { x: MARGIN + 215, y: y - 13, size: 7, font: bold, color: black });
+  page.drawText("Net Bill", { x: MARGIN + 258, y: y - 13, size: 7, font: bold, color: black });
+  page.drawText("Recd/Advance", { x: MARGIN + 302, y: y - 13, size: 7, font: bold, color: black });
+  page.drawText("1% TDS", { x: MARGIN + 352, y: y - 13, size: 7, font: bold, color: black });
+  page.drawText("Balance", { x: MARGIN + 392, y: y - 13, size: 7, font: bold, color: black });
+  page.drawText("GST Amt", { x: MARGIN + 438, y: y - 13, size: 7, font: bold, color: black });
+  page.drawText("Balance+GST", { x: PAGE_W - MARGIN - 48, y: y - 13, size: 7, font: bold, color: black });
   y -= 18;
 
   const ledger: any[] = [];
@@ -412,15 +441,18 @@ export async function generateBillPdfPackage(data: {
     const bRetAmt = gross * ((b.retentionPct ?? retPct) / 100);
     const bNetAmt = gross - bRetAmt;
     const bTdsAmt = gross * ((b.tdsPct ?? tdsPct) / 100);
+    const bGstAmt = gross * (((b.cgstPct ?? cgstPct) + (b.sgstPct ?? sgstPct)) / 100);
 
     ledger.push({
       type: "BILL",
       date: new Date(b.billDate || b.createdAt),
       refName: `BILL NO.${b.billNo || "01"}`,
       grossAmount: gross,
+      retentionAmt: bRetAmt,
       netBilledAmt: bNetAmt,
       paymentRecd: 0,
       tdsAmt: bTdsAmt,
+      gstAmt: bGstAmt,
     });
   });
 
@@ -430,9 +462,11 @@ export async function generateBillPdfPackage(data: {
       date: new Date(p.date || p.createdAt),
       refName: p.remarks || `PAYMENT (${p.mode || "NEFT"})`,
       grossAmount: 0,
+      retentionAmt: 0,
       netBilledAmt: 0,
       paymentRecd: p.amount || 0,
       tdsAmt: 0,
+      gstAmt: 0,
     });
   });
 
@@ -440,25 +474,40 @@ export async function generateBillPdfPackage(data: {
 
   let runCumNet = 0;
   let runCumRecd = 0;
+  let runCumTds = 0;
+  let runCumGst = 0;
 
-  ledger.forEach((item) => {
+  ledger.forEach((item, idx) => {
     newPageIfNeeded(25, "CLIENT BALANCE SHEET & LEDGER");
-    if (item.type === "BILL") runCumNet += item.netBilledAmt;
-    else runCumRecd += item.paymentRecd;
+    if (item.type === "BILL") {
+      runCumNet += item.netBilledAmt;
+      runCumTds += item.tdsAmt;
+      runCumGst += item.gstAmt;
+    } else {
+      runCumRecd += item.paymentRecd;
+    }
 
-    const runBal = runCumNet - runCumRecd;
+    const cumAdv = runCumRecd + runCumTds;
+    const runBal = runCumNet - cumAdv;
+    const balWithGst = runBal + runCumGst;
 
-    page.drawText(item.date.toLocaleDateString("en-IN"), { x: MARGIN + 4, y: y - 11, size: 7.5, font, color: darkGray });
-    page.drawText((item.refName || "").slice(0, 30), { x: MARGIN + 60, y: y - 11, size: 7.5, font: bold, color: black });
+    page.drawText(String(idx + 1), { x: MARGIN + 2, y: y - 11, size: 7, font: bold, color: black });
+    page.drawText(item.date.toLocaleDateString("en-IN"), { x: MARGIN + 18, y: y - 11, size: 7, font, color: darkGray });
+    page.drawText((item.refName || "").slice(0, 18), { x: MARGIN + 62, y: y - 11, size: 7, font: bold, color: black });
 
-    page.drawText(item.type === "BILL" ? formatCurrency(item.grossAmount) : "-", { x: MARGIN + 210, y: y - 11, size: 7.5, font, color: darkGray });
-    page.drawText(item.type === "BILL" ? formatCurrency(item.netBilledAmt) : "-", { x: MARGIN + 270, y: y - 11, size: 7.5, font, color: darkGray });
-    page.drawText(item.type === "PAYMENT" ? formatCurrency(item.paymentRecd) : "-", { x: MARGIN + 330, y: y - 11, size: 7.5, font: bold, color: teal });
-    page.drawText(item.type === "BILL" ? formatCurrency(item.tdsAmt) : "-", { x: MARGIN + 395, y: y - 11, size: 7.5, font, color: darkGray });
+    page.drawText(item.type === "BILL" ? formatCurrency(item.grossAmount) : "-", { x: MARGIN + 165, y: y - 11, size: 7, font, color: darkGray });
+    page.drawText(item.type === "BILL" ? formatCurrency(item.retentionAmt) : "-", { x: MARGIN + 215, y: y - 11, size: 7, font, color: darkGray });
+    page.drawText(item.type === "BILL" ? formatCurrency(item.netBilledAmt) : "-", { x: MARGIN + 258, y: y - 11, size: 7, font, color: darkGray });
+    page.drawText(item.type === "PAYMENT" ? formatCurrency(item.paymentRecd) : "-", { x: MARGIN + 302, y: y - 11, size: 7, font: bold, color: teal });
+    page.drawText(item.type === "BILL" ? formatCurrency(item.tdsAmt) : "-", { x: MARGIN + 352, y: y - 11, size: 7, font, color: darkGray });
 
-    const balStr = formatCurrency(runBal);
-    page.drawText(balStr, {
-      x: PAGE_W - MARGIN - 90, y: y - 11, size: 7.5, font: bold, color: runBal > 0 ? rgb(0.85, 0.2, 0.2) : rgb(0.1, 0.6, 0.3)
+    page.drawText(formatCurrency(runBal), {
+      x: MARGIN + 392, y: y - 11, size: 7, font: bold, color: runBal > 0 ? rgb(0.85, 0.2, 0.2) : rgb(0.1, 0.6, 0.3)
+    });
+    page.drawText(item.type === "BILL" ? formatCurrency(item.gstAmt) : "-", { x: MARGIN + 438, y: y - 11, size: 7, font, color: darkGray });
+
+    page.drawText(formatCurrency(balWithGst), {
+      x: PAGE_W - MARGIN - 48, y: y - 11, size: 7, font: bold, color: balWithGst > 0 ? rgb(0.85, 0.2, 0.2) : rgb(0.1, 0.6, 0.3)
     });
     y -= 14;
   });

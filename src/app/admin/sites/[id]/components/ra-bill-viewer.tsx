@@ -132,11 +132,6 @@ export function RABillViewer({ site }: { site: any }) {
             <Printer className="h-4 w-4" /> Download Official PDF Package (.pdf)
           </Button>
 
-          <Button onClick={handlePrintPDF} variant="outline" className="gap-2">
-            <Printer className="h-4 w-4" /> Quick Print
-          </Button>
-
-
           <Button onClick={() => setIsGenerating(!isGenerating)} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
             <Plus className="h-4 w-4" /> Generate New RA Bill
           </Button>
@@ -513,50 +508,97 @@ export function RABillViewer({ site }: { site: any }) {
         <Card className="p-6 space-y-6 bg-background">
           <BillHeaderBanner site={site} latestBill={latestBill} sheetTitle="Sheet 5: Client Extra Supply Labour Log" />
 
-          <Table className="border">
-            <THead className="bg-muted/60">
-              <TR>
-                <TH>Date</TH>
-                <TH>Challan No.</TH>
-                <TH>Work Description</TH>
-                <TH>Fitter Nos (Hrs)</TH>
-                <TH>Fitter Rate (₹)</TH>
-                <TH className="text-right">Fitter Amt (₹)</TH>
-                <TH>Helper Nos (Hrs)</TH>
-                <TH>Helper Rate (₹)</TH>
-                <TH className="text-right">Helper Amt (₹)</TH>
-                <TH className="text-right">Total Amount (₹)</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {(site.supplyLabourEntries || []).map((se: any) => {
-                const fRate = se.fitterRate || 1100;
-                const hRate = se.helperRate || 800;
-                const fTotal = se.fitterHours > 0 ? (se.fitterQty * se.fitterHours / 8) * fRate : se.fitterQty * fRate;
-                const hTotal = se.helperHours > 0 ? (se.helperQty * se.helperHours / 8) * hRate : se.helperQty * hRate;
-                
-                return (
-                  <TR key={se.id}>
-                    <TD className="font-mono text-xs">{formatDate(se.date)}</TD>
-                    <TD className="font-mono text-xs font-semibold">{se.challanNo || "—"}</TD>
-                    <TD className="font-medium">{se.description}</TD>
-                    <TD className="font-mono text-xs">{se.fitterQty} {se.fitterHours > 0 ? `(${se.fitterHours}H)` : ''}</TD>
-                    <TD className="font-mono text-xs">₹{fRate}</TD>
-                    <TD className="font-mono text-xs text-right">{formatINR(fTotal)}</TD>
-                    <TD className="font-mono text-xs">{se.helperQty} {se.helperHours > 0 ? `(${se.helperHours}H)` : ''}</TD>
-                    <TD className="font-mono text-xs">₹{hRate}</TD>
-                    <TD className="font-mono text-xs text-right">{formatINR(hTotal)}</TD>
-                    <TD className="font-mono font-bold text-emerald-500 text-right">{formatINR(se.totalAmount)}</TD>
-                  </TR>
-                );
-              })}
+          {(() => {
+            const entries = site.supplyLabourEntries || [];
+            let totFitterHrs = 0;
+            let totHelperHrs = 0;
 
-              <TR className="bg-emerald-500/10 font-bold text-base border-t-2">
-                <TD colSpan={9} className="text-right uppercase tracking-wider text-xs">Total Extra Supply Amount</TD>
-                <TD className="font-mono text-emerald-500 text-right font-black">{formatINR(totalSupplyWork)}</TD>
-              </TR>
-            </TBody>
-          </Table>
+            entries.forEach((se: any) => {
+              totFitterHrs += (se.fitterQty || 0) * (se.fitterHours || 8);
+              totHelperHrs += (se.helperQty || 0) * (se.helperHours || 8);
+            });
+
+            const fitterDays = Math.round((totFitterHrs / 8) * 100) / 100;
+            const helperDays = Math.round((totHelperHrs / 8) * 100) / 100;
+            const fitterAmt = fitterDays * 1100;
+            const helperAmt = helperDays * 800;
+
+            return (
+              <div className="border rounded-md overflow-hidden">
+                <Table className="text-xs">
+                  <THead className="bg-muted/70">
+                    <TR>
+                      <TH className="py-2.5 font-bold">Date</TH>
+                      <TH className="py-2.5 font-bold">Challan No.</TH>
+                      <TH className="py-2.5 font-bold">Work Description</TH>
+                      <TH className="py-2.5 font-bold text-center">Fitter Count</TH>
+                      <TH className="py-2.5 font-bold text-center">Hours</TH>
+                      <TH className="py-2.5 font-bold text-center">Total Fitter Hrs</TH>
+                      <TH className="py-2.5 font-bold text-center">Fitter Helper</TH>
+                      <TH className="py-2.5 font-bold text-center">Hours</TH>
+                      <TH className="py-2.5 font-bold text-center">Total Helper Hrs</TH>
+                      <TH className="py-2.5 font-bold text-right">Amount (₹)</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {entries.map((se: any) => {
+                      const fHrs = (se.fitterQty || 0) * (se.fitterHours || 8);
+                      const hHrs = (se.helperQty || 0) * (se.helperHours || 8);
+
+                      return (
+                        <TR key={se.id}>
+                          <TD className="font-mono text-xs whitespace-nowrap">{formatDate(se.date)}</TD>
+                          <TD className="font-mono text-xs font-semibold">{se.challanNo || "—"}</TD>
+                          <TD className="font-medium">{se.description}</TD>
+                          <TD className="font-mono text-center">{se.fitterQty || 0}</TD>
+                          <TD className="font-mono text-center">{se.fitterHours || 8}h</TD>
+                          <TD className="font-mono text-center font-semibold text-blue-600">{fHrs}h</TD>
+                          <TD className="font-mono text-center">{se.helperQty || 0}</TD>
+                          <TD className="font-mono text-center">{se.helperHours || 8}h</TD>
+                          <TD className="font-mono text-center font-semibold text-purple-600">{hHrs}h</TD>
+                          <TD className="font-mono font-bold text-emerald-600 text-right">{formatINR(se.totalAmount)}</TD>
+                        </TR>
+                      );
+                    })}
+
+                    {/* Excel Sheet Summary Rows */}
+                    <TR className="bg-muted/40 font-bold border-t border-b">
+                      <TD colSpan={3} className="text-right uppercase tracking-wider text-xs">Total Hours</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-blue-600 font-bold">{totFitterHrs} Hrs</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-purple-600 font-bold">{totHelperHrs} Hrs</TD>
+                      <TD></TD>
+                    </TR>
+                    <TR className="bg-muted/30 font-semibold border-b">
+                      <TD colSpan={3} className="text-right text-xs">Total Days (Nos = Hrs / 8)</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-blue-600 font-bold">{fitterDays} Nos</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-purple-600 font-bold">{helperDays} Nos</TD>
+                      <TD></TD>
+                    </TR>
+                    <TR className="bg-muted/30 font-semibold border-b">
+                      <TD colSpan={3} className="text-right text-xs">Rate (₹)</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-blue-600 font-bold">₹1,100 /day</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-purple-600 font-bold">₹800 /day</TD>
+                      <TD></TD>
+                    </TR>
+                    <TR className="bg-emerald-500/10 font-bold text-sm border-t-2 border-emerald-500/30">
+                      <TD colSpan={3} className="text-right uppercase tracking-wider text-emerald-800 dark:text-emerald-300">TOTAL SUPPLY AMOUNT (₹)</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-blue-600 font-bold">{formatINR(fitterAmt)}</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-purple-600 font-bold">{formatINR(helperAmt)}</TD>
+                      <TD className="font-mono text-emerald-600 dark:text-emerald-400 text-right text-base font-black">{formatINR(totalSupplyWork)}</TD>
+                    </TR>
+                  </TBody>
+                </Table>
+              </div>
+            );
+          })()}
         </Card>
       )}
 
