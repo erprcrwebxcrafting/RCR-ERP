@@ -85,6 +85,23 @@ export function TowerWorkManager({ site }: { site: any }) {
 
   const handleSaveProgress = async () => {
     if (!selectedBuilding) return;
+    
+    // Validation check for Part Amounts matching Total Contract Value
+    const approxArea = selectedBuilding.approxArea || 0;
+    const contractRate = selectedBuilding.contractRate || 0;
+    const totalContractValue = approxArea * contractRate;
+    const sumPartAmounts = (selectedBuilding.workItems || []).reduce(
+      (sum: number, item: any) => sum + (progressState[item.id]?.partAmount || 0),
+      0
+    );
+
+    if (totalContractValue > 0 && Math.abs(totalContractValue - sumPartAmounts) > 1) {
+      const msg = `⚠️ WARNING!\n\nSum of Stage Part Amounts (₹${sumPartAmounts.toLocaleString('en-IN')}) DOES NOT MATCH the Total Tower Contract Value (₹${totalContractValue.toLocaleString('en-IN')}).\n\nThey should be exactly equal (na kam, na jyada).\n\nDo you still want to save?`;
+      if (!confirm(msg)) {
+        return; // User cancelled
+      }
+    }
+
     setIsSaving(true);
     const itemsToUpdate = (selectedBuilding.workItems || []).map((item: any) => {
       const state = progressState[item.id];
@@ -298,6 +315,11 @@ export function TowerWorkManager({ site }: { site: any }) {
               {isAddingItem && (
                 <form
                   action={async (formData) => {
+                    const newPartAmt = parseFloat((formData.get("partAmount") as string) || "0");
+                    if (sumPartAmounts + newPartAmt > totalContractValue + 1) {
+                        alert(`❌ Cannot add item!\n\nAdding ₹${newPartAmt.toLocaleString('en-IN')} will exceed the Total Tower Contract Value.\nMaximum allowed: ₹${(totalContractValue - sumPartAmounts).toLocaleString('en-IN')}`);
+                        return;
+                    }
                     await addTowerWorkItemAction(site.id, selectedBuilding.id, formData);
                     setIsAddingItem(false);
                   }}
