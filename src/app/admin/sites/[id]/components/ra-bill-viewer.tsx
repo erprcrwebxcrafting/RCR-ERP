@@ -537,7 +537,7 @@ export function RABillViewer({ site }: { site: any }) {
       {activeSheetTab === "balance" && (
         <div className="space-y-6">
           <BillHeaderBanner site={site} latestBill={latestBill} sheetTitle="Sheet 6: Client Ledger & Balance Sheet" />
-          <SiteBalanceSheet site={site} />
+          <SiteBalanceSheet site={site} hidePaymentForm={true} />
         </div>
       )}
 

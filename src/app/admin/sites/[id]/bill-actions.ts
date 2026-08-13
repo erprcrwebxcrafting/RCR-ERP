@@ -278,6 +278,7 @@ export async function recordClientPaymentAction(siteId: string, formData: FormDa
   const amount = parseFloat((formData.get("amount") as string) || "0");
   const mode = (formData.get("mode") as string) || "CASH";
   const accountCredited = formData.get("accountCredited") as string;
+  const reference = formData.get("reference") as string;
   const remarks = formData.get("remarks") as string;
   const dateStr = formData.get("date") as string;
   if (!amount) return;
@@ -285,7 +286,7 @@ export async function recordClientPaymentAction(siteId: string, formData: FormDa
   const date = dateStr ? new Date(dateStr) : new Date();
 
   await prisma.payment.create({
-    data: { siteId, amount, mode, accountCredited, remarks, date },
+    data: { siteId, amount, mode, accountCredited, reference, remarks, date },
   });
 
   revalidatePath(`/admin/sites/${siteId}`);

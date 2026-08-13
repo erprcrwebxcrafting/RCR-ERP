@@ -10,7 +10,7 @@ import { formatINR, formatDate } from "@/lib/utils";
 import { recordClientPaymentAction, updateSiteTaxSettingsAction } from "../bill-actions";
 import { CircleDollarSign, Plus, ArrowDownLeft, Banknote, ShieldAlert, Settings2, Percent } from "lucide-react";
 
-export function SiteBalanceSheet({ site }: { site: any }) {
+export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any, hidePaymentForm?: boolean }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isEditingSettings, setIsEditingSettings] = useState(false);
 
@@ -65,6 +65,7 @@ export function SiteBalanceSheet({ site }: { site: any }) {
       retentionAmt: 0,
       netBilledAmt: 0,
       accountCredited: p.accountCredited || p.mode || "BANK",
+      utr: p.reference,
       paymentRecd: p.amount || 0,
       tdsAmt: 0,
       gstAmt: 0,
@@ -231,13 +232,15 @@ export function SiteBalanceSheet({ site }: { site: any }) {
               Complete statement tracking RA Bills, Retention ({retentionPct}%), Net Amount, Payments Received, 1% TDS, Advance, GST, and Running Balance.
             </p>
           </div>
-          <Button onClick={() => setIsRecording(!isRecording)} className="gap-1 bg-emerald-600 hover:bg-emerald-700">
-            <Plus className="h-4 w-4" /> Record Client Payment
-          </Button>
+          {!hidePaymentForm && (
+            <Button onClick={() => setIsRecording(!isRecording)} className="gap-1 bg-emerald-600 hover:bg-emerald-700">
+              <Plus className="h-4 w-4" /> Record Client Payment
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Record Payment Form */}
-          {isRecording && (
+          {!hidePaymentForm && isRecording && (
             <form
               action={async (formData) => {
                 await recordClientPaymentAction(site.id, formData);
@@ -268,9 +271,15 @@ export function SiteBalanceSheet({ site }: { site: any }) {
                   <Input name="accountCredited" placeholder="e.g. SANDIP ONLINE, ICICI 0884" />
                 </div>
               </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Remarks / Reference</label>
-                <Input name="remarks" placeholder="BILL NO.01 VIKHROLI PARK SITE" />
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">UTR / Ref No.</label>
+                  <Input name="reference" placeholder="e.g. UTR-XX9988" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Remarks</label>
+                  <Input name="remarks" placeholder="BILL NO.01 VIKHROLI PARK SITE" />
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="ghost" onClick={() => setIsRecording(false)}>Cancel</Button>
@@ -291,7 +300,7 @@ export function SiteBalanceSheet({ site }: { site: any }) {
                     <TH className="py-2.5 font-bold text-right w-24">BILL AMOUNT</TH>
                     <TH className="py-2.5 font-bold text-right w-24">RETENTION</TH>
                     <TH className="py-2.5 font-bold text-right w-24">AMOUNT</TH>
-                    <TH className="py-2.5 font-bold text-right w-24">A/C CREDITED</TH>
+                    <TH className="py-2.5 font-bold text-right w-32">A/C & UTR</TH>
                     <TH className="py-2.5 font-bold text-right w-20">1% TDS</TH>
                     <TH className="py-2.5 font-bold text-right w-24">ADVANCE</TH>
                     <TH className="py-2.5 font-bold text-right w-24">BALANCE</TH>
@@ -328,38 +337,32 @@ export function SiteBalanceSheet({ site }: { site: any }) {
                           {isBill ? (
                             <span className="text-foreground">{row.refName}</span>
                           ) : (
-                            <span>{row.accountCredited === "NEFT" ? "NEFT" : row.accountCredited} - {row.refName}</span>
+                            <span>{row.accountCredited === "NEFT" ? "NEFT" : row.mode} - {row.refName}</span>
                           )}
                         </TD>
 
-                        <TD className="font-mono text-right">
-                          {isBill ? formatINR(row.grossAmount) : ""}
+                        <TD className="font-mono text-right">{isBill ? formatINR(row.grossAmount) : ""}</TD>
+                        <TD className="font-mono text-right text-orange-500">{isBill && row.retentionAmt > 0 ? `-${formatINR(row.retentionAmt)}` : ""}</TD>
+                        <TD className="font-mono text-right font-medium">{isBill ? formatINR(row.netBilledAmt) : ""}</TD>
+                        
+                        <TD className="text-right text-xs">
+                          {!isBill && (
+                            <>
+                              <div className="font-semibold">{row.accountCredited}</div>
+                              {row.utr && <div className="text-[10px] text-muted-foreground">UTR: {row.utr}</div>}
+                            </>
+                          )}
                         </TD>
 
-                        <TD className="font-mono text-right">
-                          {isBill ? formatINR(row.retentionAmt) : ""}
-                        </TD>
-
-                        <TD className="font-mono text-right font-medium">
-                          {isBill ? formatINR(row.netBilledAmt) : ""}
-                        </TD>
-
-                        <TD className="font-mono text-right font-medium text-emerald-600">
-                          {!isBill ? formatINR(row.paymentRecd) : ""}
-                        </TD>
-
-                        <TD className="font-mono text-right">
-                          {isBill ? formatINR(row.tdsAmt) : ""}
-                        </TD>
-
-                        <TD></TD>
-                        <TD></TD>
-
-                        <TD className="font-mono text-right">
-                          {isBill ? formatINR(row.gstAmt) : ""}
-                        </TD>
-
-                        <TD></TD>
+                        <TD className="font-mono text-right text-orange-500">{isBill && row.tdsAmt > 0 ? `-${formatINR(row.tdsAmt)}` : ""}</TD>
+                        
+                        <TD className="font-mono text-right font-medium text-emerald-600">{!isBill ? formatINR(row.paymentRecd) : ""}</TD>
+                        
+                        <TD className={`font-mono text-right font-bold ${row.runningBal > 0 ? "text-rose-500" : "text-emerald-500"}`}>{formatINR(row.runningBal)}</TD>
+                        
+                        <TD className="font-mono text-right">{isBill && row.gstAmt > 0 ? formatINR(row.gstAmt) : ""}</TD>
+                        
+                        <TD className={`font-mono text-right font-black ${row.balanceWithGst > 0 ? "text-rose-500" : "text-emerald-500"}`}>{formatINR(row.balanceWithGst)}</TD>
                       </TR>
                     );
                   })}
