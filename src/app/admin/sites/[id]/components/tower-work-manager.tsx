@@ -177,19 +177,21 @@ export function TowerWorkManager({ site }: { site: any }) {
       )}
 
       {selectedBuilding ? (
-        <div className="space-y-6">
-          {/* TOWER CONTRACT VALUE HEADER CARD */}
-          {(() => {
-            const approxArea = selectedBuilding.approxArea || 0;
-            const contractRate = selectedBuilding.contractRate || 0;
-            const totalContractValue = approxArea * contractRate;
+        (() => {
+          const approxArea = selectedBuilding.approxArea || 0;
+          const contractRate = selectedBuilding.contractRate || 0;
+          const totalContractValue = approxArea * contractRate;
 
-            const sumPartAmounts = (selectedBuilding.workItems || []).reduce(
-              (sum: number, item: any) => sum + (progressState[item.id]?.partAmount || 0),
-              0
-            );
+          const sumPartAmounts = (selectedBuilding.workItems || []).reduce(
+            (sum: number, item: any) => sum + (progressState[item.id]?.partAmount || 0),
+            0
+          );
+          
+          const isAddingAllowed = totalContractValue > 0 && sumPartAmounts < totalContractValue;
 
-            return (
+          return (
+            <div className="space-y-6">
+              {/* TOWER CONTRACT VALUE HEADER CARD */}
               <Card className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white border-indigo-500/30">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between flex-wrap gap-4 border-b border-indigo-500/20 pb-4 mb-4">
@@ -281,7 +283,13 @@ export function TowerWorkManager({ site }: { site: any }) {
                   Track allocated stage Part Amounts (₹), Previous Work Done (%), This Bill Work Done (%), and Cumulative Amounts.
                 </p>
               </div>
-              <Button size="sm" onClick={() => setIsAddingItem(!isAddingItem)} className="gap-1">
+              <Button 
+                size="sm" 
+                onClick={() => setIsAddingItem(!isAddingItem)} 
+                disabled={!isAddingAllowed}
+                title={!isAddingAllowed ? "Total contract value reached or not set. Please increase BUA Area/Rate to add more items." : ""}
+                className="gap-1"
+              >
                 <Plus className="h-4 w-4" /> Add Work Item / Stage
               </Button>
             </CardHeader>
@@ -293,25 +301,17 @@ export function TowerWorkManager({ site }: { site: any }) {
                     await addTowerWorkItemAction(site.id, selectedBuilding.id, formData);
                     setIsAddingItem(false);
                   }}
-                  className="p-4 bg-muted/40 rounded-lg grid gap-3 md:grid-cols-4 items-end mb-4 border"
+                  className="p-4 bg-muted/40 rounded-lg grid gap-3 md:grid-cols-3 items-end mb-4 border"
                 >
                   <div>
                     <label className="text-xs font-semibold text-muted-foreground block mb-1">Stage / Floor Particulars *</label>
                     <Input name="name" placeholder="e.g. 40th Terrace Slab, 16th Slab" required />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground block mb-1">Unit</label>
-                    <Input name="unit" placeholder="%" defaultValue="%" />
-                  </div>
-                  <div>
                     <label className="text-xs font-semibold text-muted-foreground block mb-1">Part Amount (₹)</label>
                     <Input name="partAmount" type="number" step="0.01" placeholder="e.g. 50000" onFocus={(e) => e.target.select()} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                   </div>
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground block mb-1">Rate (Optional)</label>
-                    <Input name="rate" type="number" step="0.01" placeholder="e.g. 1500" onFocus={(e) => e.target.select()} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                  </div>
-                  <div className="md:col-span-4 flex justify-end gap-2 mt-2">
+                  <div className="flex justify-end gap-2 mt-2">
                     <Button type="button" variant="ghost" onClick={() => setIsAddingItem(false)}>Cancel</Button>
                     <Button type="submit">Save Stage Item</Button>
                   </div>
@@ -509,7 +509,9 @@ export function TowerWorkManager({ site }: { site: any }) {
               )}
             </CardContent>
           </Card>
-        </div>
+            </div>
+          );
+        })()
       ) : (
         <Card className="text-center py-12">
           <CardContent>
