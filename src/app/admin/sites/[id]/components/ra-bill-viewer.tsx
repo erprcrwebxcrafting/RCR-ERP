@@ -49,6 +49,7 @@ function BillHeaderBanner({ site, latestBill, sheetTitle }: { site: any; latestB
 export function RABillViewer({ site }: { site: any }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [activeSheetTab, setActiveSheetTab] = useState<"sheet1" | "sheet2" | "towers" | "supply" | "balance">("sheet1");
   const [selectedTowerId, setSelectedTowerId] = useState<string>(site.buildings[0]?.id || "");
 
@@ -143,13 +144,43 @@ export function RABillViewer({ site }: { site: any }) {
           <CardHeader>
             <CardTitle className="text-base font-bold text-emerald-600">Generate Official Running Account (RA) Bill</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {formError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 rounded-md text-xs font-bold flex items-center justify-between">
+                <span>⚠️ {formError}</span>
+                <button type="button" onClick={() => setFormError(null)} className="text-muted-foreground hover:text-foreground">✕</button>
+              </div>
+            )}
+
             <form
               action={async (formData) => {
+                setFormError(null);
+                const inputBillNo = (formData.get("billNo") as string || "").trim();
+                const pStartStr = formData.get("periodStart") as string;
+                const pEndStr = formData.get("periodEnd") as string;
+
+                // Frontend validation 1: Check duplicate billNo
+                const existing = (site.bills || []).find((b: any) => b.billNo.trim().toLowerCase() === inputBillNo.toLowerCase());
+                if (existing) {
+                  setFormError(`Duplicate Bill Number! Bill "${inputBillNo}" already exists for this site. Please enter a unique Bill No.`);
+                  return;
+                }
+
+                // Frontend validation 2: Date range start <= end
+                if (pStartStr && pEndStr && new Date(pStartStr) > new Date(pEndStr)) {
+                  setFormError("Invalid Period Date Range! Start Date cannot be after End Date.");
+                  return;
+                }
+
                 setIsSubmitting(true);
-                await generateRunningBillAction(site.id, formData);
-                setIsSubmitting(false);
-                setIsGenerating(false);
+                try {
+                  await generateRunningBillAction(site.id, formData);
+                  setIsGenerating(false);
+                } catch (err: any) {
+                  setFormError(err.message || "Failed to generate RA Bill. Please check input details.");
+                } finally {
+                  setIsSubmitting(false);
+                }
               }}
             >
               <div className="grid gap-4 md:grid-cols-3">
@@ -183,7 +214,7 @@ export function RABillViewer({ site }: { site: any }) {
               </div>
 
               <div className="flex items-end justify-end gap-2 pt-2 border-t border-emerald-500/20">
-                <Button type="button" variant="ghost" onClick={() => setIsGenerating(false)} disabled={isSubmitting}>Cancel</Button>
+                <Button type="button" variant="ghost" onClick={() => { setIsGenerating(false); setFormError(null); }} disabled={isSubmitting}>Cancel</Button>
                 <Button type="submit" disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700">
                   {isSubmitting ? "Generating..." : "Snapshot & Create Bill"}
                 </Button>

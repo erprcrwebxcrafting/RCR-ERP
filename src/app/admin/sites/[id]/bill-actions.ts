@@ -154,9 +154,9 @@ export async function updateSupplyLabourEntriesAction(
 }
 
 export async function generateRunningBillAction(siteId: string, formData: FormData) {
-  const billNo = formData.get("billNo") as string || `BILL-${Date.now()}`;
-  const refNo = formData.get("refNo") as string || "01";
-  const periodLabel = formData.get("periodLabel") as string || new Date().toLocaleString("en-US", { month: "short", year: "numeric" });
+  const billNo = (formData.get("billNo") as string || `BILL-${Date.now()}`).trim();
+  const refNo = (formData.get("refNo") as string || "01").trim();
+  const periodLabel = (formData.get("periodLabel") as string || new Date().toLocaleString("en-US", { month: "short", year: "numeric" })).trim();
 
   // Fetch all towers & supply entries for this site
   const site = await prisma.site.findUnique({
@@ -167,10 +167,17 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
         orderBy: { createdAt: "asc" },
       },
       supplyLabourEntries: { orderBy: { date: "asc" } },
+      bills: { select: { billNo: true } },
     },
   });
 
   if (!site) return;
+
+  // 1. VALIDATION: Check duplicate billNo for this site
+  const existingBill = site.bills.find((b: any) => b.billNo.trim().toLowerCase() === billNo.toLowerCase());
+  if (existingBill) {
+    throw new Error(`DUPLICATE BILL ERROR: Bill No. "${billNo}" already exists for this site! Please use a unique bill number.`);
+  }
 
   const billDateStr = formData.get("billDate") as string;
   const billDate = billDateStr ? new Date(billDateStr) : new Date();
@@ -179,6 +186,40 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
 
   const periodStart = periodStartStr ? new Date(periodStartStr) : null;
   const periodEnd = periodEndStr ? new Date(periodEndStr) : null;
+
+  // 2. VALIDATION: Date range Start <= End
+  if (periodStart && periodEnd && periodStart > periodEnd) {
+    throw new Error("DATE RANGE ERROR: Bill Period Start Date cannot be after End Date.");
+  }
+
+  // 3. VALIDATION: Check unbilled supply entries & work item progress
+  const unbilledSupply = site.supplyLabourEntries.filter((se: any) => {
+    if (se.runningBillId) return false;
+    const seDate = new Date(se.date);
+    if (periodStart && seDate < periodStart) return false;
+    if (periodEnd && seDate > periodEnd) return false;
+    return true;
+  });
+
+  const hasTowerWork = site.buildings.some((b: any) =>
+    (b.workItems || []).some((i: any) => (i.currentQty > 0 || (i.currentPct || 0) > 0 || (i.currentAmt || 0) > 0))
+  );
+
+  if (!hasTowerWork && unbilledSupply.length === 0) {
+    throw new Error("EMPTY BILL ERROR: No current work progress or valid extra labour challans selected for this bill! Please enter work done (%) or check extra labour entries before creating bill.");
+  }
+
+  // 4. VALIDATION: Check for over-billing (> 100% cumulative percentage)
+  for (const b of site.buildings) {
+    for (const item of b.workItems) {
+      const currentPct = item.currentPct ?? 0;
+      const previousPct = item.previousPct ?? 0;
+      const cumPct = previousPct + currentPct;
+      if (cumPct > 100.01) {
+        throw new Error(`OVER-BILLING ERROR: Item "${item.name}" cumulative percentage (${cumPct.toFixed(1)}%) exceeds 100%!`);
+      }
+    }
+  }
 
   const runningBill = await prisma.runningBill.create({
     data: {
@@ -247,14 +288,6 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
 
   // Create bill line for Supply Labour total
   // Only sum entries that haven't been billed yet AND fall within the selected period range if specified
-  const unbilledSupply = site.supplyLabourEntries.filter((se: any) => {
-    if (se.runningBillId) return false;
-    const seDate = new Date(se.date);
-    if (periodStart && seDate < periodStart) return false;
-    if (periodEnd && seDate > periodEnd) return false;
-    return true;
-  });
-
   const supplyTotal = unbilledSupply.reduce((sum: number, se: any) => sum + se.totalAmount, 0);
 
   if (supplyTotal > 0) {
