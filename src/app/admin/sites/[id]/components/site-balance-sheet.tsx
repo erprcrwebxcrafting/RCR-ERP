@@ -324,7 +324,7 @@ export function SiteBalanceSheet({ site }: { site: any }) {
                   <select name="mode" className="w-full h-9 rounded-md border bg-background px-3 text-xs">
                     <option value="NEFT">NEFT / Bank Transfer</option>
                     <option value="ONLINE">Online / UPI</option>
-                    <option value="CASH">CASH ANSAT</option>
+                    <option value="CASH">Cash / In-Hand</option>
                     <option value="CHEQUE">Cheque</option>
                   </select>
                 </div>
