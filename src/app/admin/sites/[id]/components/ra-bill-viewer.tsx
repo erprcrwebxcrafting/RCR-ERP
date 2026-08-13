@@ -437,6 +437,7 @@ export function RABillViewer({ site }: { site: any }) {
                       <TH>#</TH>
                       <TH>Particulars of Item</TH>
                       <TH>Unit</TH>
+                      <TH className="text-right">Item Amount (₹)</TH>
                       <TH className="text-center">Previous Qty (%)</TH>
                       <TH className="text-center">This Bill Qty (%)</TH>
                       <TH className="text-center">Cumulative Qty (%)</TH>
@@ -458,6 +459,7 @@ export function RABillViewer({ site }: { site: any }) {
                           <TD>{i + 1}</TD>
                           <TD className="font-medium">{item.name}</TD>
                           <TD>{item.unit || "%"}</TD>
+                          <TD className="font-mono text-right font-semibold text-muted-foreground">{formatINR(item.partAmount || (item.buWork && item.rate ? item.buWork * item.rate : item.rate || 0))}</TD>
                           <TD className="font-mono text-center">{prevQ}%</TD>
                           <TD className="font-mono text-emerald-500 font-semibold text-center">{currQ}%</TD>
                           <TD className="font-mono text-center font-bold">{cumQ}%</TD>
@@ -470,7 +472,7 @@ export function RABillViewer({ site }: { site: any }) {
 
                     {/* Prominent TOTAL Row at the bottom of Tower Sheet */}
                     <TR className="bg-muted/80 font-bold border-t-2 text-xs">
-                      <TD colSpan={3} className="text-right uppercase tracking-wider">TOTAL {b.name.toUpperCase()} AMOUNT</TD>
+                      <TD colSpan={4} className="text-right uppercase tracking-wider">TOTAL {b.name.toUpperCase()} AMOUNT</TD>
                       <TD className="text-center font-mono">{totPrevQ}%</TD>
                       <TD className="text-center font-mono text-emerald-500">{totCurrQ}%</TD>
                       <TD className="text-center font-mono font-bold">{totCumQ}%</TD>
