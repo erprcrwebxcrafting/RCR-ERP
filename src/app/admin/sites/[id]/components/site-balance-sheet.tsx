@@ -17,27 +17,12 @@ export function SiteBalanceSheet({ site }: { site: any }) {
   const payments = site.payments || [];
   const bills = site.bills || [];
 
-  // Calculate live tower + supply total
-  const totalTowerWork = (site.buildings || []).reduce((sum: number, b: any) => {
-    return sum + (b.workItems || []).reduce((ws: number, item: any) => {
-      const cumAmt = (item.cumulativeAmt !== undefined && item.cumulativeAmt !== null) ? item.cumulativeAmt : ((item.previousQty || 0) + (item.currentQty || 0)) * item.rate;
-      return ws + cumAmt;
-    }, 0);
-  }, 0);
-  const totalSupplyWork = (site.supplyLabourEntries || []).reduce((sum: number, se: any) => sum + (se.totalAmount || 0), 0);
-  const grossBilledTotal = totalTowerWork + totalSupplyWork;
-
   const retentionPct = site.retentionPct ?? 2;
   const cgstPct = site.cgstPct ?? 9;
   const sgstPct = site.sgstPct ?? 9;
   const tdsPct = site.tdsPct ?? 1;
 
-  const retentionAmt = grossBilledTotal * (retentionPct / 100);
-  const tdsAmt = grossBilledTotal * (tdsPct / 100);
-  const netBilledAmt = grossBilledTotal - retentionAmt - tdsAmt;
-
   const totalPaymentsReceived = payments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
-  const netOutstandingBalance = netBilledAmt - totalPaymentsReceived;
 
   // Build unified chronological ledger (Bills + Payments)
   const ledgerTimeline: any[] = [];
@@ -170,12 +155,17 @@ export function SiteBalanceSheet({ site }: { site: any }) {
     });
   }
 
-  // Calculate grand totals for footer
+  // Calculate grand totals for footer and top cards based strictly on Generated Bills
   const totalGrossBills = runningCumGross;
   const totalRetentionHeld = runningCumRet;
   const totalNetBilled = runningCumNetBilled;
   const totalTdsDeducted = runningCumTds;
   const totalGstAmount = runningCumGst;
+
+  // Variables for the top Summary Cards
+  const grossBilledTotal = totalGrossBills;
+  const retentionAmt = totalRetentionHeld;
+  const netOutstandingBalance = totalNetBilled - totalPaymentsReceived;
 
   return (
     <div className="space-y-6">
