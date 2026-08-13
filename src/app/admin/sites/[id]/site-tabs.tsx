@@ -182,24 +182,6 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Labour Categories */}
-            <form
-              action={async (formData) => {
-                await addLabourCategoryAction(site.id, formData);
-              }}
-              className="p-4 bg-muted/40 rounded-lg flex items-end gap-3 flex-wrap border"
-            >
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Category Name *</label>
-                <Input name="name" placeholder="e.g. Fitter, Helper, Mason" required />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Daily Wage (₹)</label>
-                <Input name="dailyWage" type="number" defaultValue="800" />
-              </div>
-              <Button type="submit">Add Category</Button>
-            </form>
-
             <div className="grid gap-4 md:grid-cols-2">
               {site.labourCategories.map((c: any) => (
                 <Card key={c.id} className="bg-muted/30">
