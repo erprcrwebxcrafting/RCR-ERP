@@ -342,36 +342,7 @@ export function RABillViewer({ site }: { site: any }) {
                 <TD className="font-mono text-emerald-500">{formatINR(grossBillTotal)}</TD>
                 <TD className="font-mono">{formatINR(grossBillTotal)}</TD>
               </TR>
-              <TR>
-                <TD colSpan={8} className="text-right text-xs">ADD CGST @ {taxPcts.cgstPct}%</TD>
-                <TD></TD>
-                <TD className="font-mono text-xs">{formatINR(cgst)}</TD>
-                <TD className="font-mono text-xs">{formatINR(cgst)}</TD>
-              </TR>
-              <TR>
-                <TD colSpan={8} className="text-right text-xs">ADD SGST @ {taxPcts.sgstPct}%</TD>
-                <TD></TD>
-                <TD className="font-mono text-xs">{formatINR(sgst)}</TD>
-                <TD className="font-mono text-xs">{formatINR(sgst)}</TD>
-              </TR>
-              <TR>
-                <TD colSpan={8} className="text-right text-xs text-orange-500">LESS RETENTION @ {taxPcts.retentionPct}%</TD>
-                <TD></TD>
-                <TD className="font-mono text-xs text-orange-500">-{formatINR(retention)}</TD>
-                <TD className="font-mono text-xs text-orange-500">-{formatINR(retention)}</TD>
-              </TR>
-              <TR>
-                <TD colSpan={8} className="text-right text-xs text-orange-500">LESS TDS @ {taxPcts.tdsPct}%</TD>
-                <TD></TD>
-                <TD className="font-mono text-xs text-orange-500">-{formatINR(tds)}</TD>
-                <TD className="font-mono text-xs text-orange-500">-{formatINR(tds)}</TD>
-              </TR>
-              <TR className="bg-emerald-500/10 font-bold text-base border-t-2">
-                <TD colSpan={8} className="text-right">NET PAYABLE AMOUNT</TD>
-                <TD></TD>
-                <TD className="font-mono text-emerald-500">{formatINR(netPayable)}</TD>
-                <TD className="font-mono text-emerald-500">{formatINR(netPayable)}</TD>
-              </TR>
+
             </TBody>
           </Table>
         </Card>
