@@ -9,6 +9,9 @@ export async function createSite(formData: FormData) {
   const address = formData.get("address") as string;
   const gstNo = formData.get("gstNo") as string;
   const retentionPct = parseFloat((formData.get("retentionPct") as string) || "2");
+  const cgstPct = parseFloat((formData.get("cgstPct") as string) || "9");
+  const sgstPct = parseFloat((formData.get("sgstPct") as string) || "9");
+  const tdsPct = parseFloat((formData.get("tdsPct") as string) || "1");
   const workOrderNo = formData.get("workOrderNo") as string;
   const remarks = formData.get("remarks") as string;
 
@@ -30,6 +33,9 @@ export async function createSite(formData: FormData) {
       address,
       gstNo,
       retentionPct: isNaN(retentionPct) ? 2 : retentionPct,
+      cgstPct: isNaN(cgstPct) ? 9 : cgstPct,
+      sgstPct: isNaN(sgstPct) ? 9 : sgstPct,
+      tdsPct: isNaN(tdsPct) ? 1 : tdsPct,
       workOrderNo,
       remarks,
       buildings: {

@@ -44,6 +44,18 @@ export function SiteForm({ clients }: { clients: Client[] }) {
             <Input name="retentionPct" type="number" step="0.1" defaultValue="2" />
           </div>
           <div className="space-y-1">
+            <Label>CGST %</Label>
+            <Input name="cgstPct" type="number" step="0.1" defaultValue="9" />
+          </div>
+          <div className="space-y-1">
+            <Label>SGST %</Label>
+            <Input name="sgstPct" type="number" step="0.1" defaultValue="9" />
+          </div>
+          <div className="space-y-1">
+            <Label>TDS %</Label>
+            <Input name="tdsPct" type="number" step="0.1" defaultValue="1" />
+          </div>
+          <div className="space-y-1">
             <Label>Work Order No.</Label>
             <Input name="workOrderNo" placeholder="e.g. PARKSITE/SSHIVAAY/2026-27" />
           </div>
