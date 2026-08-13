@@ -285,9 +285,6 @@ export function TowerWorkManager({ site }: { site: any }) {
                   </div>
                 </CardContent>
               </Card>
-            );
-          })()}
-
           {/* Selected Tower Work Items Table */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-3">
