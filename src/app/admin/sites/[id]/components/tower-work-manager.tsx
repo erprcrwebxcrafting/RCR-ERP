@@ -392,21 +392,34 @@ export function TowerWorkManager({ site }: { site: any }) {
                               />
                             </TD>
                             <TD className="text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <Input
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={prevPct}
-                                  onFocus={(e) => e.target.select()}
-                                  onChange={(e) => {
-                                    let val = e.target.value.replace(/^0+(?=\d)/, '');
-                                    if (val === '') val = '0';
-                                    handleFieldChange(item.id, "previousPct", parseFloat(val));
-                                  }}
-                                  className="w-16 h-8 font-mono text-xs text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                />
-                                <span className="text-xs text-muted-foreground">%</span>
-                              </div>
+                              {(() => {
+                                const isBilledPrev = (item.previousPct || 0) > 0 || (item.previousAmt || 0) > 0;
+                                return (
+                                  <div className="flex flex-col items-center justify-center gap-0.5">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <Input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={prevPct}
+                                        disabled={isBilledPrev}
+                                        onFocus={(e) => e.target.select()}
+                                        onChange={(e) => {
+                                          let val = e.target.value.replace(/^0+(?=\d)/, '');
+                                          if (val === '') val = '0';
+                                          handleFieldChange(item.id, "previousPct", parseFloat(val));
+                                        }}
+                                        className="w-16 h-8 font-mono text-xs text-center disabled:bg-muted/70 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                      />
+                                      <span className="text-xs text-muted-foreground">%</span>
+                                    </div>
+                                    {isBilledPrev && (
+                                      <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-0.5">
+                                        🔒 Billed
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </TD>
                             <TD className="text-center">
                               <div className="flex items-center justify-center gap-1">

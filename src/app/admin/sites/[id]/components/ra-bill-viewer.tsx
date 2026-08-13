@@ -151,26 +151,38 @@ export function RABillViewer({ site }: { site: any }) {
                 setIsSubmitting(false);
                 setIsGenerating(false);
               }}
-              className="grid gap-4 md:grid-cols-4"
             >
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Invoice / Bill No. *</label>
-                <Input name="billNo" defaultValue={`007/${new Date().getFullYear()}-${(new Date().getFullYear()+1).toString().slice(2)}`} required />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Bill Date *</label>
-                <Input name="billDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Ref No.</label>
-                <Input name="refNo" defaultValue="01" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Period Label</label>
-                <Input name="periodLabel" defaultValue={new Date().toLocaleString("en-US", { month: "long", year: "numeric" })} />
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Invoice / Bill No. *</label>
+                  <Input name="billNo" defaultValue={`007/${new Date().getFullYear()}-${(new Date().getFullYear()+1).toString().slice(2)}`} required />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Bill Date *</label>
+                  <Input name="billDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Ref No.</label>
+                  <Input name="refNo" defaultValue="01" />
+                </div>
               </div>
 
-              <div className="flex items-end justify-end gap-2 md:col-span-4">
+              <div className="grid gap-4 md:grid-cols-3 pt-2 border-t border-emerald-500/20">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Bill Period Start Date</label>
+                  <Input name="periodStart" type="date" defaultValue={new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10)} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Bill Period End Date</label>
+                  <Input name="periodEnd" type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Period Label</label>
+                  <Input name="periodLabel" defaultValue={new Date().toLocaleString("en-US", { month: "long", year: "numeric" })} />
+                </div>
+              </div>
+
+              <div className="flex items-end justify-end gap-2 pt-2 border-t border-emerald-500/20">
                 <Button type="button" variant="ghost" onClick={() => setIsGenerating(false)} disabled={isSubmitting}>Cancel</Button>
                 <Button type="submit" disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700">
                   {isSubmitting ? "Generating..." : "Snapshot & Create Bill"}

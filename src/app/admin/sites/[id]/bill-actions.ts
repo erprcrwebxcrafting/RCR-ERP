@@ -174,6 +174,11 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
 
   const billDateStr = formData.get("billDate") as string;
   const billDate = billDateStr ? new Date(billDateStr) : new Date();
+  const periodStartStr = formData.get("periodStart") as string;
+  const periodEndStr = formData.get("periodEnd") as string;
+
+  const periodStart = periodStartStr ? new Date(periodStartStr) : null;
+  const periodEnd = periodEndStr ? new Date(periodEndStr) : null;
 
   const runningBill = await prisma.runningBill.create({
     data: {
@@ -189,7 +194,6 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
       status: "GENERATED",
     },
   });
-
 
   // Create bill lines for each building work item
   let order = 0;
@@ -242,10 +246,17 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
   }
 
   // Create bill line for Supply Labour total
-  // Only sum entries that haven't been billed yet (runningBillId is null)
-  const unbilledSupply = site.supplyLabourEntries.filter((se: any) => !se.runningBillId);
+  // Only sum entries that haven't been billed yet AND fall within the selected period range if specified
+  const unbilledSupply = site.supplyLabourEntries.filter((se: any) => {
+    if (se.runningBillId) return false;
+    const seDate = new Date(se.date);
+    if (periodStart && seDate < periodStart) return false;
+    if (periodEnd && seDate > periodEnd) return false;
+    return true;
+  });
+
   const supplyTotal = unbilledSupply.reduce((sum: number, se: any) => sum + se.totalAmount, 0);
-  
+
   if (supplyTotal > 0) {
     await prisma.billLine.create({
       data: {
@@ -264,9 +275,10 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
       },
     });
 
-    // Link supply entries to this running bill
+    // Link unbilled supply entries in this date range to this running bill
+    const unbilledIds = unbilledSupply.map((se: any) => se.id);
     await prisma.supplyLabourEntry.updateMany({
-      where: { siteId, runningBillId: null },
+      where: { id: { in: unbilledIds } },
       data: { runningBillId: runningBill.id },
     });
   }

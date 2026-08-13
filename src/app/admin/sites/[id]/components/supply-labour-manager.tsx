@@ -278,32 +278,43 @@ export function SupplyLabourManager({ site }: { site: any }) {
                     const st = entriesState[e.id] || {};
                     const fTotalHrs = (st.fitterQty || 0) * (st.fitterHours || 0);
                     const hTotalHrs = (st.helperQty || 0) * (st.helperHours || 0);
+                    const isBilled = Boolean(e.runningBillId);
 
                     return (
-                      <TR key={e.id}>
+                      <TR key={e.id} className={isBilled ? "bg-muted/30 opacity-90" : ""}>
                         {/* Date */}
                         <TD>
-                          <Input
-                            type="date"
-                            value={st.date || ""}
-                            onChange={(ev) => handleFieldChange(e.id, "date", ev.target.value)}
-                            className="h-8 text-xs font-mono w-32"
-                          />
+                          <div className="flex flex-col gap-1">
+                            <Input
+                              type="date"
+                              value={st.date || ""}
+                              disabled={isBilled}
+                              onChange={(ev) => handleFieldChange(e.id, "date", ev.target.value)}
+                              className="h-8 text-xs font-mono w-32 disabled:bg-muted/60 disabled:cursor-not-allowed"
+                            />
+                            {isBilled && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30 w-fit">
+                                🔒 Billed
+                              </span>
+                            )}
+                          </div>
                         </TD>
                         {/* Challan No */}
                         <TD>
                           <Input
                             value={st.challanNo || ""}
+                            disabled={isBilled}
                             onChange={(ev) => handleFieldChange(e.id, "challanNo", ev.target.value)}
-                            className="h-8 text-xs font-mono font-semibold w-20"
+                            className="h-8 text-xs font-mono font-semibold w-20 disabled:bg-muted/60 disabled:cursor-not-allowed"
                           />
                         </TD>
                         {/* Description */}
                         <TD>
                           <Input
                             value={st.description || ""}
+                            disabled={isBilled}
                             onChange={(ev) => handleFieldChange(e.id, "description", ev.target.value)}
-                            className="h-8 text-xs font-medium min-w-[180px]"
+                            className="h-8 text-xs font-medium min-w-[180px] disabled:bg-muted/60 disabled:cursor-not-allowed"
                           />
                         </TD>
                         {/* Fitter Qty */}
@@ -312,8 +323,9 @@ export function SupplyLabourManager({ site }: { site: any }) {
                             type="number"
                             step="0.1"
                             value={st.fitterQty}
+                            disabled={isBilled}
                             onChange={(ev) => handleFieldChange(e.id, "fitterQty", parseFloat(ev.target.value) || 0)}
-                            className="h-8 text-xs font-mono w-16 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="h-8 text-xs font-mono w-16 disabled:bg-muted/60 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </TD>
                         {/* Fitter Hours */}
@@ -322,8 +334,9 @@ export function SupplyLabourManager({ site }: { site: any }) {
                             type="number"
                             step="0.5"
                             value={st.fitterHours}
+                            disabled={isBilled}
                             onChange={(ev) => handleFieldChange(e.id, "fitterHours", parseFloat(ev.target.value) || 0)}
-                            className="h-8 text-xs font-mono w-16 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="h-8 text-xs font-mono w-16 disabled:bg-muted/60 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </TD>
                         {/* Fitter Rate */}
@@ -332,8 +345,9 @@ export function SupplyLabourManager({ site }: { site: any }) {
                             type="number"
                             step="1"
                             value={st.fitterRate}
+                            disabled={isBilled}
                             onChange={(ev) => handleFieldChange(e.id, "fitterRate", parseFloat(ev.target.value) || 0)}
-                            className="h-8 text-xs font-mono w-20 text-blue-600 font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="h-8 text-xs font-mono w-20 text-blue-600 font-semibold disabled:bg-muted/60 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </TD>
                         {/* Calculated Fitter Total Hrs */}
@@ -350,8 +364,9 @@ export function SupplyLabourManager({ site }: { site: any }) {
                             type="number"
                             step="0.1"
                             value={st.helperQty}
+                            disabled={isBilled}
                             onChange={(ev) => handleFieldChange(e.id, "helperQty", parseFloat(ev.target.value) || 0)}
-                            className="h-8 text-xs font-mono w-16 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="h-8 text-xs font-mono w-16 disabled:bg-muted/60 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </TD>
                         {/* Helper Hours */}
@@ -360,8 +375,9 @@ export function SupplyLabourManager({ site }: { site: any }) {
                             type="number"
                             step="0.5"
                             value={st.helperHours}
+                            disabled={isBilled}
                             onChange={(ev) => handleFieldChange(e.id, "helperHours", parseFloat(ev.target.value) || 0)}
-                            className="h-8 text-xs font-mono w-16 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="h-8 text-xs font-mono w-16 disabled:bg-muted/60 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </TD>
                         {/* Helper Rate */}
@@ -370,8 +386,9 @@ export function SupplyLabourManager({ site }: { site: any }) {
                             type="number"
                             step="1"
                             value={st.helperRate}
+                            disabled={isBilled}
                             onChange={(ev) => handleFieldChange(e.id, "helperRate", parseFloat(ev.target.value) || 0)}
-                            className="h-8 text-xs font-mono w-20 text-purple-600 font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="h-8 text-xs font-mono w-20 text-purple-600 font-semibold disabled:bg-muted/60 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </TD>
                         {/* Calculated Helper Total Hrs */}
@@ -387,12 +404,14 @@ export function SupplyLabourManager({ site }: { site: any }) {
                           <Button
                             variant="ghost"
                             size="icon"
+                            disabled={isBilled}
                             onClick={async () => {
                               if (confirm("Delete this supply entry?")) {
                                 await deleteSupplyLabourEntryAction(site.id, e.id);
                               }
                             }}
-                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                            title={isBilled ? "Billed entries cannot be deleted" : "Delete entry"}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
