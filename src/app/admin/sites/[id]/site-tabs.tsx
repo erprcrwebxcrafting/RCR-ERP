@@ -128,19 +128,6 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
             <CardTitle className="text-sm font-medium text-muted-foreground">Assigned Site Supervisors</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <form
-              action={async (formData) => {
-                await assignSupervisorAction(site.id, formData);
-              }}
-              className="flex items-center gap-3"
-            >
-              <select name="supervisorId" className="h-9 rounded-md border bg-background px-3 text-xs flex-1 max-w-xs">
-                {availableSupervisors.map((s: any) => (
-                  <option key={s.id} value={s.id}>{s.name} ({s.email})</option>
-                ))}
-              </select>
-              <Button type="submit" size="sm">Assign Supervisor</Button>
-            </form>
 
             <div className="space-y-2 border rounded-md p-3">
               {site.supervisors.length === 0 ? (
@@ -152,16 +139,6 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
                       <p className="font-semibold">{s.supervisor.name}</p>
                       <p className="text-xs text-muted-foreground">{s.supervisor.email}</p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={async () => {
-                        await unassignSupervisorAction(site.id, s.supervisorId);
-                      }}
-                      className="text-destructive h-7 px-2 text-xs"
-                    >
-                      Unassign
-                    </Button>
                   </div>
                 ))
               )}
