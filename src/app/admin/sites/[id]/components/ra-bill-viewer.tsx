@@ -350,13 +350,39 @@ export function RABillViewer({ site }: { site: any }) {
                 <TD className="font-mono text-emerald-500">{formatINR(grossBillTotal)}</TD>
                 <TD className="font-mono">{formatINR(cumulativeBillTotal)}</TD>
               </TR>
+              <TR>
+                <TD colSpan={8} className="text-right text-xs">ADD CGST @ {taxPcts.cgstPct}%</TD>
+                <TD></TD>
+                <TD className="font-mono text-xs">{formatINR(cgst)}</TD>
+                <TD className="font-mono text-xs">{formatINR(cgst)}</TD>
+              </TR>
+              <TR>
+                <TD colSpan={8} className="text-right text-xs">ADD SGST @ {taxPcts.sgstPct}%</TD>
+                <TD></TD>
+                <TD className="font-mono text-xs">{formatINR(sgst)}</TD>
+                <TD className="font-mono text-xs">{formatINR(sgst)}</TD>
+              </TR>
+              <TR>
+                <TD colSpan={8} className="text-right text-xs text-orange-500">LESS RETENTION @ {taxPcts.retentionPct}%</TD>
+                <TD></TD>
+                <TD className="font-mono text-xs text-orange-500">-{formatINR(retention)}</TD>
+                <TD className="font-mono text-xs text-orange-500">-{formatINR(retention)}</TD>
+              </TR>
+              <TR>
+                <TD colSpan={8} className="text-right text-xs text-orange-500">LESS TDS @ {taxPcts.tdsPct}%</TD>
+                <TD></TD>
+                <TD className="font-mono text-xs text-orange-500">-{formatINR(tds)}</TD>
+                <TD className="font-mono text-xs text-orange-500">-{formatINR(tds)}</TD>
+              </TR>
+              <TR className="bg-emerald-500/10 font-bold text-base border-t-2">
+                <TD colSpan={8} className="text-right">NET PAYABLE AMOUNT</TD>
+                <TD></TD>
+                <TD className="font-mono text-emerald-500">{formatINR(netPayable)}</TD>
+                <TD className="font-mono text-emerald-500">{formatINR(netPayable)}</TD>
+              </TR>
               <TR className="bg-muted/30 font-bold text-xs border-t">
                 <TD colSpan={8} className="text-right">GROSS CONTRACT AMOUNT</TD>
                 <TD colSpan={3} className="text-right font-mono pr-4">{formatINR(totalContractValue)}</TD>
-              </TR>
-              <TR className="bg-red-500/10 text-red-700 font-bold text-xs">
-                <TD colSpan={8} className="text-right">BALANCE AMOUNT TO BE BILLED</TD>
-                <TD colSpan={3} className="text-right font-mono pr-4">{formatINR(totalContractValue - cumulativeBillTotal)}</TD>
               </TR>
 
             </TBody>
