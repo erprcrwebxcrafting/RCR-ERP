@@ -51,7 +51,6 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
         <Tabs.Trigger className={tabTrigger} value="balance">Balance Sheet & Payments</Tabs.Trigger>
         <Tabs.Trigger className={tabTrigger} value="internallabours">Internal Site Labours</Tabs.Trigger>
         <Tabs.Trigger className={tabTrigger} value="supervisors">Supervisors</Tabs.Trigger>
-        <Tabs.Trigger className={tabTrigger} value="documents">Documents</Tabs.Trigger>
       </Tabs.List>
 
       {/* OVERVIEW TAB */}
@@ -237,51 +236,6 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
         </Card>
       </Tabs.Content>
 
-      {/* DOCUMENTS TAB */}
-      <Tabs.Content value="documents" className="space-y-6 mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-bold">Site Work Orders & Documents</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <form
-              action={async (formData) => {
-                await uploadDocumentAction(site.id, formData);
-              }}
-              className="flex items-center gap-3"
-            >
-              <Input name="name" placeholder="Document Name (e.g. Work Order.pdf)" required className="max-w-xs" />
-              <Input name="file" type="file" required className="max-w-xs" />
-              <Button type="submit" className="gap-2"><Upload className="h-4 w-4" /> Upload Document</Button>
-            </form>
-
-            <div className="space-y-2 border rounded-md p-3">
-              {(site.documents || []).map((doc: any) => (
-                <div key={doc.id} className="flex justify-between items-center text-sm py-2 border-b last:border-0">
-                  <div>
-                    <a href={doc.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:underline">
-                      {doc.name}
-                    </a>
-                    <p className="text-xs text-muted-foreground">{formatDate(doc.createdAt)}</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={async () => {
-                      if (confirm(`Delete ${doc.name}?`)) {
-                        await deleteDocumentAction(site.id, doc.id, doc.publicId);
-                      }
-                    }}
-                    className="text-destructive"
-                  >
-                    Delete
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </Tabs.Content>
     </Tabs.Root>
   );
 }
