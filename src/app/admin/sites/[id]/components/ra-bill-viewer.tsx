@@ -82,7 +82,15 @@ export function RABillViewer({ site }: { site: any }) {
   const totalSupplyWork = unbilledSupply.reduce((sum: number, se: any) => sum + se.totalAmount, 0);
   const previousSupplyWork = previouslyBilledSupply.reduce((sum: number, se: any) => sum + se.totalAmount, 0);
 
+  const previousTowerWork = site.buildings.reduce((sum: number, b: any) => {
+    return sum + (b.workItems || []).reduce((ws: number, item: any) => ws + ((item.previousAmt !== undefined && item.previousAmt !== null) ? item.previousAmt : ((item.previousQty || 0) * item.rate)), 0);
+  }, 0);
+
   const grossBillTotal = totalTowerWork + totalSupplyWork;
+  const previousBillTotal = previousTowerWork + previousSupplyWork;
+  const cumulativeBillTotal = previousBillTotal + grossBillTotal;
+
+  const totalContractValue = site.buildings.reduce((sum: number, b: any) => sum + (b.approxArea || 0) * (b.contractRate || 0), 0);
 
   const cgst = grossBillTotal * (taxPcts.cgstPct / 100);
   const sgst = grossBillTotal * (taxPcts.sgstPct / 100);
@@ -337,10 +345,18 @@ export function RABillViewer({ site }: { site: any }) {
               )}
 
               <TR className="bg-muted/80 font-bold border-t-2">
-                <TD colSpan={8} className="text-right">TOTAL AMOUNT</TD>
-                <TD className="font-mono">₹0.00</TD>
+                <TD colSpan={8} className="text-right uppercase">Total Value of Work Done (Cumulative)</TD>
+                <TD className="font-mono">{formatINR(previousBillTotal)}</TD>
                 <TD className="font-mono text-emerald-500">{formatINR(grossBillTotal)}</TD>
-                <TD className="font-mono">{formatINR(grossBillTotal)}</TD>
+                <TD className="font-mono">{formatINR(cumulativeBillTotal)}</TD>
+              </TR>
+              <TR className="bg-muted/30 font-bold text-xs border-t">
+                <TD colSpan={8} className="text-right">GROSS CONTRACT AMOUNT</TD>
+                <TD colSpan={3} className="text-right font-mono pr-4">{formatINR(totalContractValue)}</TD>
+              </TR>
+              <TR className="bg-red-500/10 text-red-700 font-bold text-xs">
+                <TD colSpan={8} className="text-right">BALANCE AMOUNT TO BE BILLED</TD>
+                <TD colSpan={3} className="text-right font-mono pr-4">{formatINR(totalContractValue - cumulativeBillTotal)}</TD>
               </TR>
 
             </TBody>
@@ -450,6 +466,14 @@ export function RABillViewer({ site }: { site: any }) {
                       <TD className="text-right font-mono">{formatINR(totPrevA)}</TD>
                       <TD className="text-right font-mono text-emerald-500 font-black text-sm">{formatINR(totCurrA)}</TD>
                       <TD className="text-right font-mono font-black text-sm">{formatINR(totCumA)}</TD>
+                    </TR>
+                    <TR className="bg-muted/30 font-bold text-xs border-t">
+                      <TD colSpan={7} className="text-right">GROSS CONTRACT AMOUNT FOR {b.name.toUpperCase()}</TD>
+                      <TD colSpan={3} className="text-right font-mono pr-4">{formatINR(totalVal)}</TD>
+                    </TR>
+                    <TR className="bg-red-500/10 text-red-700 font-bold text-xs">
+                      <TD colSpan={7} className="text-right">BALANCE AMOUNT TO BE BILLED FOR {b.name.toUpperCase()}</TD>
+                      <TD colSpan={3} className="text-right font-mono pr-4">{formatINR(totalVal - totCumA)}</TD>
                     </TR>
                   </TBody>
                 </Table>
