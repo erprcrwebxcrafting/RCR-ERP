@@ -60,7 +60,7 @@ async function main() {
   const siteA = await prisma.site.create({
     data: {
       id: "site-100",
-      projectName: "Golden Heights Tower — 100% Completed Project",
+      projectName: "Golden Heights Tower",
       clientId: clientA.id,
       address: "Plot 42, Bandra East, Mumbai",
       workOrderNo: "WO/GODREJ/2025/100",
@@ -77,7 +77,7 @@ async function main() {
   const towerA = await prisma.building.create({
     data: {
       siteId: siteA.id,
-      name: "Tower A (100% Finished)",
+      name: "Tower A",
       approxArea: 25000,
       contractRate: 50,
       order: 0,
@@ -201,7 +201,7 @@ async function main() {
   const siteB = await prisma.site.create({
     data: {
       id: "site-50",
-      projectName: "BMC COLONY — BUILDING NO. S2 & S3 VIKHROLI (50% Progress)",
+      projectName: "BMC COLONY — BUILDING NO. S2 & S3 VIKHROLI",
       clientId: clientB.id,
       address: "BMC Colony, Building S2 & S3, Vikhroli, Mumbai",
       workOrderNo: "PARKSITE/SSHIVAAY/2026-27",
@@ -449,7 +449,7 @@ async function main() {
   const siteC = await prisma.site.create({
     data: {
       id: "site-25",
-      projectName: "Oberoi Sky City Tower — 25% Progress Project",
+      projectName: "Oberoi Sky City Tower",
       clientId: clientC.id,
       address: "WEH, Borivali East, Mumbai",
       workOrderNo: "WO/OBEROI/2026/025",
@@ -466,7 +466,7 @@ async function main() {
   const towerC = await prisma.building.create({
     data: {
       siteId: siteC.id,
-      name: "Tower 1 (25% Progress)",
+      name: "Tower 1",
       approxArea: 40000,
       contractRate: 60,
       order: 0,
@@ -589,7 +589,7 @@ async function main() {
   const siteD = await prisma.site.create({
     data: {
       id: "site-90",
-      projectName: "NEO ITURKAA — Real Bill PDF (s.pdf Format - 90% Progress)",
+      projectName: "NEO ITURKAA",
       clientId: clientD.id,
       address: "Mumbai Central Site",
       workOrderNo: "WO/NEO/2026/023",
@@ -606,7 +606,7 @@ async function main() {
   const towerD = await prisma.building.create({
     data: {
       siteId: siteD.id,
-      name: "BUA Building (s.pdf Format)",
+      name: "BUA Building",
       approxArea: 184464,
       contractRate: 49.60,
       order: 0,

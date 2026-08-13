@@ -53,16 +53,11 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
   site.buildings.forEach((b: any) => {
     (b.workItems || []).forEach((item: any) => {
       const partAmt = item.partAmount || (item.buWork && item.rate ? item.buWork * item.rate : item.rate || 0);
-      const cumPct = (item.cumulativePct !== undefined && item.cumulativePct !== null && item.cumulativePct > 0)
-        ? item.cumulativePct
-        : ((item.previousPct || 0) + (item.currentPct || 0));
-      
-      const cumAmt = (item.cumulativeAmt !== undefined && item.cumulativeAmt !== null && item.cumulativeAmt > 0)
-        ? item.cumulativeAmt
-        : (partAmt * (cumPct / 100));
+      const billedPct = item.previousPct || 0;
+      const billedAmt = item.previousAmt || (partAmt * (billedPct / 100));
 
       totalAllocatedValue += partAmt;
-      totalWorkDoneValue += cumAmt;
+      totalWorkDoneValue += billedAmt;
     });
   });
 

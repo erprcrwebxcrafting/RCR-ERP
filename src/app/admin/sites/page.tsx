@@ -5,13 +5,41 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
+export const dynamic = 'force-dynamic';
+
 export default async function SitesPage() {
   const sites = await prisma.site.findMany({
     include: { 
       client: true, 
+      buildings: { include: { workItems: true } },
       _count: { select: { buildings: true, workItems: true, labours: true } } as any
     } as any,
     orderBy: { createdAt: "desc" },
+  });
+
+  const sitesWithProgress = sites.map((s: any) => {
+    let totalAllocatedValue = 0;
+    let totalWorkDoneValue = 0;
+
+    (s.buildings || []).forEach((b: any) => {
+      (b.workItems || []).forEach((item: any) => {
+        const partAmt = item.partAmount || (item.buWork && item.rate ? item.buWork * item.rate : item.rate || 0);
+        const billedPct = item.previousPct || 0;
+        const billedAmt = item.previousAmt || (partAmt * (billedPct / 100));
+
+        totalAllocatedValue += partAmt;
+        totalWorkDoneValue += billedAmt;
+      });
+    });
+
+    const autoCalculatedProgress = totalAllocatedValue > 0 
+      ? Math.min(100, Math.round((totalWorkDoneValue / totalAllocatedValue) * 100))
+      : (s.progress || 0);
+
+    return {
+      ...s,
+      displayProgress: autoCalculatedProgress
+    };
   });
 
   return (
@@ -25,7 +53,7 @@ export default async function SitesPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {(sites as any[]).map((s: any) => (
+        {sitesWithProgress.map((s: any) => (
           <Card key={s.id} className="flex flex-col group hover:shadow-md transition-shadow">
             <CardHeader className="pb-3 border-b bg-muted/20">
               <div className="flex justify-between items-start gap-4">
@@ -64,10 +92,10 @@ export default async function SitesPage() {
               <div className="mt-4 px-2">
                 <div className="flex items-center justify-between text-[10px] uppercase font-semibold text-muted-foreground mb-1">
                   <span>Progress</span>
-                  <span>{s.progress || 0}%</span>
+                  <span>{s.displayProgress}%</span>
                 </div>
                 <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-primary h-full transition-all" style={{ width: `${s.progress || 0}%` }} />
+                  <div className="bg-primary h-full transition-all" style={{ width: `${s.displayProgress}%` }} />
                 </div>
               </div>
             </CardContent>
