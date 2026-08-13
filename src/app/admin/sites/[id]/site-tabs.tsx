@@ -29,17 +29,27 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
   const assignedIds = new Set(site.supervisors.map((s: any) => s.supervisorId));
   const availableSupervisors = allSupervisors.filter((s) => !assignedIds.has(s.id));
 
-  // Compute stats for overview
-  const totalTowerWork = site.buildings.reduce((sum: number, b: any) => {
-    return sum + (b.workItems || []).reduce((ws: number, item: any) => {
-      const cumAmt = (item.cumulativeAmt !== undefined && item.cumulativeAmt !== null) ? item.cumulativeAmt : ((item.previousQty || 0) + (item.currentQty || 0)) * item.rate;
-      return ws + cumAmt;
-    }, 0);
-  }, 0);
-  const totalSupplyWork = (site.supplyLabourEntries || []).reduce((sum: number, se: any) => sum + (se.totalAmount || 0), 0);
-  const grossBilledTotal = totalTowerWork + totalSupplyWork;
+  // Compute stats for overview based on GENERATED BILLS (to sync with Balance Sheet)
+  let totalGrossBilled = 0;
+  let totalNetBilled = 0;
+  let totalTdsDeducted = 0;
+
+  (site.bills || []).forEach((b: any) => {
+    const gross = (b.lines || []).reduce((s: number, l: any) => s + (l.currentAmount || 0), 0);
+    const retPct = b.retentionPct ?? site.retentionPct ?? 2;
+    const tdsPct = b.tdsPct ?? site.tdsPct ?? 1;
+
+    const retAmt = gross * (retPct / 100);
+    const netAmt = gross - retAmt;
+    const tdsAmt = gross * (tdsPct / 100);
+
+    totalGrossBilled += gross;
+    totalNetBilled += netAmt;
+    totalTdsDeducted += tdsAmt;
+  });
+
   const totalReceived = (site.payments || []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
-  const outstandingBal = grossBilledTotal - totalReceived;
+  const outstandingBal = totalNetBilled - (totalReceived + totalTdsDeducted);
 
   return (
     <Tabs.Root defaultValue="towers">
@@ -50,7 +60,6 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
         <Tabs.Trigger className={tabTrigger} value="bills">RA Bills & Invoices</Tabs.Trigger>
         <Tabs.Trigger className={tabTrigger} value="balance">Balance Sheet & Payments</Tabs.Trigger>
         <Tabs.Trigger className={tabTrigger} value="internallabours">Internal Site Labours</Tabs.Trigger>
-        <Tabs.Trigger className={tabTrigger} value="supervisors">Supervisors</Tabs.Trigger>
       </Tabs.List>
 
       {/* OVERVIEW TAB */}
@@ -68,7 +77,7 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Invoiced</CardTitle>
               <Receipt className="h-4 w-4 text-emerald-500" />
             </CardHeader>
-            <CardContent><div className="text-xl font-bold text-emerald-500">{formatINR(grossBilledTotal)}</div></CardContent>
+            <CardContent><div className="text-xl font-bold text-emerald-500">{formatINR(totalGrossBilled)}</div></CardContent>
           </Card>
           <Card className="bg-muted/30">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -112,6 +121,53 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
             </CardContent>
           </Card>
         </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-2 pb-2">
+            <UserCheck className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Assigned Site Supervisors</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form
+              action={async (formData) => {
+                await assignSupervisorAction(site.id, formData);
+              }}
+              className="flex items-center gap-3"
+            >
+              <select name="supervisorId" className="h-9 rounded-md border bg-background px-3 text-xs flex-1 max-w-xs">
+                {availableSupervisors.map((s: any) => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.email})</option>
+                ))}
+              </select>
+              <Button type="submit" size="sm">Assign Supervisor</Button>
+            </form>
+
+            <div className="space-y-2 border rounded-md p-3">
+              {site.supervisors.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">No supervisors assigned yet.</p>
+              ) : (
+                site.supervisors.map((s: any) => (
+                  <div key={s.id} className="flex justify-between items-center text-sm py-2 border-b last:border-0">
+                    <div>
+                      <p className="font-semibold">{s.supervisor.name}</p>
+                      <p className="text-xs text-muted-foreground">{s.supervisor.email}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        await unassignSupervisorAction(site.id, s.supervisorId);
+                      }}
+                      className="text-destructive h-7 px-2 text-xs"
+                    >
+                      Unassign
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </Tabs.Content>
 
       {/* TOWERS & WORK ITEMS TAB (SHEET 3 & 4) */}
@@ -191,50 +247,7 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
         </Card>
       </Tabs.Content>
 
-      {/* SUPERVISORS TAB */}
-      <Tabs.Content value="supervisors" className="space-y-6 mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-bold">Assigned Site Supervisors</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <form
-              action={async (formData) => {
-                await assignSupervisorAction(site.id, formData);
-              }}
-              className="flex items-center gap-3"
-            >
-              <select name="supervisorId" className="h-9 rounded-md border bg-background px-3 text-xs max-w-xs">
-                {availableSupervisors.map((s: any) => (
-                  <option key={s.id} value={s.id}>{s.name} ({s.email})</option>
-                ))}
-              </select>
-              <Button type="submit">Assign Supervisor</Button>
-            </form>
 
-            <div className="space-y-2 border rounded-md p-3">
-              {site.supervisors.map((s: any) => (
-                <div key={s.id} className="flex justify-between items-center text-sm py-2 border-b last:border-0">
-                  <div>
-                    <p className="font-semibold">{s.supervisor.name}</p>
-                    <p className="text-xs text-muted-foreground">{s.supervisor.email}</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={async () => {
-                      await unassignSupervisorAction(site.id, s.supervisorId);
-                    }}
-                    className="text-destructive"
-                  >
-                    Unassign
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </Tabs.Content>
 
     </Tabs.Root>
   );
