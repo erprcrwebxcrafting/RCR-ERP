@@ -195,6 +195,10 @@ export function SiteBalanceSheet({ site }: { site: any }) {
       {isEditingSettings && (
         <form
           action={async (formData) => {
+            const msg = "⚠️ CAUTION: CHANGING CONTRACT TAX RATES\n\nAre you sure you want to modify the project's default tax rates?\n\nNOTE: This will NOT alter previously generated bills. Only NEW bills generated from this point forward will use the updated rates.";
+            if (!confirm(msg)) {
+              return;
+            }
             await updateSiteTaxSettingsAction(site.id, formData);
             setIsEditingSettings(false);
           }}
