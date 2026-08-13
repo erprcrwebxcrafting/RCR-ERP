@@ -55,24 +55,48 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
     tdsPct: bill.tdsPct ?? site.tdsPct ?? 1,
   };
 
-  // Reconstruct towers array with frozen snapshotted lines for this bill
-  const mockBuildings = site.buildings.map((b: any) => {
-    const bLines = lines.filter((l: any) => l.buildingId === b.id);
+  // 1. Identify previous bills in the timeline to accurately calculate past quantities
+  const currentBillIndex = (site.bills || []).findIndex((b: any) => b.id === bill.id);
+  const previousBills = currentBillIndex > 0 ? site.bills.slice(0, currentBillIndex) : [];
+  const previousBillIds = previousBills.map((b: any) => b.id);
+
+  // Reconstruct towers array with full state fidelity (including 0 qty items) for this snapshot
+  const mockBuildings = (site.buildings || []).map((b: any) => {
     return {
       ...b,
-      workItems: bLines.map((l: any) => ({
-        id: l.workItemId || l.id,
-        name: l.workItem?.name || l.description || "Work Item",
-        unit: l.workItem?.unit || l.unit || "%",
-        previousAmt: l.previousAmount,
-        currentAmt: l.currentAmount,
-        cumulativeAmt: l.cumulativeAmount,
-        previousQty: l.previousQty,
-        currentQty: l.currentQty,
-        cumulativeQty: l.cumulativeQty,
-        rate: l.rate,
-        partAmount: l.workItem?.partAmount || 0,
-      }))
+      workItems: (b.workItems || []).map((item: any) => {
+        // Find this item in the current bill's lines
+        const currentLine = lines.find((l: any) => l.workItemId === item.id);
+        
+        // Sum previous quantities from previous bills
+        let prevQty = 0;
+        let prevAmt = 0;
+        
+        previousBills.forEach((pb: any) => {
+          const pbLine = pb.lines?.find((l: any) => l.workItemId === item.id);
+          if (pbLine) {
+            prevQty += (pbLine.currentQty || 0);
+            prevAmt += (pbLine.currentAmount || 0);
+          }
+        });
+
+        const currQty = currentLine?.currentQty || 0;
+        const currAmt = currentLine?.currentAmount || 0;
+
+        return {
+          id: item.id,
+          name: item.name || "Work Item",
+          unit: item.unit || "%",
+          previousAmt: prevAmt,
+          currentAmt: currAmt,
+          cumulativeAmt: prevAmt + currAmt,
+          previousQty: prevQty,
+          currentQty: currQty,
+          cumulativeQty: prevQty + currQty,
+          rate: item.rate,
+          partAmount: item.partAmount || 0,
+        };
+      })
     };
   });
 
@@ -81,7 +105,11 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
   }, 0);
 
   const totalSupplyWork = (supplyLabourEntries || []).reduce((sum: number, se: any) => sum + (se.totalAmount || 0), 0);
-  const previousSupplyWork = 0; // For simplicity in historical view
+  
+  // Calculate true historical previous supply work
+  const previousSupplyWork = (site.supplyLabourEntries || [])
+    .filter((se: any) => previousBillIds.includes(se.runningBillId))
+    .reduce((sum: number, se: any) => sum + (se.totalAmount || 0), 0);
 
   const grossBillTotal = totalTowerWork + totalSupplyWork;
 

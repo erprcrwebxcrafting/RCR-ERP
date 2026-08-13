@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -12,11 +12,12 @@ import {
   deleteSupplyLabourEntryAction,
   updateSupplyLabourEntriesAction,
 } from "../bill-actions";
-import { Users, Plus, Trash2, DollarSign, Save } from "lucide-react";
+import { Users, Plus, Trash2, DollarSign, Save, CheckCircle2 } from "lucide-react";
 
 export function SupplyLabourManager({ site }: { site: any }) {
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const rawEntries = site.supplyLabourEntries || [];
 
   // Local state for editable table rows
@@ -54,6 +55,26 @@ export function SupplyLabourManager({ site }: { site: any }) {
     });
     return initialState;
   });
+
+  // Sync state when site prop changes (e.g., after successful save)
+  useEffect(() => {
+    const newState: any = {};
+    rawEntries.forEach((e: any) => {
+      newState[e.id] = {
+        date: e.date ? new Date(e.date).toISOString().slice(0, 10) : "",
+        challanNo: e.challanNo || "",
+        description: e.description || "",
+        fitterQty: e.fitterQty || 0,
+        fitterHours: e.fitterHours || 0,
+        fitterRate: e.fitterRate || 1100,
+        helperQty: e.helperQty || 0,
+        helperHours: e.helperHours || 0,
+        helperRate: e.helperRate || 800,
+        totalAmount: e.totalAmount || 0,
+      };
+    });
+    setEntriesState(newState);
+  }, [site.supplyLabourEntries]);
 
   const handleFieldChange = (entryId: string, field: string, value: any) => {
     setEntriesState((prev) => {
@@ -110,6 +131,8 @@ export function SupplyLabourManager({ site }: { site: any }) {
 
     await updateSupplyLabourEntriesAction(site.id, updates);
     setIsSaving(false);
+    setSaveMessage("Saved!");
+    setTimeout(() => setSaveMessage(null), 3000);
   };
 
   // Live stat totals from state
@@ -176,10 +199,17 @@ export function SupplyLabourManager({ site }: { site: any }) {
 
           <div className="flex items-center gap-2">
             {rawEntries.length > 0 && (
-              <Button onClick={handleSaveAll} disabled={isSaving} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
-                <Save className="h-4 w-4" />
-                {isSaving ? "Saving..." : "Save Supply Log Progress"}
-              </Button>
+              <div className="flex items-center gap-3">
+                {saveMessage && (
+                  <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 className="h-4 w-4" /> {saveMessage}
+                  </span>
+                )}
+                <Button onClick={handleSaveAll} disabled={isSaving} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+                  <Save className="h-4 w-4" />
+                  {isSaving ? "Saving..." : "Save Supply Log Progress"}
+                </Button>
+              </div>
             )}
             <Button onClick={() => setIsAdding(!isAdding)} className="gap-1">
               <Plus className="h-4 w-4" /> Log Supply Labour

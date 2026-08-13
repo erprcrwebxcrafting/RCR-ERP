@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatINR, formatDate } from "@/lib/utils";
 import { generateRunningBillAction } from "../bill-actions";
 import { SiteBalanceSheet } from "./site-balance-sheet";
-import { Receipt, FileSpreadsheet, Printer, Plus, CheckCircle2, Building2, Users, DollarSign } from "lucide-react";
+import { Receipt, FileSpreadsheet, Printer, Plus, CheckCircle2, Building2, Users, DollarSign, Loader2 } from "lucide-react";
 
 
 function BillHeaderBanner({ site, latestBill, sheetTitle }: { site: any; latestBill: any; sheetTitle?: string }) {
@@ -50,6 +50,7 @@ export function RABillViewer({ site }: { site: any }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeSheetTab, setActiveSheetTab] = useState<"sheet1" | "sheet2" | "towers" | "supply" | "balance">("sheet1");
   const [selectedTowerId, setSelectedTowerId] = useState<string>(site.buildings[0]?.id || "");
 
@@ -139,12 +140,22 @@ export function RABillViewer({ site }: { site: any }) {
         </div>
       </div>
 
+      {successMessage && (
+        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 p-4 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2 font-medium">
+            <CheckCircle2 className="h-5 w-5" />
+            {successMessage}
+          </div>
+          <button type="button" onClick={() => setSuccessMessage(null)} className="text-emerald-700/50 hover:text-emerald-700 dark:hover:text-emerald-300">✕</button>
+        </div>
+      )}
+
       {isGenerating && (
         <Card className="border-emerald-500/30 bg-emerald-500/5">
           <CardHeader>
             <CardTitle className="text-base font-bold text-emerald-600">Generate Official Running Account (RA) Bill</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 relative">
             {formError && (
               <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 rounded-md text-xs font-bold flex items-center justify-between">
                 <span>⚠️ {formError}</span>
@@ -176,6 +187,8 @@ export function RABillViewer({ site }: { site: any }) {
                 try {
                   await generateRunningBillAction(site.id, formData);
                   setIsGenerating(false);
+                  setSuccessMessage("RA Bill generated successfully! You can view the complete snapshot in the Bill Viewer sidebar.");
+                  setTimeout(() => setSuccessMessage(null), 5000);
                 } catch (err: any) {
                   setFormError(err.message || "Failed to generate RA Bill. Please check input details.");
                 } finally {
@@ -220,6 +233,14 @@ export function RABillViewer({ site }: { site: any }) {
                 </Button>
               </div>
             </form>
+            
+            {isSubmitting && (
+              <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex flex-col items-center justify-center rounded-lg z-10 border border-emerald-500/20">
+                <Loader2 className="h-10 w-10 text-emerald-500 animate-spin mb-4" />
+                <p className="text-emerald-700 dark:text-emerald-400 font-semibold animate-pulse">Generating Official RA Bill...</p>
+                <p className="text-xs text-muted-foreground mt-1">Please wait while snapshots are created.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

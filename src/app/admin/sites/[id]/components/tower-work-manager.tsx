@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,30 @@ export function TowerWorkManager({ site }: { site: any }) {
   const [isEditingHeader, setIsEditingHeader] = useState(false);
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  // Sync state when site prop changes (e.g., after a successful save and revalidatePath)
+  useEffect(() => {
+    const newState: any = {};
+    site.buildings.forEach((b: any) => {
+      b.workItems?.forEach((item: any) => {
+        newState[item.id] = {
+          name: item.name || "",
+          previousQty: item.previousQty || 0,
+          currentQty: item.currentQty || 0,
+          previousPct: item.previousPct || 0,
+          currentPct: item.currentPct || 0,
+          cumulativePct: item.cumulativePct || 0,
+          partAmount: item.partAmount || 0,
+          previousAmt: item.previousAmt || 0,
+          currentAmt: item.currentAmt || 0,
+          cumulativeAmt: item.cumulativeAmt || 0,
+        };
+      });
+    });
+    setProgressState(newState);
+  }, [site.buildings]);
+
 
   const selectedBuilding = site.buildings.find((b: any) => b.id === selectedBuildingId) || site.buildings[0];
 
@@ -122,6 +146,8 @@ export function TowerWorkManager({ site }: { site: any }) {
 
     await updateTowerWorkProgressAction(site.id, itemsToUpdate);
     setIsSaving(false);
+    setSaveMessage("Saved!");
+    setTimeout(() => setSaveMessage(null), 3000);
   };
 
   return (
@@ -152,10 +178,17 @@ export function TowerWorkManager({ site }: { site: any }) {
         </div>
 
         {selectedBuilding && (
-          <Button onClick={handleSaveProgress} disabled={isSaving} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
-            <Save className="h-4 w-4" />
-            {isSaving ? "Saving..." : "Save Tower Progress"}
-          </Button>
+          <div className="flex items-center gap-3">
+            {saveMessage && (
+              <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <CheckCircle2 className="h-4 w-4" /> {saveMessage}
+              </span>
+            )}
+            <Button onClick={handleSaveProgress} disabled={isSaving} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+              <Save className="h-4 w-4" />
+              {isSaving ? "Saving..." : "Save Tower Progress"}
+            </Button>
+          </div>
         )}
       </div>
 

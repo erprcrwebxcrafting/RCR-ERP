@@ -13,6 +13,8 @@ export default async function RunningBillDetailPage({ params }: { params: Promis
           client: true,
           buildings: true,
           payments: { orderBy: { date: "asc" } },
+          bills: { orderBy: { createdAt: "asc" }, include: { lines: true } },
+          supplyLabourEntries: { orderBy: { date: "asc" } },
         }
       },
       lines: { 
