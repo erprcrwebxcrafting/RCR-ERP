@@ -493,29 +493,40 @@ export function RABillViewer({ site }: { site: any }) {
                 <TH>Date</TH>
                 <TH>Challan No.</TH>
                 <TH>Work Description</TH>
-                <TH>Fitter Count</TH>
-                <TH>Fitter Hours</TH>
-                <TH>Helper Count</TH>
-                <TH>Helper Hours</TH>
+                <TH>Fitter Nos (Hrs)</TH>
+                <TH>Fitter Rate (₹)</TH>
+                <TH className="text-right">Fitter Amt (₹)</TH>
+                <TH>Helper Nos (Hrs)</TH>
+                <TH>Helper Rate (₹)</TH>
+                <TH className="text-right">Helper Amt (₹)</TH>
                 <TH className="text-right">Total Amount (₹)</TH>
               </TR>
             </THead>
             <TBody>
-              {(site.supplyLabourEntries || []).map((se: any) => (
-                <TR key={se.id}>
-                  <TD className="font-mono text-xs">{formatDate(se.date)}</TD>
-                  <TD className="font-mono text-xs font-semibold">{se.challanNo || "—"}</TD>
-                  <TD className="font-medium">{se.description}</TD>
-                  <TD className="font-mono text-xs">{se.fitterQty}</TD>
-                  <TD className="font-mono text-xs">{se.fitterHours}</TD>
-                  <TD className="font-mono text-xs">{se.helperQty}</TD>
-                  <TD className="font-mono text-xs">{se.helperHours}</TD>
-                  <TD className="font-mono font-bold text-emerald-500 text-right">{formatINR(se.totalAmount)}</TD>
-                </TR>
-              ))}
+              {(site.supplyLabourEntries || []).map((se: any) => {
+                const fRate = se.fitterRate || 1100;
+                const hRate = se.helperRate || 800;
+                const fTotal = se.fitterHours > 0 ? (se.fitterQty * se.fitterHours / 8) * fRate : se.fitterQty * fRate;
+                const hTotal = se.helperHours > 0 ? (se.helperQty * se.helperHours / 8) * hRate : se.helperQty * hRate;
+                
+                return (
+                  <TR key={se.id}>
+                    <TD className="font-mono text-xs">{formatDate(se.date)}</TD>
+                    <TD className="font-mono text-xs font-semibold">{se.challanNo || "—"}</TD>
+                    <TD className="font-medium">{se.description}</TD>
+                    <TD className="font-mono text-xs">{se.fitterQty} {se.fitterHours > 0 ? `(${se.fitterHours}H)` : ''}</TD>
+                    <TD className="font-mono text-xs">₹{fRate}</TD>
+                    <TD className="font-mono text-xs text-right">{formatINR(fTotal)}</TD>
+                    <TD className="font-mono text-xs">{se.helperQty} {se.helperHours > 0 ? `(${se.helperHours}H)` : ''}</TD>
+                    <TD className="font-mono text-xs">₹{hRate}</TD>
+                    <TD className="font-mono text-xs text-right">{formatINR(hTotal)}</TD>
+                    <TD className="font-mono font-bold text-emerald-500 text-right">{formatINR(se.totalAmount)}</TD>
+                  </TR>
+                );
+              })}
 
               <TR className="bg-emerald-500/10 font-bold text-base border-t-2">
-                <TD colSpan={7} className="text-right uppercase tracking-wider text-xs">Total Extra Supply Amount</TD>
+                <TD colSpan={9} className="text-right uppercase tracking-wider text-xs">Total Extra Supply Amount</TD>
                 <TD className="font-mono text-emerald-500 text-right font-black">{formatINR(totalSupplyWork)}</TD>
               </TR>
             </TBody>
