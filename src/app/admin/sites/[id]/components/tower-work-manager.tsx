@@ -442,27 +442,24 @@ export function TowerWorkManager({ site }: { site: any }) {
                             </TD>
                             <TD className="text-right">
                               <Input
-                                type="number"
-                                step="0.01"
-                                value={prevA}
+                                type="text"
+                                value={prevA ? prevA.toLocaleString('en-IN') : '0'}
                                 disabled
                                 className="w-28 h-8 font-mono text-xs text-right bg-muted/50 cursor-not-allowed"
                               />
                             </TD>
                             <TD className="text-right">
                               <Input
-                                type="number"
-                                step="0.01"
-                                value={currA}
+                                type="text"
+                                value={currA ? currA.toLocaleString('en-IN') : '0'}
                                 disabled
                                 className="w-28 h-8 font-mono text-xs text-right font-bold text-emerald-600 bg-emerald-500/5 border-emerald-500/30 cursor-not-allowed"
                               />
                             </TD>
                             <TD className="text-right">
                               <Input
-                                type="number"
-                                step="0.01"
-                                value={cumA}
+                                type="text"
+                                value={cumA ? cumA.toLocaleString('en-IN') : '0'}
                                 disabled
                                 className="w-28 h-8 font-mono text-xs text-right font-bold bg-muted/50 cursor-not-allowed"
                               />
