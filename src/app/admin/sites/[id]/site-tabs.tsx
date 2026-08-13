@@ -33,23 +33,28 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
   let totalGrossBilled = 0;
   let totalNetBilled = 0;
   let totalTdsDeducted = 0;
+  let totalGstAmount = 0;
 
   (site.bills || []).forEach((b: any) => {
     const gross = (b.lines || []).reduce((s: number, l: any) => s + (l.currentAmount || 0), 0);
     const retPct = b.retentionPct ?? site.retentionPct ?? 2;
     const tdsPct = b.tdsPct ?? site.tdsPct ?? 1;
+    const cgstPct = b.cgstPct ?? site.cgstPct ?? 9;
+    const sgstPct = b.sgstPct ?? site.sgstPct ?? 9;
 
     const retAmt = gross * (retPct / 100);
     const netAmt = gross - retAmt;
     const tdsAmt = gross * (tdsPct / 100);
+    const gstAmt = gross * ((cgstPct + sgstPct) / 100);
 
     totalGrossBilled += gross;
     totalNetBilled += netAmt;
     totalTdsDeducted += tdsAmt;
+    totalGstAmount += gstAmt;
   });
 
   const totalReceived = (site.payments || []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
-  const outstandingBal = totalNetBilled - (totalReceived + totalTdsDeducted);
+  const outstandingBal = (totalNetBilled + totalGstAmount) - (totalReceived + totalTdsDeducted);
 
   return (
     <Tabs.Root defaultValue="towers">
@@ -86,12 +91,19 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
             </CardHeader>
             <CardContent><div className="text-xl font-bold">{formatINR(totalReceived)}</div></CardContent>
           </Card>
-          <Card className="bg-muted/30">
+          <Card className={outstandingBal > 0 ? "bg-rose-500/10 border-rose-500/30" : "bg-emerald-500/10 border-emerald-500/30"}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Outstanding Balance</CardTitle>
-              <Banknote className="h-4 w-4 text-amber-500" />
+              <Banknote className={`h-4 w-4 ${outstandingBal > 0 ? "text-rose-500" : "text-emerald-500"}`} />
             </CardHeader>
-            <CardContent><div className="text-xl font-bold text-amber-500">{formatINR(outstandingBal)}</div></CardContent>
+            <CardContent>
+              <div className={`text-xl font-bold ${outstandingBal > 0 ? "text-rose-500" : "text-emerald-500"}`}>
+                {formatINR(outstandingBal)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {outstandingBal > 0 ? "🔴 Pending Dues from Client" : "🟢 Balance Cleared / Advance Received"}
+              </p>
+            </CardContent>
           </Card>
         </div>
 

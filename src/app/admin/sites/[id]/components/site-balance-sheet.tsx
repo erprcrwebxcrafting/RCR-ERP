@@ -166,7 +166,8 @@ export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any,
   // Variables for the top Summary Cards
   const grossBilledTotal = totalGrossBills;
   const retentionAmt = totalRetentionHeld;
-  const netOutstandingBalance = totalNetBilled - totalPaymentsReceived;
+  const lastRowCalc = calculatedRows[calculatedRows.length - 1];
+  const netOutstandingBalance = lastRowCalc ? lastRowCalc.balanceWithGst : ((totalNetBilled + totalGstAmount) - (totalPaymentsReceived + totalTdsDeducted));
 
   return (
     <div className="space-y-6">

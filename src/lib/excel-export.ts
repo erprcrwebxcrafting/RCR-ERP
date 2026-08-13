@@ -440,18 +440,20 @@ export async function generateRABillExcelWorkbook(data: {
   let runCumNetBilled = 0;
   let runCumRecd = 0;
   let runCumTds = 0;
+  let runCumGst = 0;
 
   ledger.forEach((item, idx) => {
     if (item.type === "BILL") {
       runCumNetBilled += item.netBilledAmt;
       runCumTds += item.tdsAmt;
+      runCumGst += item.gstAmt;
     } else {
       runCumRecd += item.paymentRecd;
     }
 
     const cumAdv = runCumRecd + runCumTds;
-    const runBal = runCumNetBilled - runCumRecd;
-    const balWithGst = runBal + item.gstAmt;
+    const runBal = runCumNetBilled - cumAdv;
+    const balWithGst = runBal + runCumGst;
 
     const r = balSheet.addRow([
       idx + 1,
