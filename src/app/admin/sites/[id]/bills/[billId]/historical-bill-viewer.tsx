@@ -91,12 +91,12 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
   const tds = grossBillTotal * (taxPcts.tdsPct / 100);
   const netPayable = grossBillTotal + cgst + sgst - retention - tds;
 
-  const handleDownloadPdfPackage = () => {
-    window.open(`/api/bills/${bill.id}/pdf`, "_blank");
+  const handleDownloadExcel = () => {
+    window.open(`/api/bills/${bill.id}/excel`, "_blank");
   };
 
-  const handlePrintPDF = () => {
-    window.print();
+  const handleDownloadPdfPackage = () => {
+    window.open(`/api/bills/${bill.id}/pdf`, "_blank");
   };
 
   return (
@@ -108,26 +108,26 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
             Historical RA Bill Package ({bill.billNo})
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Read-only viewer for generated bill snapshots. Contains Sheet 1, Sheet 2, Tower Sheets, and Supply Sheets.
+            Full snapshot statement view. Contains Sheet 1 (Invoice), Sheet 2 (Abstract), Tower Sheets, Supply Sheet & Balance Sheet.
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <Button onClick={handleDownloadExcel} variant="outline" className="gap-2 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10">
+            <FileSpreadsheet className="h-4 w-4" /> Download Complete Excel (.xlsx)
+          </Button>
+
           <Button onClick={handleDownloadPdfPackage} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
-            <Download className="h-4 w-4" /> Download Official PDF Package
+            <Download className="h-4 w-4" /> Download Official PDF Package (.pdf)
           </Button>
 
           <form action={sendBillEmailAction.bind(null, bill.id)}>
-            <Button variant="secondary" className="gap-2 border"><Mail className="h-4 w-4" /> Send PDF Email</Button>
+            <Button variant="secondary" className="gap-2 border"><Mail className="h-4 w-4" /> Email</Button>
           </form>
 
           <form action={sendBillWhatsAppAction.bind(null, bill.id)}>
             <Button variant="secondary" className="gap-2 text-green-600 border-green-600"><MessageCircle className="h-4 w-4" /> WhatsApp</Button>
           </form>
-
-          <Button onClick={handlePrintPDF} variant="outline" className="gap-2">
-            <Printer className="h-4 w-4" /> Print
-          </Button>
         </div>
       </div>
 
@@ -420,46 +420,104 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
         <Card className="p-6 space-y-6 bg-background">
           <BillHeaderBanner site={site} bill={bill} sheetTitle="Sheet 5: Client Extra Supply Labour Log" />
 
-          <Table className="border">
-            <THead className="bg-muted/60">
-              <TR>
-                <TH>Date</TH>
-                <TH>Challan No.</TH>
-                <TH>Work Description</TH>
-                <TH>Fitter Count</TH>
-                <TH>Fitter Hours</TH>
-                <TH>Helper Count</TH>
-                <TH>Helper Hours</TH>
-                <TH className="text-right">Total Amount (₹)</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {(supplyLabourEntries || []).map((se: any) => (
-                <TR key={se.id}>
-                  <TD className="font-mono text-xs">{formatDate(se.date)}</TD>
-                  <TD className="font-mono text-xs font-semibold">{se.challanNo || "—"}</TD>
-                  <TD className="font-medium">{se.description}</TD>
-                  <TD className="font-mono text-xs">{se.fitterQty}</TD>
-                  <TD className="font-mono text-xs">{se.fitterHours}</TD>
-                  <TD className="font-mono text-xs">{se.helperQty}</TD>
-                  <TD className="font-mono text-xs">{se.helperHours}</TD>
-                  <TD className="font-mono font-bold text-emerald-500 text-right">{formatINR(se.totalAmount)}</TD>
-                </TR>
-              ))}
+          {(() => {
+            const entries = supplyLabourEntries || [];
+            let totFitterHrs = 0;
+            let totHelperHrs = 0;
 
-              <TR className="bg-emerald-500/10 font-bold text-base border-t-2">
-                <TD colSpan={7} className="text-right uppercase tracking-wider text-xs">Total Extra Supply Amount</TD>
-                <TD className="font-mono text-emerald-500 text-right font-black">{formatINR(totalSupplyWork)}</TD>
-              </TR>
-            </TBody>
-          </Table>
+            entries.forEach((se: any) => {
+              totFitterHrs += (se.fitterQty || 0) * (se.fitterHours || 8);
+              totHelperHrs += (se.helperQty || 0) * (se.helperHours || 8);
+            });
+
+            const fitterDays = Math.round((totFitterHrs / 8) * 100) / 100;
+            const helperDays = Math.round((totHelperHrs / 8) * 100) / 100;
+            const fitterAmt = fitterDays * 1100;
+            const helperAmt = helperDays * 800;
+
+            return (
+              <div className="border rounded-md overflow-hidden">
+                <Table className="text-xs">
+                  <THead className="bg-muted/70">
+                    <TR>
+                      <TH className="py-2.5 font-bold">Date</TH>
+                      <TH className="py-2.5 font-bold">Challan No.</TH>
+                      <TH className="py-2.5 font-bold">Work Description</TH>
+                      <TH className="py-2.5 font-bold text-center">Fitter Count</TH>
+                      <TH className="py-2.5 font-bold text-center">Hours</TH>
+                      <TH className="py-2.5 font-bold text-center">Total Fitter Hrs</TH>
+                      <TH className="py-2.5 font-bold text-center">Fitter Helper</TH>
+                      <TH className="py-2.5 font-bold text-center">Hours</TH>
+                      <TH className="py-2.5 font-bold text-center">Total Helper Hrs</TH>
+                      <TH className="py-2.5 font-bold text-right">Amount (₹)</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {entries.map((se: any) => {
+                      const fHrs = (se.fitterQty || 0) * (se.fitterHours || 8);
+                      const hHrs = (se.helperQty || 0) * (se.helperHours || 8);
+
+                      return (
+                        <TR key={se.id}>
+                          <TD className="font-mono text-xs whitespace-nowrap">{formatDate(se.date)}</TD>
+                          <TD className="font-mono text-xs font-semibold">{se.challanNo || "—"}</TD>
+                          <TD className="font-medium">{se.description}</TD>
+                          <TD className="font-mono text-center">{se.fitterQty || 0}</TD>
+                          <TD className="font-mono text-center">{se.fitterHours || 8}h</TD>
+                          <TD className="font-mono text-center font-semibold text-blue-600">{fHrs}h</TD>
+                          <TD className="font-mono text-center">{se.helperQty || 0}</TD>
+                          <TD className="font-mono text-center">{se.helperHours || 8}h</TD>
+                          <TD className="font-mono text-center font-semibold text-purple-600">{hHrs}h</TD>
+                          <TD className="font-mono font-bold text-emerald-600 text-right">{formatINR(se.totalAmount)}</TD>
+                        </TR>
+                      );
+                    })}
+
+                    {/* Excel Sheet Summary Rows */}
+                    <TR className="bg-muted/40 font-bold border-t border-b">
+                      <TD colSpan={3} className="text-right uppercase tracking-wider text-xs">Total Hours</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-blue-600 font-bold">{totFitterHrs} Hrs</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-purple-600 font-bold">{totHelperHrs} Hrs</TD>
+                      <TD></TD>
+                    </TR>
+                    <TR className="bg-muted/30 font-semibold border-b">
+                      <TD colSpan={3} className="text-right text-xs">Total Days (Nos = Hrs / 8)</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-blue-600 font-bold">{fitterDays} Nos</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-purple-600 font-bold">{helperDays} Nos</TD>
+                      <TD></TD>
+                    </TR>
+                    <TR className="bg-muted/30 font-semibold border-b">
+                      <TD colSpan={3} className="text-right text-xs">Rate (₹)</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-blue-600 font-bold">₹1,100 /day</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-purple-600 font-bold">₹800 /day</TD>
+                      <TD></TD>
+                    </TR>
+                    <TR className="bg-emerald-500/10 font-bold text-sm border-t-2 border-emerald-500/30">
+                      <TD colSpan={3} className="text-right uppercase tracking-wider text-emerald-800 dark:text-emerald-300">TOTAL SUPPLY AMOUNT (₹)</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-blue-600 font-bold">{formatINR(fitterAmt)}</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-purple-600 font-bold">{formatINR(helperAmt)}</TD>
+                      <TD className="font-mono text-emerald-600 dark:text-emerald-400 text-right text-base font-black">{formatINR(totalSupplyWork)}</TD>
+                    </TR>
+                  </TBody>
+                </Table>
+              </div>
+            );
+          })()}
         </Card>
       )}
 
       {activeSheetTab === "balance" && (
         <div className="space-y-6">
           <BillHeaderBanner site={site} bill={bill} sheetTitle="Sheet 6: Client Ledger & Balance Sheet" />
-          <SiteBalanceSheet site={site} />
+          <SiteBalanceSheet site={site} hidePaymentForm={true} />
         </div>
       )}
 

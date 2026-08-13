@@ -79,7 +79,7 @@ export default async function AllBillsPage() {
                         <TD className="text-right">
                           <Link
                             className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 gap-2"
-                            href={`/admin/sites/${site.id}/bills/${b.id}`}
+                            href={`/admin/bills/${b.id}`}
                           >
                             <Receipt className="h-4 w-4 text-primary" /> Open Bill
                           </Link>

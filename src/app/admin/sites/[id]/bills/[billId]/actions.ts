@@ -5,9 +5,9 @@ import { sendEmailWithAttachment } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { generateBillPdfPackage } from "@/lib/pdf/bill";
 
-export async function sendBillEmailAction(billId: string) {
+export async function sendBillEmailAction(billId: string): Promise<void> {
   const session = await auth();
-  if (!session || (session.user as any).role !== "ADMIN") throw new Error("Unauthorized");
+  if (!session || (session.user as any).role !== "ADMIN") return;
 
   const bill = await prisma.runningBill.findUnique({
     where: { id: billId },
@@ -19,7 +19,10 @@ export async function sendBillEmailAction(billId: string) {
       supplyLabourEntries: { orderBy: { date: "asc" } },
     },
   });
-  if (!bill || !bill.site.client.email) throw new Error("Bill or client email not found");
+  if (!bill || !bill.site.client.email) {
+    console.warn("Bill or client email not found for billId:", billId);
+    return;
+  }
 
   const { site, lines, supplyLabourEntries } = bill;
 
@@ -59,15 +62,18 @@ export async function sendBillEmailAction(billId: string) {
   );
 }
 
-export async function sendBillWhatsAppAction(billId: string) {
+export async function sendBillWhatsAppAction(billId: string): Promise<void> {
   const session = await auth();
-  if (!session || (session.user as any).role !== "ADMIN") throw new Error("Unauthorized");
+  if (!session || (session.user as any).role !== "ADMIN") return;
 
   const bill = await prisma.runningBill.findUnique({
     where: { id: billId },
     include: { site: { include: { client: true } } },
   });
-  if (!bill || !bill.site.client.phone) throw new Error("Bill or client phone not found");
+  if (!bill || !bill.site.client.phone) {
+    console.warn("Bill or client phone not found for billId:", billId);
+    return;
+  }
 
   const message = `Hello Sir,\n\nPlease find the Running Bill ${bill.billNo} for ${bill.site.projectName}. (The detailed PDF package will be emailed to you).\n\nRegards,\nConstruction ERP`;
   await sendWhatsAppMessage(bill.site.client.phone, message);
