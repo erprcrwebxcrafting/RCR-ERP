@@ -90,17 +90,20 @@ export function SiteBalanceSheet({ site }: { site: any }) {
   // Sort chronologically ascending
   ledgerTimeline.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  // Compute running balance values row-by-row
   let runningCumNetBilled = 0;
   let runningCumRecd = 0;
   let runningCumTds = 0;
   let runningCumGst = 0;
+  let runningCumGross = 0;
+  let runningCumRet = 0;
 
   const calculatedRows = ledgerTimeline.map((item) => {
     if (item.type === "BILL") {
       runningCumNetBilled += item.netBilledAmt;
       runningCumTds += item.tdsAmt;
       runningCumGst += item.gstAmt;
+      runningCumGross += item.grossAmount;
+      runningCumRet += item.retentionAmt;
     } else {
       runningCumRecd += item.paymentRecd;
     }
@@ -111,18 +114,68 @@ export function SiteBalanceSheet({ site }: { site: any }) {
 
     return {
       ...item,
+      runningCumGross,
+      runningCumRet,
+      runningCumNetBilled,
+      runningCumRecd,
+      runningCumTds,
+      runningCumGst,
       cumAdvanceTotal,
       runningBal,
       balanceWithGst,
     };
   });
 
-  // Calculate grand totals for statement footer
-  const totalGrossBills = calculatedRows.reduce((s, r) => s + r.grossAmount, 0);
-  const totalRetentionHeld = calculatedRows.reduce((s, r) => s + r.retentionAmt, 0);
-  const totalNetBilled = calculatedRows.reduce((s, r) => s + r.netBilledAmt, 0);
-  const totalTdsDeducted = calculatedRows.reduce((s, r) => s + r.tdsAmt, 0);
-  const totalGstAmount = calculatedRows.reduce((s, r) => s + r.gstAmt, 0);
+  // Now we reconstruct the array to insert "TOTAL AMOUNT" rows after each bill
+  // or at the end if there are trailing payments.
+  const displayRows: any[] = [];
+  let blockHasItems = false;
+
+  calculatedRows.forEach((row) => {
+    displayRows.push(row);
+    blockHasItems = true;
+
+    if (row.type === "BILL") {
+      displayRows.push({
+        type: "TOTAL_ROW",
+        id: `total-${row.id}`,
+        grossAmount: row.runningCumGross,
+        retentionAmt: row.runningCumRet,
+        netBilledAmt: row.runningCumNetBilled,
+        paymentRecd: row.runningCumRecd,
+        tdsAmt: row.runningCumTds,
+        cumAdvanceTotal: row.cumAdvanceTotal,
+        runningBal: row.runningBal,
+        gstAmt: row.runningCumGst,
+        balanceWithGst: row.balanceWithGst,
+      });
+      blockHasItems = false;
+    }
+  });
+
+  if (blockHasItems) {
+    const lastRow = calculatedRows[calculatedRows.length - 1];
+    displayRows.push({
+      type: "TOTAL_ROW",
+      id: `total-final`,
+      grossAmount: lastRow.runningCumGross,
+      retentionAmt: lastRow.runningCumRet,
+      netBilledAmt: lastRow.runningCumNetBilled,
+      paymentRecd: lastRow.runningCumRecd,
+      tdsAmt: lastRow.runningCumTds,
+      cumAdvanceTotal: lastRow.cumAdvanceTotal,
+      runningBal: lastRow.runningBal,
+      gstAmt: lastRow.runningCumGst,
+      balanceWithGst: lastRow.balanceWithGst,
+    });
+  }
+
+  // Calculate grand totals for footer
+  const totalGrossBills = runningCumGross;
+  const totalRetentionHeld = runningCumRet;
+  const totalNetBilled = runningCumNetBilled;
+  const totalTdsDeducted = runningCumTds;
+  const totalGstAmount = runningCumGst;
 
   return (
     <div className="space-y-6">
@@ -222,7 +275,6 @@ export function SiteBalanceSheet({ site }: { site: any }) {
           </CardContent>
         </Card>
 
-        {/* Color logic: Outstanding > 0 is Red/Rose (Dues pending!), Cleared <= 0 is Green/Emerald */}
         <Card className={netOutstandingBalance > 0 ? "bg-rose-500/10 border-rose-500/30" : "bg-emerald-500/10 border-emerald-500/30"}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Net Outstanding Balance</CardTitle>
@@ -299,120 +351,89 @@ export function SiteBalanceSheet({ site }: { site: any }) {
           )}
 
           {/* Full 12-Column Statement Table matching Excel & PDF */}
-          {calculatedRows.length > 0 ? (
+          {displayRows.length > 0 ? (
             <div className="overflow-x-auto border rounded-md">
-              <Table className="text-xs">
+              <Table className="text-xs table-fixed w-full">
                 <THead className="bg-muted/70">
                   <TR>
-                    <TH className="py-2.5 font-bold">SR. NO</TH>
-                    <TH className="py-2.5 font-bold">DATE</TH>
-                    <TH className="py-2.5 font-bold min-w-[180px]">RA BILLS / REMARKS</TH>
-                    <TH className="py-2.5 font-bold text-right">BILL AMOUNT (GROSS)</TH>
-                    <TH className="py-2.5 font-bold text-right">RETENTION ({retentionPct}%)</TH>
-                    <TH className="py-2.5 font-bold text-right">NET AMOUNT (₹)</TH>
-                    <TH className="py-2.5 font-bold text-right">ACCOUNT CREDITED (RECD)</TH>
-                    <TH className="py-2.5 font-bold text-right">1% TDS</TH>
-                    <TH className="py-2.5 font-bold text-right">ADVANCE / CUM. RECD</TH>
-                    <TH className="py-2.5 font-bold text-right">RUNNING BALANCE</TH>
-                    <TH className="py-2.5 font-bold text-right">GST AMOUNT (18%)</TH>
-                    <TH className="py-2.5 font-bold text-right">BALANCE + GST</TH>
+                    <TH className="py-2.5 font-bold w-12 text-center">SR.</TH>
+                    <TH className="py-2.5 font-bold w-24">DATE</TH>
+                    <TH className="py-2.5 font-bold w-48">RA BILLS / REMARKS</TH>
+                    <TH className="py-2.5 font-bold text-right w-24">BILL AMOUNT</TH>
+                    <TH className="py-2.5 font-bold text-right w-24">RETENTION</TH>
+                    <TH className="py-2.5 font-bold text-right w-24">AMOUNT</TH>
+                    <TH className="py-2.5 font-bold text-right w-24">A/C CREDITED</TH>
+                    <TH className="py-2.5 font-bold text-right w-20">1% TDS</TH>
+                    <TH className="py-2.5 font-bold text-right w-24">ADVANCE</TH>
+                    <TH className="py-2.5 font-bold text-right w-24">BALANCE</TH>
+                    <TH className="py-2.5 font-bold text-right w-24">GST AMOUNT</TH>
+                    <TH className="py-2.5 font-bold text-right w-24">BALANCE+GST</TH>
                   </TR>
                 </THead>
                 <TBody>
-                  {calculatedRows.map((row, idx) => {
+                  {displayRows.map((row, idx) => {
+                    if (row.type === "TOTAL_ROW") {
+                      return (
+                        <TR key={row.id} className="bg-indigo-500/10 font-bold border-y-2 border-primary/20">
+                          <TD></TD>
+                          <TD colSpan={2} className="uppercase tracking-wider">TOTAL AMOUNT</TD>
+                          <TD className="font-mono text-right text-blue-600">{formatINR(row.grossAmount)}</TD>
+                          <TD className="font-mono text-right text-orange-600">{formatINR(row.retentionAmt)}</TD>
+                          <TD className="font-mono text-right">{formatINR(row.netBilledAmt)}</TD>
+                          <TD className="font-mono text-right text-emerald-600">{formatINR(row.paymentRecd)}</TD>
+                          <TD className="font-mono text-right text-indigo-600">{formatINR(row.tdsAmt)}</TD>
+                          <TD className="font-mono text-right text-emerald-600">{formatINR(row.cumAdvanceTotal)}</TD>
+                          <TD className={`font-mono text-right ${row.runningBal > 0 ? "text-rose-500" : "text-emerald-500"}`}>{formatINR(row.runningBal)}</TD>
+                          <TD className="font-mono text-right text-muted-foreground">{formatINR(row.gstAmt)}</TD>
+                          <TD className={`font-mono text-right ${row.balanceWithGst > 0 ? "text-rose-500" : "text-emerald-500"}`}>{formatINR(row.balanceWithGst)}</TD>
+                        </TR>
+                      );
+                    }
+
                     const isBill = row.type === "BILL";
-
                     return (
-                      <TR key={row.id || idx} className={isBill ? "bg-amber-500/5 hover:bg-amber-500/10 font-medium" : "hover:bg-muted/40"}>
-                        <TD className="font-mono text-center font-semibold">{idx + 1}</TD>
+                      <TR key={row.id} className={isBill ? "bg-amber-500/5" : ""}>
+                        <TD className="font-mono text-center font-medium text-muted-foreground">{!isBill ? (displayRows.filter(r => r.type === "PAYMENT").indexOf(row) + 1) : ""}</TD>
                         <TD className="font-mono whitespace-nowrap">{formatDate(row.date)}</TD>
-                        <TD className="font-semibold">
-                          <div className="flex items-center gap-1.5">
-                            {isBill ? (
-                              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-[10px] px-1.5 py-0">
-                                RA BILL
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px] px-1.5 py-0">
-                                PAYMENT
-                              </Badge>
-                            )}
-                            <span>{row.refName}</span>
-                          </div>
-                        </TD>
-
-                        {/* Bill Amount Gross */}
-                        <TD className="font-mono text-right font-bold text-blue-600">
-                          {isBill ? formatINR(row.grossAmount) : "—"}
-                        </TD>
-
-                        {/* Retention */}
-                        <TD className="font-mono text-right text-orange-600">
-                          {isBill ? formatINR(row.retentionAmt) : "—"}
-                        </TD>
-
-                        {/* Net Amount */}
-                        <TD className="font-mono text-right font-semibold">
-                          {isBill ? formatINR(row.netBilledAmt) : "—"}
-                        </TD>
-
-                        {/* Account Credited / Payment Received */}
-                        <TD className="font-mono text-right font-bold text-emerald-600">
-                          {!isBill ? (
-                            <div>
-                              <span>{formatINR(row.paymentRecd)}</span>
-                              <span className="text-[10px] font-normal text-muted-foreground block">{row.accountCredited}</span>
-                            </div>
+                        <TD className="font-semibold text-muted-foreground">
+                          {isBill ? (
+                            <span className="text-foreground">{row.refName}</span>
                           ) : (
-                            <span className="text-muted-foreground font-normal">{row.accountCredited}</span>
+                            <span>{row.accountCredited === "NEFT" ? "NEFT" : row.accountCredited} - {row.refName}</span>
                           )}
                         </TD>
 
-                        {/* 1% TDS */}
-                        <TD className="font-mono text-right text-indigo-600">
-                          {isBill ? formatINR(row.tdsAmt) : "—"}
+                        <TD className="font-mono text-right">
+                          {isBill ? formatINR(row.grossAmount) : ""}
                         </TD>
 
-                        {/* Cumulative Advance / Total Recd */}
-                        <TD className="font-mono text-right font-semibold text-emerald-600">
-                          {formatINR(row.cumAdvanceTotal)}
+                        <TD className="font-mono text-right">
+                          {isBill ? formatINR(row.retentionAmt) : ""}
                         </TD>
 
-                        {/* Running Balance (Red if > 0, Green if <= 0) */}
-                        <TD className={`font-mono text-right font-bold text-sm ${row.runningBal > 0 ? "text-rose-500" : "text-emerald-500"}`}>
-                          {formatINR(row.runningBal)}
+                        <TD className="font-mono text-right font-medium">
+                          {isBill ? formatINR(row.netBilledAmt) : ""}
                         </TD>
 
-                        {/* GST Amount (18%) */}
-                        <TD className="font-mono text-right text-muted-foreground">
-                          {isBill ? formatINR(row.gstAmt) : "—"}
+                        <TD className="font-mono text-right font-medium text-emerald-600">
+                          {!isBill ? formatINR(row.paymentRecd) : ""}
                         </TD>
 
-                        {/* Balance + GST */}
-                        <TD className={`font-mono text-right font-bold ${row.balanceWithGst > 0 ? "text-rose-500" : "text-emerald-500"}`}>
-                          {formatINR(row.balanceWithGst)}
+                        <TD className="font-mono text-right">
+                          {isBill ? formatINR(row.tdsAmt) : ""}
                         </TD>
+
+                        <TD></TD>
+                        <TD></TD>
+
+                        <TD className="font-mono text-right">
+                          {isBill ? formatINR(row.gstAmt) : ""}
+                        </TD>
+
+                        <TD></TD>
                       </TR>
                     );
                   })}
-
-                  {/* Summary / Total Footer Row */}
-                  <TR className="bg-muted/90 font-bold border-t-2 border-primary/20">
-                    <TD colSpan={3} className="text-right uppercase tracking-wider text-xs py-3">GRAND TOTAL SUMMARY</TD>
-                    <TD className="font-mono text-right text-blue-600">{formatINR(totalGrossBills)}</TD>
-                    <TD className="font-mono text-right text-orange-600">{formatINR(totalRetentionHeld)}</TD>
-                    <TD className="font-mono text-right">{formatINR(totalNetBilled)}</TD>
-                    <TD className="font-mono text-right text-emerald-600 text-sm">{formatINR(totalPaymentsReceived)}</TD>
-                    <TD className="font-mono text-right text-indigo-600">{formatINR(totalTdsDeducted)}</TD>
-                    <TD className="font-mono text-right text-emerald-600">{formatINR(totalPaymentsReceived + totalTdsDeducted)}</TD>
-                    <TD className={`font-mono text-right text-sm font-extrabold ${netOutstandingBalance > 0 ? "text-rose-500" : "text-emerald-500"}`}>
-                      {formatINR(netOutstandingBalance)}
-                    </TD>
-                    <TD className="font-mono text-right text-muted-foreground">{formatINR(totalGstAmount)}</TD>
-                    <TD className={`font-mono text-right text-sm font-extrabold ${(netOutstandingBalance + totalGstAmount) > 0 ? "text-rose-500" : "text-emerald-500"}`}>
-                      {formatINR(netOutstandingBalance + totalGstAmount)}
-                    </TD>
-                  </TR>
                 </TBody>
               </Table>
             </div>

@@ -3,8 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { sendEmailWithAttachment } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
-import { generateBillPdfs } from "@/lib/pdf/bill";
-import JSZip from "jszip";
+import { generateBillPdfPackage } from "@/lib/pdf/bill";
 
 export async function sendBillEmailAction(billId: string) {
   const session = await auth();
@@ -12,21 +11,51 @@ export async function sendBillEmailAction(billId: string) {
 
   const bill = await prisma.runningBill.findUnique({
     where: { id: billId },
-    include: { site: { include: { client: true } }, lines: { include: { building: true, workItem: true, labourCategory: true } } },
+    include: {
+      site: {
+        include: { client: true, buildings: true, payments: { orderBy: { date: "asc" } } },
+      },
+      lines: { include: { building: true, workItem: true, labourCategory: true } },
+      supplyLabourEntries: { orderBy: { date: "asc" } },
+    },
   });
   if (!bill || !bill.site.client.email) throw new Error("Bill or client email not found");
 
-  const pdfs = await generateBillPdfs(bill);
-  
-  const zip = new JSZip();
-  for (const pdf of pdfs) zip.file(pdf.filename, pdf.buffer);
-  const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+  const { site, lines, supplyLabourEntries } = bill;
+
+  const reconstructedTowers = site.buildings.map((b) => {
+    const bLines = lines.filter((l) => l.buildingId === b.id);
+    return {
+      ...b,
+      workItems: bLines.map((l) => ({
+        id: l.workItemId || l.id,
+        name: l.workItem?.name || l.description || "Work Item",
+        unit: l.workItem?.unit || l.unit || "%",
+        previousAmt: l.previousAmount,
+        currentAmt: l.currentAmount,
+        cumulativeAmt: l.cumulativeAmount,
+        previousQty: l.previousQty,
+        currentQty: l.currentQty,
+        cumulativeQty: l.cumulativeQty,
+        rate: l.rate,
+        partAmount: l.workItem?.partAmount || 0,
+      })),
+    };
+  });
+
+  const pdfBuffer = await generateBillPdfPackage({
+    site,
+    runningBill: bill,
+    towers: reconstructedTowers,
+    supplyEntries: supplyLabourEntries,
+    payments: site.payments,
+  });
 
   await sendEmailWithAttachment(
     bill.site.client.email,
     `Running Bill ${bill.billNo} - ${bill.site.projectName}`,
-    `Dear Sir,\n\nPlease find attached the Running Bill ${bill.billNo} for the project ${bill.site.projectName}.\n\nRegards,\nConstruction ERP`,
-    [{ filename: `Running_Bill_${bill.billNo.replace(/\//g, "-")}.zip`, content: zipBuffer }]
+    `Dear Sir,\n\nPlease find attached the finalized Running Bill ${bill.billNo} (PDF Package) for the project ${bill.site.projectName}.\n\nRegards,\nConstruction ERP`,
+    [{ filename: `${site.projectName.replace(/[^a-zA-Z0-9]/g, "_")}_${bill.billNo.replace(/[^a-zA-Z0-9]/g, "_")}_RA_BILL.pdf`, content: Buffer.from(pdfBuffer) }]
   );
 }
 
@@ -40,6 +69,6 @@ export async function sendBillWhatsAppAction(billId: string) {
   });
   if (!bill || !bill.site.client.phone) throw new Error("Bill or client phone not found");
 
-  const message = `Hello Sir,\n\nPlease find the Running Bill ${bill.billNo} for ${bill.site.projectName}. (ZIP package will be emailed to you).\n\nRegards,\nConstruction ERP`;
+  const message = `Hello Sir,\n\nPlease find the Running Bill ${bill.billNo} for ${bill.site.projectName}. (The detailed PDF package will be emailed to you).\n\nRegards,\nConstruction ERP`;
   await sendWhatsAppMessage(bill.site.client.phone, message);
 }
