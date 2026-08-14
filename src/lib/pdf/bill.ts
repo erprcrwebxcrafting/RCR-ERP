@@ -68,9 +68,12 @@ export async function generateBillPdfPackage(data: {
   let page!: PDFPage;
   let y = PAGE_H - MARGIN;
 
-  const startNewPage = (sheetTitle: string) => {
-    page = pdfDoc.addPage([PAGE_W, PAGE_H]);
-    y = PAGE_H - MARGIN;
+  const startNewPage = (sheetTitle: string, isLandscape = false) => {
+    const curW = isLandscape ? PAGE_H : PAGE_W; // 841.89 if landscape
+    const curH = isLandscape ? PAGE_W : PAGE_H; // 595.28 if landscape
+
+    page = pdfDoc.addPage([curW, curH]);
+    y = curH - MARGIN;
 
     if (logoImage) {
       const dims = logoImage.scale(0.22);
@@ -88,14 +91,14 @@ export async function generateBillPdfPackage(data: {
     });
 
     page.drawText(sheetTitle.toUpperCase(), {
-      x: PAGE_W - MARGIN - bold.widthOfTextAtSize(sheetTitle.toUpperCase(), 10),
+      x: curW - MARGIN - bold.widthOfTextAtSize(sheetTitle.toUpperCase(), 10),
       y: y - 18,
       size: 10,
       font: bold,
       color: teal,
     });
     page.drawText(`Date: ${billDate}`, {
-      x: PAGE_W - MARGIN - font.widthOfTextAtSize(`Date: ${billDate}`, 8.5),
+      x: curW - MARGIN - font.widthOfTextAtSize(`Date: ${billDate}`, 8.5),
       y: y - 32,
       size: 8.5,
       font,
@@ -103,23 +106,23 @@ export async function generateBillPdfPackage(data: {
     });
 
     y -= 42;
-    page.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_W - MARGIN, y }, thickness: 1.5, color: teal });
+    page.drawLine({ start: { x: MARGIN, y }, end: { x: curW - MARGIN, y }, thickness: 1.5, color: teal });
     y -= 15;
 
     // Meta Box
-    page.drawRectangle({ x: MARGIN, y: y - 34, width: PAGE_W - 2 * MARGIN, height: 34, color: lightGray });
+    page.drawRectangle({ x: MARGIN, y: y - 34, width: curW - 2 * MARGIN, height: 34, color: lightGray });
     page.drawText(`To: ${clientName.toUpperCase()}`, { x: MARGIN + 8, y: y - 12, size: 9, font: bold, color: black });
     page.drawText(`Project: ${projectName}`, { x: MARGIN + 8, y: y - 24, size: 8.5, font, color: darkGray });
 
-    page.drawText(`Invoice No: ${billNo}`, { x: PAGE_W - MARGIN - 180, y: y - 12, size: 9, font: bold, color: black });
-    page.drawText(`W.O. No: ${workOrderNo}`, { x: PAGE_W - MARGIN - 180, y: y - 24, size: 8.5, font, color: darkGray });
+    page.drawText(`Invoice No: ${billNo}`, { x: curW - MARGIN - 180, y: y - 12, size: 9, font: bold, color: black });
+    page.drawText(`W.O. No: ${workOrderNo}`, { x: curW - MARGIN - 180, y: y - 24, size: 8.5, font, color: darkGray });
 
     y -= 44;
   };
 
-  const newPageIfNeeded = (requiredSpace = 25, sheetTitle = "CONTINUATION", drawHeaderFn?: () => void) => {
+  const newPageIfNeeded = (requiredSpace = 25, sheetTitle = "CONTINUATION", drawHeaderFn?: () => void, isLandscape = false) => {
     if (y - requiredSpace < BOTTOM_LIMIT) {
-      startNewPage(sheetTitle);
+      startNewPage(sheetTitle, isLandscape);
       if (drawHeaderFn) {
         drawHeaderFn();
       }
@@ -166,7 +169,7 @@ export async function generateBillPdfPackage(data: {
     if (towerWorkAmt > 0) {
       page.drawText(String(sr++), { x: MARGIN + 5, y: y - 13, size: 8.5, font, color: darkGray });
       page.drawText(`${projectName} - ${b.name} Reinforcement & Civil Work Done`, { x: MARGIN + 35, y: y - 13, size: 8.5, font, color: black });
-      page.drawText(formatCurrency(towerWorkAmt), { x: PAGE_W - MARGIN - 90, y: y - 13, size: 8.5, font, color: black });
+      page.drawText(formatCurrency(towerWorkAmt), { x: PAGE_W - MARGIN - 90, y: y - 13, size: 8.5, font: bold, color: black });
       y -= 16;
     }
   }
@@ -196,7 +199,7 @@ export async function generateBillPdfPackage(data: {
 
   page.drawRectangle({ x: MARGIN + 170, y: y - 16, width: PAGE_W - MARGIN - 170 - MARGIN, height: 18, color: lightGray });
   page.drawText("NET PAYABLE AMOUNT (WITH 18% GST):", { x: MARGIN + 180, y: y - 12, size: 9, font: bold, color: teal });
-  page.drawText(formatCurrency(netPayable), { x: PAGE_W - MARGIN - 90, y, size: 9, font: bold, color: teal });
+  page.drawText(formatCurrency(netPayable), { x: PAGE_W - MARGIN - 90, y: y - 12, size: 9, font: bold, color: teal });
   y -= 26;
 
   // Official Bank Details Box on Sheet 1
@@ -459,23 +462,25 @@ export async function generateBillPdfPackage(data: {
   }
 
   // ==========================================
-  // SECTION 5: CLIENT BALANCE SHEET & LEDGER (SEPARATE PAGE)
+  // SECTION 5: CLIENT BALANCE SHEET & LEDGER (SEPARATE LANDSCAPE PAGE)
   // ==========================================
-  startNewPage("SECTION 5: CLIENT BALANCE SHEET & LEDGER");
+  // We use Landscape orientation (PAGE_H x PAGE_W = 841.89 x 595.28) so all 11 financial columns fit cleanly with zero overlap!
+  const LANDSCAPE_W = PAGE_H; // 841.89
+  startNewPage("SECTION 5: CLIENT BALANCE SHEET & LEDGER", true);
 
   const drawLedgerHeader = () => {
-    page.drawRectangle({ x: MARGIN, y: y - 16, width: PAGE_W - 2 * MARGIN, height: 16, color: lightGray });
-    page.drawText("Sr.", { x: MARGIN + 2, y: y - 12, size: 6.5, font: bold, color: black });
-    page.drawText("Date", { x: MARGIN + 16, y: y - 12, size: 6.5, font: bold, color: black });
-    page.drawText("RA Bills / Remarks", { x: MARGIN + 58, y: y - 12, size: 6.5, font: bold, color: black });
-    page.drawText("Bill Gross", { x: MARGIN + 160, y: y - 12, size: 6.5, font: bold, color: black });
-    page.drawText("Retention", { x: MARGIN + 210, y: y - 12, size: 6.5, font: bold, color: black });
-    page.drawText("Net Bill", { x: MARGIN + 252, y: y - 12, size: 6.5, font: bold, color: black });
-    page.drawText("Recd/Advance", { x: MARGIN + 296, y: y - 12, size: 6.5, font: bold, color: black });
-    page.drawText("1% TDS", { x: MARGIN + 348, y: y - 12, size: 6.5, font: bold, color: black });
-    page.drawText("Balance", { x: MARGIN + 388, y: y - 12, size: 6.5, font: bold, color: black });
-    page.drawText("GST Amt", { x: MARGIN + 434, y: y - 12, size: 6.5, font: bold, color: black });
-    page.drawText("Balance+GST", { x: PAGE_W - MARGIN - 48, y: y - 12, size: 6.5, font: bold, color: black });
+    page.drawRectangle({ x: MARGIN, y: y - 16, width: LANDSCAPE_W - 2 * MARGIN, height: 16, color: lightGray });
+    page.drawText("Sr.", { x: MARGIN + 4, y: y - 12, size: 7.5, font: bold, color: black });
+    page.drawText("Date", { x: MARGIN + 26, y: y - 12, size: 7.5, font: bold, color: black });
+    page.drawText("RA Bills / Particulars / Remarks", { x: MARGIN + 85, y: y - 12, size: 7.5, font: bold, color: black });
+    page.drawText("Bill Gross (Rs.)", { x: MARGIN + 250, y: y - 12, size: 7.5, font: bold, color: black });
+    page.drawText("Retention (Rs.)", { x: MARGIN + 325, y: y - 12, size: 7.5, font: bold, color: black });
+    page.drawText("Net Bill (Rs.)", { x: MARGIN + 395, y: y - 12, size: 7.5, font: bold, color: black });
+    page.drawText("Recd / Adv (Rs.)", { x: MARGIN + 468, y: y - 12, size: 7.5, font: bold, color: black });
+    page.drawText("1% TDS (Rs.)", { x: MARGIN + 548, y: y - 12, size: 7.5, font: bold, color: black });
+    page.drawText("Balance (Rs.)", { x: MARGIN + 615, y: y - 12, size: 7.5, font: bold, color: black });
+    page.drawText("GST Amt (Rs.)", { x: MARGIN + 685, y: y - 12, size: 7.5, font: bold, color: black });
+    page.drawText("Balance + GST (Rs.)", { x: LANDSCAPE_W - MARGIN - 80, y: y - 12, size: 7.5, font: bold, color: black });
     y -= 16;
   };
 
@@ -492,7 +497,7 @@ export async function generateBillPdfPackage(data: {
     ledger.push({
       type: "BILL",
       date: new Date(b.billDate || b.createdAt),
-      refName: `BILL NO.${b.billNo || "01"}`,
+      refName: `BILL NO. ${b.billNo || "01"} (RA BILL)`,
       grossAmount: gross,
       retentionAmt: bRetAmt,
       netBilledAmt: bNetAmt,
@@ -506,7 +511,7 @@ export async function generateBillPdfPackage(data: {
     ledger.push({
       type: "PAYMENT",
       date: new Date(p.date || p.createdAt),
-      refName: p.remarks || `PAYMENT (${p.mode || "NEFT"})`,
+      refName: p.remarks ? `PAYMENT: ${p.remarks}` : `PAYMENT RECEIVED (${p.mode || "BANK / NEFT"})`,
       grossAmount: 0,
       retentionAmt: 0,
       netBilledAmt: 0,
@@ -524,7 +529,7 @@ export async function generateBillPdfPackage(data: {
   let runCumGst = 0;
 
   ledger.forEach((item, idx) => {
-    newPageIfNeeded(20, "CLIENT BALANCE SHEET & LEDGER", drawLedgerHeader);
+    newPageIfNeeded(20, "CLIENT BALANCE SHEET & LEDGER", drawLedgerHeader, true);
     if (item.type === "BILL") {
       runCumNet += item.netBilledAmt;
       runCumTds += item.tdsAmt;
@@ -537,29 +542,29 @@ export async function generateBillPdfPackage(data: {
     const runBal = runCumNet - cumAdv;
     const balWithGst = runBal + runCumGst;
 
-    page.drawText(String(idx + 1), { x: MARGIN + 2, y: y - 10, size: 6.5, font: bold, color: black });
-    page.drawText(item.date.toLocaleDateString("en-IN"), { x: MARGIN + 16, y: y - 10, size: 6.5, font, color: darkGray });
-    page.drawText((item.refName || "").slice(0, 18), { x: MARGIN + 58, y: y - 10, size: 6.5, font: bold, color: black });
+    page.drawText(String(idx + 1), { x: MARGIN + 4, y: y - 10, size: 7, font: bold, color: black });
+    page.drawText(item.date.toLocaleDateString("en-IN"), { x: MARGIN + 26, y: y - 10, size: 7, font, color: darkGray });
+    page.drawText((item.refName || "").slice(0, 26), { x: MARGIN + 85, y: y - 10, size: 7, font: bold, color: black });
 
-    page.drawText(item.type === "BILL" ? formatCurrency(item.grossAmount) : "-", { x: MARGIN + 160, y: y - 10, size: 6.5, font, color: darkGray });
-    page.drawText(item.type === "BILL" ? formatCurrency(item.retentionAmt) : "-", { x: MARGIN + 210, y: y - 10, size: 6.5, font, color: darkGray });
-    page.drawText(item.type === "BILL" ? formatCurrency(item.netBilledAmt) : "-", { x: MARGIN + 252, y: y - 10, size: 6.5, font, color: darkGray });
-    page.drawText(item.type === "PAYMENT" ? formatCurrency(item.paymentRecd) : "-", { x: MARGIN + 296, y: y - 10, size: 6.5, font: bold, color: teal });
-    page.drawText(item.type === "BILL" ? formatCurrency(item.tdsAmt) : "-", { x: MARGIN + 348, y: y - 10, size: 6.5, font, color: darkGray });
+    page.drawText(item.type === "BILL" ? formatCurrency(item.grossAmount) : "-", { x: MARGIN + 250, y: y - 10, size: 7, font, color: darkGray });
+    page.drawText(item.type === "BILL" ? formatCurrency(item.retentionAmt) : "-", { x: MARGIN + 325, y: y - 10, size: 7, font, color: darkGray });
+    page.drawText(item.type === "BILL" ? formatCurrency(item.netBilledAmt) : "-", { x: MARGIN + 395, y: y - 10, size: 7, font, color: darkGray });
+    page.drawText(item.type === "PAYMENT" ? formatCurrency(item.paymentRecd) : "-", { x: MARGIN + 468, y: y - 10, size: 7, font: bold, color: teal });
+    page.drawText(item.type === "BILL" ? formatCurrency(item.tdsAmt) : "-", { x: MARGIN + 548, y: y - 10, size: 7, font, color: darkGray });
 
     page.drawText(formatCurrency(runBal), {
-      x: MARGIN + 388, y: y - 10, size: 6.5, font: bold, color: runBal > 0 ? rgb(0.85, 0.2, 0.2) : rgb(0.1, 0.6, 0.3)
+      x: MARGIN + 615, y: y - 10, size: 7, font: bold, color: runBal > 0 ? rgb(0.85, 0.2, 0.2) : rgb(0.1, 0.6, 0.3)
     });
-    page.drawText(item.type === "BILL" ? formatCurrency(item.gstAmt) : "-", { x: MARGIN + 434, y: y - 10, size: 6.5, font, color: darkGray });
+    page.drawText(item.type === "BILL" ? formatCurrency(item.gstAmt) : "-", { x: MARGIN + 685, y: y - 10, size: 7, font, color: darkGray });
 
     page.drawText(formatCurrency(balWithGst), {
-      x: PAGE_W - MARGIN - 48, y: y - 10, size: 6.5, font: bold, color: balWithGst > 0 ? rgb(0.85, 0.2, 0.2) : rgb(0.1, 0.6, 0.3)
+      x: LANDSCAPE_W - MARGIN - 80, y: y - 10, size: 7, font: bold, color: balWithGst > 0 ? rgb(0.85, 0.2, 0.2) : rgb(0.1, 0.6, 0.3)
     });
     y -= 13;
   });
 
   // ==========================================
-  // PAGE BORDERS, FOOTERS & SEAL STAMP ON EVERY SINGLE PAGE
+  // PAGE BORDERS, FOOTERS & SEAL STAMP ON EVERY SINGLE PAGE (DYNAMIC PORTRAIT & LANDSCAPE)
   // ==========================================
   const allPages = pdfDoc.getPages();
   const totalPages = allPages.length;
@@ -567,12 +572,14 @@ export async function generateBillPdfPackage(data: {
   const addressText = "Office No- 04, Raipada, Nr. Anand Gaushalla, Chandansar Road, Virar (E) - 401305";
 
   allPages.forEach((p, pageIdx) => {
+    const { width: pW, height: pH } = p.getSize();
+
     // Draw Border Frame
     p.drawRectangle({
       x: BORDER_M,
       y: BORDER_M,
-      width: PAGE_W - 2 * BORDER_M,
-      height: PAGE_H - 2 * BORDER_M,
+      width: pW - 2 * BORDER_M,
+      height: pH - 2 * BORDER_M,
       borderWidth: 1.5,
       borderColor: teal,
     });
@@ -580,27 +587,27 @@ export async function generateBillPdfPackage(data: {
     // Draw Footer Divider Line
     p.drawLine({
       start: { x: BORDER_M, y: BORDER_M + 22 },
-      end: { x: PAGE_W - BORDER_M, y: BORDER_M + 22 },
+      end: { x: pW - BORDER_M, y: BORDER_M + 22 },
       thickness: 1,
       color: teal,
     });
 
     // Address & Page Numbers in Footer
     const addrW = font.widthOfTextAtSize(addressText, 8);
-    p.drawText(addressText, { x: PAGE_W / 2 - addrW / 2, y: BORDER_M + 6, size: 8, font, color: teal });
+    p.drawText(addressText, { x: pW / 2 - addrW / 2, y: BORDER_M + 6, size: 8, font, color: teal });
 
     const pNumStr = `Page ${pageIdx + 1} of ${totalPages}`;
     const pNumW = font.widthOfTextAtSize(pNumStr, 8);
-    p.drawText(pNumStr, { x: PAGE_W - BORDER_M - 15 - pNumW, y: BORDER_M + 6, size: 8, font, color: darkGray });
+    p.drawText(pNumStr, { x: pW - BORDER_M - 15 - pNumW, y: BORDER_M + 6, size: 8, font, color: darkGray });
 
     // Draw Official Company Seal & Signature Stamp (sign&logo.png) in Safe Bottom Area
-    p.drawText("FOR RCR ENTERPRISES", { x: PAGE_W - BORDER_M - 160, y: BORDER_M + 88, size: 8, font: bold, color: black });
+    p.drawText("FOR RCR ENTERPRISES", { x: pW - BORDER_M - 160, y: BORDER_M + 88, size: 8, font: bold, color: black });
 
     if (signImage) {
       try {
         const signDims = signImage.scale(0.20);
         p.drawImage(signImage, {
-          x: PAGE_W - BORDER_M - 165,
+          x: pW - BORDER_M - 165,
           y: BORDER_M + 28,
           width: signDims.width,
           height: signDims.height,
@@ -610,7 +617,7 @@ export async function generateBillPdfPackage(data: {
       }
     }
 
-    p.drawText("AUTHORISED SIGNATORY", { x: PAGE_W - BORDER_M - 160, y: BORDER_M + 26, size: 7.5, font: bold, color: darkGray });
+    p.drawText("AUTHORISED SIGNATORY", { x: pW - BORDER_M - 160, y: BORDER_M + 26, size: 7.5, font: bold, color: darkGray });
   });
 
   return pdfDoc.save();
