@@ -22,7 +22,9 @@ export async function updateTowerWorkProgressAction(
   siteId: string,
   itemsProgress: { id: string; name?: string; previousQty: number; currentQty: number; previousPct?: number; currentPct?: number; cumulativePct?: number; partAmount?: number; previousAmt?: number; currentAmt?: number; cumulativeAmt?: number }[]
 ) {
-  for (const item of itemsProgress) {
+  if (!itemsProgress || itemsProgress.length === 0) return;
+
+  const updates = itemsProgress.map((item) => {
     const prevPct = item.previousPct ?? 0;
     const currPct = item.currentPct ?? 0;
     const partAmt = item.partAmount ?? 0;
@@ -32,7 +34,7 @@ export async function updateTowerWorkProgressAction(
     const cumulativePct = prevPct + currPct;
     const cumulativeAmt = previousAmt + currentAmt;
 
-    await prisma.workItem.update({
+    return prisma.workItem.update({
       where: { id: item.id },
       data: {
         previousQty: item.previousQty,
@@ -47,8 +49,9 @@ export async function updateTowerWorkProgressAction(
         cumulativeAmt,
       },
     });
-  }
+  });
 
+  await prisma.$transaction(updates);
   revalidatePath(`/admin/sites/${siteId}`);
 }
 
@@ -131,9 +134,11 @@ export async function updateSupplyLabourEntriesAction(
     totalAmount?: number;
   }[]
 ) {
-  for (const entry of entries) {
+  if (!entries || entries.length === 0) return;
+
+  const updates = entries.map((entry) => {
     const dateVal = entry.date ? new Date(entry.date) : undefined;
-    await prisma.supplyLabourEntry.update({
+    return prisma.supplyLabourEntry.update({
       where: { id: entry.id },
       data: {
         ...(dateVal ? { date: dateVal } : {}),
@@ -148,8 +153,9 @@ export async function updateSupplyLabourEntriesAction(
         totalAmount: entry.totalAmount ?? 0,
       },
     });
-  }
+  });
 
+  await prisma.$transaction(updates);
   revalidatePath(`/admin/sites/${siteId}`);
 }
 
@@ -236,8 +242,11 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
     },
   });
 
-  // Create bill lines for each building work item
+  // Prepare all bill lines and workItem updates in bulk for super-fast single transaction execution
+  const billLinesData: any[] = [];
+  const workItemUpdates: any[] = [];
   let order = 0;
+
   for (const b of site.buildings) {
     for (const item of b.workItems) {
       const currentPct = item.currentPct ?? 0;
@@ -246,76 +255,97 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
       const previousAmt = item.previousAmt ?? 0;
       const cumulativeAmt = item.cumulativeAmt ?? 0;
 
-      if (item.currentQty > 0 || item.previousQty > 0 || currentPct > 0 || previousPct > 0) {
-        const previousAmount = previousAmt > 0 ? previousAmt : (item.previousQty * item.rate);
-        const currentAmount = currentAmt > 0 ? currentAmt : (item.currentQty * item.rate);
-        const cumulativeAmount = cumulativeAmt > 0 ? cumulativeAmt : ((item.previousQty + item.currentQty) * item.rate);
+      const previousAmount = (previousAmt > 0)
+        ? previousAmt
+        : (previousPct > 0 && item.partAmount ? (item.partAmount * previousPct / 100) : (item.previousQty * item.rate));
+        
+      const currentAmount = (currentAmt > 0)
+        ? currentAmt
+        : (currentPct > 0 && item.partAmount ? (item.partAmount * currentPct / 100) : (item.currentQty * item.rate));
+        
+      const cumulativeAmount = (cumulativeAmt > 0)
+        ? cumulativeAmt
+        : (previousAmount + currentAmount);
 
-        await prisma.billLine.create({
-          data: {
-            runningBillId: runningBill.id,
-            buildingId: b.id,
-            workItemId: item.id,
-            description: `${b.name} - ${item.name}`,
-            unit: item.unit,
-            woQty: item.buWork,
-            rate: item.rate,
-            previousQty: previousPct > 0 ? previousPct : item.previousQty,
-            currentQty: currentPct > 0 ? currentPct : item.currentQty,
-            cumulativeQty: (previousPct > 0 || currentPct > 0) ? (previousPct + currentPct) : (item.previousQty + item.currentQty),
-            previousAmount,
-            currentAmount,
-            cumulativeAmount,
-            order: order++,
-          },
-        });
+      const prevQ = previousPct > 0 ? previousPct : item.previousQty;
+      const currQ = currentPct > 0 ? currentPct : item.currentQty;
+      const cumQ = (previousPct > 0 || currentPct > 0) ? (previousPct + currentPct) : (item.previousQty + item.currentQty);
 
-        // Transition current to previous for the next bill
-        await prisma.workItem.update({
-          where: { id: item.id },
-          data: {
-            previousQty: item.previousQty + item.currentQty,
-            currentQty: 0,
-            previousPct: previousPct + currentPct,
-            currentPct: 0,
-            previousAmt: previousAmt + currentAmt,
-            currentAmt: 0,
-          }
-        });
+      billLinesData.push({
+        runningBillId: runningBill.id,
+        buildingId: b.id,
+        workItemId: item.id,
+        description: `${b.name} - ${item.name}`,
+        unit: item.unit || "%",
+        woQty: item.buWork,
+        rate: item.rate,
+        previousQty: prevQ,
+        currentQty: currQ,
+        cumulativeQty: cumQ,
+        previousAmount,
+        currentAmount,
+        cumulativeAmount,
+        order: order++,
+      });
+
+      // Transition current to previous for the next bill
+      if (item.currentQty > 0 || currentPct > 0 || currentAmt > 0) {
+        workItemUpdates.push(
+          prisma.workItem.update({
+            where: { id: item.id },
+            data: {
+              previousQty: item.previousQty + item.currentQty,
+              currentQty: 0,
+              previousPct: previousPct + currentPct,
+              currentPct: 0,
+              previousAmt: previousAmount + currentAmount,
+              currentAmt: 0,
+              cumulativePct: previousPct + currentPct,
+              cumulativeAmt: previousAmount + currentAmount,
+            },
+          })
+        );
       }
     }
   }
 
   // Create bill line for Supply Labour total
-  // Only sum entries that haven't been billed yet AND fall within the selected period range if specified
   const supplyTotal = unbilledSupply.reduce((sum: number, se: any) => sum + se.totalAmount, 0);
 
   if (supplyTotal > 0) {
-    await prisma.billLine.create({
-      data: {
-        runningBillId: runningBill.id,
-        description: "Departmental Extra Labour Supply",
-        unit: "Nos/Hrs",
-        rate: 1,
-        previousQty: 0,
-        currentQty: 1,
-        cumulativeQty: 1,
-        previousAmount: 0,
-        currentAmount: supplyTotal,
-        cumulativeAmount: supplyTotal,
-        isSupplyLabour: true,
-        order: order++,
-      },
-    });
-
-    // Link unbilled supply entries in this date range to this running bill
-    const unbilledIds = unbilledSupply.map((se: any) => se.id);
-    await prisma.supplyLabourEntry.updateMany({
-      where: { id: { in: unbilledIds } },
-      data: { runningBillId: runningBill.id },
+    billLinesData.push({
+      runningBillId: runningBill.id,
+      description: "Departmental Extra Labour Supply",
+      unit: "Nos/Hrs",
+      rate: 1,
+      previousQty: 0,
+      currentQty: 1,
+      cumulativeQty: 1,
+      previousAmount: 0,
+      currentAmount: supplyTotal,
+      cumulativeAmount: supplyTotal,
+      isSupplyLabour: true,
+      order: order++,
     });
   }
 
+  // Execute createMany + all workItem updates + supply entry linkage in a single batch
+  const transactionOps: any[] = [
+    prisma.billLine.createMany({ data: billLinesData }),
+    ...workItemUpdates,
+  ];
+
+  if (unbilledSupply.length > 0) {
+    const unbilledIds = unbilledSupply.map((se: any) => se.id);
+    transactionOps.push(
+      prisma.supplyLabourEntry.updateMany({
+        where: { id: { in: unbilledIds } },
+        data: { runningBillId: runningBill.id },
+      })
+    );
+  }
+
+  await prisma.$transaction(transactionOps);
   revalidatePath(`/admin/sites/${siteId}`);
 }
 

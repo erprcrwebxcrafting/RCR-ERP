@@ -15,8 +15,16 @@ export async function GET(
         site: {
           include: {
             client: true,
-            buildings: true,
+            buildings: {
+              include: { workItems: { orderBy: { order: "asc" } } },
+              orderBy: { order: "asc" },
+            },
             payments: { orderBy: { date: "asc" } },
+            bills: {
+              orderBy: { createdAt: "desc" },
+              include: { lines: true, supplyLabourEntries: true },
+            },
+            supplyLabourEntries: { orderBy: { date: "asc" } },
           },
         },
         lines: {
@@ -35,23 +43,47 @@ export async function GET(
     const { site, lines, supplyLabourEntries } = bill;
 
     // Reconstruct towers from snapshotted lines for PDF generation
-    const reconstructedTowers = site.buildings.map((b) => {
-      const bLines = lines.filter((l) => l.buildingId === b.id);
+    const reconstructedTowers = site.buildings.map((b: any) => {
+      const bLines = lines.filter((l: any) => l.buildingId === b.id);
       return {
         ...b,
-        workItems: bLines.map((l) => ({
-          id: l.workItemId || l.id,
-          name: l.workItem?.name || l.description || "Work Item",
-          unit: l.workItem?.unit || l.unit || "%",
-          previousAmt: l.previousAmount,
-          currentAmt: l.currentAmount,
-          cumulativeAmt: l.cumulativeAmount,
-          previousQty: l.previousQty,
-          currentQty: l.currentQty,
-          cumulativeQty: l.cumulativeQty,
-          rate: l.rate,
-          partAmount: l.workItem?.partAmount || 0,
-        })),
+        workItems: (b.workItems && b.workItems.length > 0)
+          ? b.workItems.map((item: any) => {
+              const l = bLines.find((x: any) => x.workItemId === item.id);
+              const prevQ = l?.previousQty ?? 0;
+              const currQ = l?.currentQty ?? 0;
+              const cumQ = l?.cumulativeQty ?? (prevQ + currQ);
+              const prevA = l?.previousAmount ?? 0;
+              const currA = l?.currentAmount ?? 0;
+              const cumA = l?.cumulativeAmount ?? (prevA + currA);
+
+              return {
+                id: item.id,
+                name: item.name || l?.description || "Work Item",
+                unit: item.unit || l?.unit || "%",
+                previousAmt: prevA,
+                currentAmt: currA,
+                cumulativeAmt: cumA,
+                previousQty: prevQ,
+                currentQty: currQ,
+                cumulativeQty: cumQ,
+                rate: l?.rate || item.rate || 0,
+                partAmount: item.partAmount || (l?.woQty && l?.rate ? l.woQty * l.rate : item.rate || 0),
+              };
+            })
+          : bLines.map((l: any) => ({
+              id: l.workItemId || l.id,
+              name: l.workItem?.name || l.description?.replace(`${b.name} - `, "") || l.description || "Work Item",
+              unit: l.workItem?.unit || l.unit || "%",
+              previousAmt: l.previousAmount || 0,
+              currentAmt: l.currentAmount || 0,
+              cumulativeAmt: l.cumulativeAmount || ((l.previousAmount || 0) + (l.currentAmount || 0)),
+              previousQty: l.previousQty || 0,
+              currentQty: l.currentQty || 0,
+              cumulativeQty: l.cumulativeQty || ((l.previousQty || 0) + (l.currentQty || 0)),
+              rate: l.rate || 0,
+              partAmount: (l.woQty && l.rate) ? l.woQty * l.rate : 0,
+            })),
       };
     });
 

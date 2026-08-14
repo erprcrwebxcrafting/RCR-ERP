@@ -147,8 +147,21 @@ export async function generateBillPdfPackage(data: {
   // ==========================================
   startNewPage("SECTION 1: TAX INVOICE");
 
-  const lines = runningBill?.lines || [];
-  const currentTotal = lines.reduce((sum: number, l: any) => sum + (l.currentAmount || 0), 0);
+  let taxableTowerWork = 0;
+  for (const b of towers) {
+    const towerWorkAmt = (b.workItems || []).reduce((s: number, i: any) => {
+      return s + ((i.currentAmt !== undefined && i.currentAmt !== null) ? i.currentAmt : ((i.currentQty || 0) * (i.rate || 0)));
+    }, 0);
+    taxableTowerWork += towerWorkAmt;
+  }
+
+  const currentSupplyEntries = supplyEntries.filter((e: any) => e.runningBillId === runningBill?.id || (!runningBill && !e.runningBillId));
+  const previousSupplyEntries = supplyEntries.filter((e: any) => e.runningBillId && e.runningBillId !== runningBill?.id);
+
+  const supplyTotal = currentSupplyEntries.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0);
+  const prevSupplyTotal = previousSupplyEntries.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0);
+
+  const currentTotal = taxableTowerWork + supplyTotal;
   const cgstAmt = currentTotal * (cgstPct / 100);
   const sgstAmt = currentTotal * (sgstPct / 100);
   const netPayable = currentTotal + cgstAmt + sgstAmt;
@@ -160,41 +173,35 @@ export async function generateBillPdfPackage(data: {
   page.drawText("Amount (Rs.)", { x: PAGE_W - MARGIN - 90, y: y - 14, size: 9, font: bold, color: black });
   y -= 20;
 
-  // Invoice Items
+  // Invoice Items (Tower-wise Civil Work Done)
   let sr = 1;
   for (const b of towers) {
     const towerWorkAmt = (b.workItems || []).reduce((s: number, i: any) => {
-      return s + ((i.currentAmt !== undefined && i.currentAmt !== null) ? i.currentAmt : ((i.currentQty || 0) * i.rate));
+      return s + ((i.currentAmt !== undefined && i.currentAmt !== null) ? i.currentAmt : ((i.currentQty || 0) * (i.rate || 0)));
     }, 0);
 
     if (towerWorkAmt > 0) {
       page.drawText(String(sr++), { x: MARGIN + 5, y: y - 14, size: 9, font, color: darkGray });
-      page.drawText(`${projectName} - ${b.name} Reinforcement & Civil Work`, { x: MARGIN + 35, y: y - 14, size: 9, font, color: black });
+      page.drawText(`${projectName} - ${b.name} Reinforcement & Civil Work Done`, { x: MARGIN + 35, y: y - 14, size: 9, font, color: black });
       page.drawText(formatCurrency(towerWorkAmt), { x: PAGE_W - MARGIN - 100, y: y - 14, size: 9, font: bold, color: black });
       y -= 18;
     }
   }
-  
-  const currentSupplyEntries = supplyEntries.filter((e: any) => e.runningBillId === runningBill?.id || (!runningBill && !e.runningBillId));
-  const previousSupplyEntries = supplyEntries.filter((e: any) => e.runningBillId && e.runningBillId !== runningBill?.id);
-
-  const supplyTotal = currentSupplyEntries.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0);
-  const prevSupplyTotal = previousSupplyEntries.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0);
 
   if (supplyTotal > 0) {
     page.drawText(String(sr++), { x: MARGIN + 5, y: y - 14, size: 9, font, color: darkGray });
-    page.drawText(`Departmental Extra Labour Supply Amount`, { x: MARGIN + 35, y: y - 14, size: 9, font, color: black });
-    page.drawText(formatCurrency(supplyTotal), { x: PAGE_W - MARGIN - 100, y: y - 14, size: 9, font: bold, color: black });
+    page.drawText(`Departmental Extra Labour Supply (Fitters & Helpers Log Billed)`, { x: MARGIN + 35, y: y - 14, size: 9, font, color: black });
+    page.drawText(formatCurrency(supplyTotal), { x: PAGE_W - MARGIN - 100, y: y - 14, size: 9, font, color: black });
     y -= 18;
   }
 
-  y -= 10;
+  y -= 8;
   page.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_W - MARGIN, y }, thickness: 1, color: darkGray });
   y -= 16;
 
   page.drawText("Taxable Work Done Amount:", { x: MARGIN + 180, y, size: 9.5, font: bold, color: black });
   page.drawText(formatCurrency(currentTotal), { x: PAGE_W - MARGIN - 100, y, size: 9.5, font: bold, color: black });
-  y -= 16;
+  y -= 15;
 
   page.drawText(`Add CGST @ ${cgstPct}%:`, { x: MARGIN + 180, y, size: 9, font, color: darkGray });
   page.drawText(formatCurrency(cgstAmt), { x: PAGE_W - MARGIN - 100, y, size: 9, font, color: darkGray });
@@ -207,6 +214,15 @@ export async function generateBillPdfPackage(data: {
   page.drawRectangle({ x: MARGIN + 170, y: y - 18, width: PAGE_W - MARGIN - 170 - MARGIN, height: 20, color: lightGray });
   page.drawText("NET PAYABLE AMOUNT (WITH 18% GST):", { x: MARGIN + 180, y: y - 13, size: 10, font: bold, color: teal });
   page.drawText(formatCurrency(netPayable), { x: PAGE_W - MARGIN - 100, y: y - 13, size: 10, font: bold, color: teal });
+  y -= 30;
+
+  // Official Bank Details Box on Sheet 1
+  page.drawRectangle({ x: MARGIN, y: y - 55, width: PAGE_W - 2 * MARGIN, height: 55, color: lightGray, borderColor: teal, borderWidth: 1 });
+  page.drawText("BANK DETAILS FOR PAYMENT (NEFT / RTGS)", { x: MARGIN + 10, y: y - 14, size: 8.5, font: bold, color: teal });
+  page.drawText("ACCOUNT NAME: RCR ENTERPRISES", { x: MARGIN + 10, y: y - 28, size: 8, font: bold, color: black });
+  page.drawText("ACCOUNT NO: 088405500559", { x: MARGIN + 10, y: y - 40, size: 8, font, color: darkGray });
+  page.drawText("IFSC CODE: ICIC0000884", { x: MARGIN + 230, y: y - 28, size: 8, font, color: darkGray });
+  page.drawText("BANK NAME: ICICI BANK LTD.", { x: MARGIN + 230, y: y - 40, size: 8, font, color: darkGray });
 
   // ==========================================
   // SECTION 2: ABSTRACT SUMMARY (SEPARATE PAGE)
@@ -214,75 +230,106 @@ export async function generateBillPdfPackage(data: {
   startNewPage("SECTION 2: ABSTRACT SUMMARY");
 
   page.drawRectangle({ x: MARGIN, y: y - 20, width: PAGE_W - 2 * MARGIN, height: 20, color: lightGray });
-  page.drawText("Sr.", { x: MARGIN + 4, y: y - 14, size: 8, font: bold, color: black });
-  page.drawText("Description", { x: MARGIN + 25, y: y - 14, size: 8, font: bold, color: black });
-  page.drawText("Unit", { x: MARGIN + 180, y: y - 14, size: 8, font: bold, color: black });
-  page.drawText("Rate", { x: MARGIN + 215, y: y - 14, size: 8, font: bold, color: black });
-  page.drawText("Prev. Amt", { x: MARGIN + 265, y: y - 14, size: 8, font: bold, color: black });
-  page.drawText("This Bill Amt", { x: MARGIN + 340, y: y - 14, size: 8, font: bold, color: black });
-  page.drawText("Cum. Amt", { x: PAGE_W - MARGIN - 75, y: y - 14, size: 8, font: bold, color: black });
+  page.drawText("Sr.", { x: MARGIN + 4, y: y - 14, size: 7.5, font: bold, color: black });
+  page.drawText("Description", { x: MARGIN + 22, y: y - 14, size: 7.5, font: bold, color: black });
+  page.drawText("Unit", { x: MARGIN + 175, y: y - 14, size: 7.5, font: bold, color: black });
+  page.drawText("W.O. Area", { x: MARGIN + 202, y: y - 14, size: 7.5, font: bold, color: black });
+  page.drawText("Rate", { x: MARGIN + 252, y: y - 14, size: 7.5, font: bold, color: black });
+  page.drawText("Prev. Amt", { x: MARGIN + 295, y: y - 14, size: 7.5, font: bold, color: black });
+  page.drawText("This Bill Amt", { x: MARGIN + 365, y: y - 14, size: 7.5, font: bold, color: black });
+  page.drawText("Cum. Amt", { x: PAGE_W - MARGIN - 75, y: y - 14, size: 7.5, font: bold, color: black });
   y -= 20;
 
   let totPrevAmt = 0;
   let totCurrAmt = 0;
+  let grossContractValue = 0;
 
-  lines.forEach((line: any, idx: number) => {
+  // Tower-wise Consolidated Abstract Rows (Matching UI Format Exactly)
+  towers.forEach((b: any, idx: number) => {
     newPageIfNeeded(30, "SECTION 2: ABSTRACT SUMMARY");
-    const pAmt = line.previousAmount || 0;
-    const cAmt = line.currentAmount || 0;
-    const cumAmt = pAmt + cAmt;
-    totPrevAmt += pAmt;
-    totCurrAmt += cAmt;
+    const approxArea = b.approxArea || 0;
+    const contractRate = b.contractRate || 0;
+    grossContractValue += (approxArea * contractRate);
 
-    page.drawText(String(idx + 1), { x: MARGIN + 4, y: y - 12, size: 8, font, color: darkGray });
-    const descStr = (line.description || "").slice(0, 32);
-    page.drawText(descStr, { x: MARGIN + 25, y: y - 12, size: 8, font, color: black });
-    page.drawText(line.unit || "%", { x: MARGIN + 180, y: y - 12, size: 8, font, color: darkGray });
-    page.drawText(String(line.rate || 0), { x: MARGIN + 215, y: y - 12, size: 8, font, color: darkGray });
+    const prevA = (b.workItems || []).reduce((s: number, i: any) => s + ((i.previousAmt !== undefined && i.previousAmt !== null) ? i.previousAmt : ((i.previousQty || 0) * (i.rate || 0))), 0);
+    const currA = (b.workItems || []).reduce((s: number, i: any) => s + ((i.currentAmt !== undefined && i.currentAmt !== null) ? i.currentAmt : ((i.currentQty || 0) * (i.rate || 0))), 0);
+    const cumA = prevA + currA;
 
-    page.drawText(formatCurrency(pAmt), { x: MARGIN + 265, y: y - 12, size: 8, font, color: darkGray });
-    page.drawText(formatCurrency(cAmt), { x: MARGIN + 340, y: y - 12, size: 8, font: bold, color: teal });
-    page.drawText(formatCurrency(cumAmt), { x: PAGE_W - MARGIN - 75, y: y - 12, size: 8, font: bold, color: black });
-    y -= 15;
+    totPrevAmt += prevA;
+    totCurrAmt += currA;
+
+    page.drawText(String(idx + 1), { x: MARGIN + 4, y: y - 12, size: 7.5, font, color: darkGray });
+    page.drawText(`${b.name} Reinforcement Work Done.`, { x: MARGIN + 22, y: y - 12, size: 7.5, font: bold, color: black });
+    page.drawText("Sft.", { x: MARGIN + 175, y: y - 12, size: 7.5, font, color: darkGray });
+    page.drawText(approxArea > 0 ? String(approxArea.toLocaleString()) : "—", { x: MARGIN + 202, y: y - 12, size: 7.5, font, color: darkGray });
+    page.drawText(contractRate > 0 ? `Rs.${contractRate}` : "—", { x: MARGIN + 252, y: y - 12, size: 7.5, font, color: darkGray });
+
+    page.drawText(formatCurrency(prevA), { x: MARGIN + 295, y: y - 12, size: 7.5, font, color: darkGray });
+    page.drawText(formatCurrency(currA), { x: MARGIN + 365, y: y - 12, size: 7.5, font: bold, color: teal });
+    page.drawText(formatCurrency(cumA), { x: PAGE_W - MARGIN - 75, y: y - 12, size: 7.5, font: bold, color: black });
+    y -= 16;
   });
 
-  // Supply Labour on Abstract Summary (Page 2)
+  // Supply Labour on Abstract Summary
   if (supplyTotal > 0 || prevSupplyTotal > 0) {
     newPageIfNeeded(30, "SECTION 2: ABSTRACT SUMMARY");
-    page.drawText(String(lines.length + 1), { x: MARGIN + 4, y: y - 12, size: 8, font, color: darkGray });
-    page.drawText("Departmental Extra Labour Supply Amount", { x: MARGIN + 25, y: y - 12, size: 8, font, color: black });
-    page.drawText("—", { x: MARGIN + 180, y: y - 12, size: 8, font, color: darkGray });
-    page.drawText("—", { x: MARGIN + 215, y: y - 12, size: 8, font, color: darkGray });
+    totPrevAmt += prevSupplyTotal;
+    totCurrAmt += supplyTotal;
 
-    page.drawText(formatCurrency(prevSupplyTotal), { x: MARGIN + 265, y: y - 12, size: 8, font, color: darkGray });
-    page.drawText(formatCurrency(supplyTotal), { x: MARGIN + 340, y: y - 12, size: 8, font: bold, color: teal });
-    page.drawText(formatCurrency(prevSupplyTotal + supplyTotal), { x: PAGE_W - MARGIN - 75, y: y - 12, size: 8, font: bold, color: black });
-    y -= 15;
+    page.drawText(String(towers.length + 1), { x: MARGIN + 4, y: y - 12, size: 7.5, font, color: darkGray });
+    page.drawText("Departmental Extra Labour Supply Amount", { x: MARGIN + 22, y: y - 12, size: 7.5, font: bold, color: black });
+    page.drawText("—", { x: MARGIN + 175, y: y - 12, size: 7.5, font, color: darkGray });
+    page.drawText("—", { x: MARGIN + 202, y: y - 12, size: 7.5, font, color: darkGray });
+    page.drawText("—", { x: MARGIN + 252, y: y - 12, size: 7.5, font, color: darkGray });
+
+    page.drawText(formatCurrency(prevSupplyTotal), { x: MARGIN + 295, y: y - 12, size: 7.5, font, color: darkGray });
+    page.drawText(formatCurrency(supplyTotal), { x: MARGIN + 365, y: y - 12, size: 7.5, font: bold, color: teal });
+    page.drawText(formatCurrency(prevSupplyTotal + supplyTotal), { x: PAGE_W - MARGIN - 75, y: y - 12, size: 7.5, font: bold, color: black });
+    y -= 16;
   }
   
-  y -= 10;
+  y -= 8;
   page.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_W - MARGIN, y }, thickness: 1, color: teal });
   y -= 16;
 
+  const totCumAmt = totPrevAmt + totCurrAmt;
+  const cgstAbstract = totCurrAmt * (cgstPct / 100);
+  const sgstAbstract = totCurrAmt * (sgstPct / 100);
   const retAmt = totCurrAmt * (retPct / 100);
   const tdsAmt = totCurrAmt * (tdsPct / 100);
-  const netBalAmt = totCurrAmt - retAmt - tdsAmt;
+  const netBalAmt = totCurrAmt + cgstAbstract + sgstAbstract - retAmt - tdsAmt;
 
-  page.drawText(`TOTAL WORK DONE AMOUNT:`, { x: MARGIN + 180, y, size: 8.5, font: bold, color: black });
-  page.drawText(formatCurrency(totCurrAmt), { x: PAGE_W - MARGIN - 90, y, size: 8.5, font: bold, color: black });
-  y -= 14;
+  page.drawText(`TOTAL VALUE OF WORK DONE (CUMULATIVE):`, { x: MARGIN + 60, y, size: 8, font: bold, color: black });
+  page.drawText(formatCurrency(totPrevAmt), { x: MARGIN + 295, y, size: 8, font: bold, color: darkGray });
+  page.drawText(formatCurrency(totCurrAmt), { x: MARGIN + 365, y, size: 8, font: bold, color: teal });
+  page.drawText(formatCurrency(totCumAmt), { x: PAGE_W - MARGIN - 75, y, size: 8, font: bold, color: black });
+  y -= 16;
 
-  page.drawText(`LESS RETENTION @ ${retPct}%:`, { x: MARGIN + 180, y, size: 8, font, color: darkGray });
+  page.drawText(`Add CGST @ ${cgstPct}%:`, { x: MARGIN + 180, y, size: 8, font, color: darkGray });
+  page.drawText(`+ ${formatCurrency(cgstAbstract)}`, { x: PAGE_W - MARGIN - 90, y, size: 8, font, color: darkGray });
+  y -= 13;
+
+  page.drawText(`Add SGST @ ${sgstPct}%:`, { x: MARGIN + 180, y, size: 8, font, color: darkGray });
+  page.drawText(`+ ${formatCurrency(sgstAbstract)}`, { x: PAGE_W - MARGIN - 90, y, size: 8, font, color: darkGray });
+  y -= 13;
+
+  page.drawText(`Less Retention @ ${retPct}%:`, { x: MARGIN + 180, y, size: 8, font, color: darkGray });
   page.drawText(`- ${formatCurrency(retAmt)}`, { x: PAGE_W - MARGIN - 90, y, size: 8, font, color: darkGray });
   y -= 13;
 
-  page.drawText(`LESS TDS @ ${tdsPct}%:`, { x: MARGIN + 180, y, size: 8, font, color: darkGray });
+  page.drawText(`Less TDS @ ${tdsPct}%:`, { x: MARGIN + 180, y, size: 8, font, color: darkGray });
   page.drawText(`- ${formatCurrency(tdsAmt)}`, { x: PAGE_W - MARGIN - 90, y, size: 8, font, color: darkGray });
-  y -= 15;
+  y -= 16;
 
-  page.drawRectangle({ x: MARGIN + 170, y: y - 16, width: PAGE_W - MARGIN - 170 - MARGIN, height: 18, color: lightGray });
-  page.drawText("NET PAYABLE BALANCE:", { x: MARGIN + 180, y: y - 12, size: 9, font: bold, color: teal });
+  page.drawRectangle({ x: MARGIN + 160, y: y - 16, width: PAGE_W - MARGIN - 160 - MARGIN, height: 18, color: lightGray });
+  page.drawText("NET PAYABLE INVOICE BALANCE:", { x: MARGIN + 170, y: y - 12, size: 9, font: bold, color: teal });
   page.drawText(formatCurrency(netBalAmt), { x: PAGE_W - MARGIN - 90, y: y - 12, size: 9, font: bold, color: teal });
+  y -= 20;
+
+  if (grossContractValue > 0) {
+    page.drawText(`GROSS CONTRACT VALUE (ALL TOWERS):`, { x: MARGIN + 170, y, size: 8, font: bold, color: darkGray });
+    page.drawText(formatCurrency(grossContractValue), { x: PAGE_W - MARGIN - 90, y, size: 8, font: bold, color: darkGray });
+  }
 
   // ==========================================
   // SECTION 3: TOWER PROGRESS BREAKDOWN (SEPARATE PAGE PER TOWER)

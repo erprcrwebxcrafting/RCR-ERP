@@ -18,7 +18,7 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
       supplyLabourEntries: { orderBy: { date: "asc" } },
       labourCategories: { orderBy: { order: "asc" }, include: { labours: true } },
       supervisors: { include: { supervisor: true } },
-      bills: { orderBy: { createdAt: "desc" }, include: { lines: true } },
+      bills: { orderBy: { createdAt: "desc" }, include: { lines: true, supplyLabourEntries: { orderBy: { date: "asc" } } } },
       quotations: { orderBy: { createdAt: "desc" } },
       payments: { orderBy: { date: "desc" } },
       labourEntries: { orderBy: { createdAt: "desc" } },

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatINR } from "@/lib/utils";
 import { addBuildingAction, updateBuildingHeaderAction } from "../actions";
 import { addTowerWorkItemAction, updateTowerWorkProgressAction, deleteTowerWorkItemAction } from "../bill-actions";
-import { Building2, Hammer, Plus, Save, Trash2, Layers, Edit2, CheckCircle2, Percent } from "lucide-react";
+import { Building2, Hammer, Plus, Save, Trash2, Layers, Edit2, CheckCircle2, Percent, Loader2 } from "lucide-react";
 
 export function TowerWorkManager({ site }: { site: any }) {
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>(
@@ -185,8 +185,17 @@ export function TowerWorkManager({ site }: { site: any }) {
               </span>
             )}
             <Button onClick={handleSaveProgress} disabled={isSaving} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
-              <Save className="h-4 w-4" />
-              {isSaving ? "Saving..." : "Save Tower Progress"}
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving Progress...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  Save Tower Progress
+                </>
+              )}
             </Button>
           </div>
         )}

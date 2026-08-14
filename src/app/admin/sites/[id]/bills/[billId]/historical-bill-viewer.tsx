@@ -7,15 +7,20 @@ import { Button } from "@/components/ui/button";
 import { formatINR, formatDate } from "@/lib/utils";
 import { SiteBalanceSheet } from "../../components/site-balance-sheet";
 import { sendBillEmailAction, sendBillWhatsAppAction } from "./actions";
-import { Receipt, FileSpreadsheet, Printer, Download, Mail, MessageCircle } from "lucide-react";
+import { Receipt, FileSpreadsheet, Download, Mail, MessageCircle, Lock } from "lucide-react";
 
 function BillHeaderBanner({ site, bill, sheetTitle }: { site: any; bill: any; sheetTitle?: string }) {
   return (
     <div className="space-y-4 border-b pb-4">
       <div className="flex items-center justify-between border-b pb-3">
         <div>
-          <h2 className="text-base font-bold uppercase tracking-wider">{sheetTitle || "RA Bill Document"}</h2>
-          <p className="text-xs text-muted-foreground">RCR ENTERPRISES / SSHIVAAY CONSTRUCTIONS</p>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold uppercase tracking-wider">{sheetTitle || "RA Bill Document"}</h2>
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/30">
+              <Lock className="h-3 w-3" /> Locked Snapshot
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">RCR ENTERPRISES / SSHIVAAY CONSTRUCTIONS</p>
         </div>
         <div className="text-right font-mono text-xs">
           <p><span className="text-muted-foreground">Invoice No:</span> <span className="font-bold">{bill?.billNo}</span></p>
@@ -32,7 +37,10 @@ function BillHeaderBanner({ site, bill, sheetTitle }: { site: any; bill: any; sh
         </div>
         <div className="text-right space-y-1">
           <p><span className="font-semibold text-muted-foreground">Ref No:</span> <span className="font-semibold">{bill?.refNo || "01"}</span></p>
-          <p><span className="font-semibold text-muted-foreground">W.O. No:</span> <span className="font-mono text-xs">{site.workOrderNo}</span></p>
+          <p><span className="font-semibold text-muted-foreground">W.O. No:</span> <span className="font-mono text-xs">{site.workOrderNo || "—"}</span></p>
+          {bill.periodLabel && (
+            <p><span className="font-semibold text-muted-foreground">Period:</span> <span className="font-semibold text-foreground">{bill.periodLabel}</span></p>
+          )}
         </div>
         <div className="col-span-2 pt-2 border-t flex items-center justify-between text-xs font-semibold flex-wrap gap-2">
           <p>Name of Work: <span className="font-normal text-muted-foreground">Reinforcement & Concrete Construction Work</span></p>
@@ -44,7 +52,7 @@ function BillHeaderBanner({ site, bill, sheetTitle }: { site: any; bill: any; sh
 }
 
 export function HistoricalBillViewer({ bill }: { bill: any }) {
-  const { site, lines, supplyLabourEntries } = bill;
+  const { site, lines = [], supplyLabourEntries = [] } = bill;
   const [activeSheetTab, setActiveSheetTab] = useState<"sheet1" | "sheet2" | "towers" | "supply" | "balance">("sheet1");
   const [selectedTowerId, setSelectedTowerId] = useState<string>(site.buildings[0]?.id || "");
 
@@ -55,48 +63,52 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
     tdsPct: bill.tdsPct ?? site.tdsPct ?? 1,
   };
 
-  // 1. Identify previous bills in the timeline to accurately calculate past quantities
-  const currentBillIndex = (site.bills || []).findIndex((b: any) => b.id === bill.id);
-  const previousBills = currentBillIndex > 0 ? site.bills.slice(0, currentBillIndex) : [];
-  const previousBillIds = previousBills.map((b: any) => b.id);
-
-  // Reconstruct towers array with full state fidelity (including 0 qty items) for this snapshot
+  // Reconstruct towers from frozen lines in this bill snapshot
   const mockBuildings = (site.buildings || []).map((b: any) => {
+    const bLines = lines.filter((l: any) => l.buildingId === b.id);
+
+    // If workItems exist on building catalogue
+    const items = (b.workItems && b.workItems.length > 0)
+      ? b.workItems.map((item: any) => {
+          const l = bLines.find((x: any) => x.workItemId === item.id);
+          const prevQ = l?.previousQty ?? 0;
+          const currQ = l?.currentQty ?? 0;
+          const cumQ = l?.cumulativeQty ?? (prevQ + currQ);
+          const prevA = l?.previousAmount ?? 0;
+          const currA = l?.currentAmount ?? 0;
+          const cumA = l?.cumulativeAmount ?? (prevA + currA);
+
+          return {
+            id: item.id,
+            name: item.name || l?.description || "Work Item",
+            unit: item.unit || l?.unit || "%",
+            previousAmt: prevA,
+            currentAmt: currA,
+            cumulativeAmt: cumA,
+            previousQty: prevQ,
+            currentQty: currQ,
+            cumulativeQty: cumQ,
+            rate: l?.rate || item.rate || 0,
+            partAmount: item.partAmount || (l?.woQty && l?.rate ? l.woQty * l.rate : item.rate || 0),
+          };
+        })
+      : bLines.map((l: any) => ({
+          id: l.workItemId || l.id,
+          name: l.workItem?.name || l.description?.replace(`${b.name} - `, "") || l.description || "Work Item",
+          unit: l.unit || "%",
+          previousAmt: l.previousAmount || 0,
+          currentAmt: l.currentAmount || 0,
+          cumulativeAmt: l.cumulativeAmount || ((l.previousAmount || 0) + (l.currentAmount || 0)),
+          previousQty: l.previousQty || 0,
+          currentQty: l.currentQty || 0,
+          cumulativeQty: l.cumulativeQty || ((l.previousQty || 0) + (l.currentQty || 0)),
+          rate: l.rate || 0,
+          partAmount: (l.woQty && l.rate) ? l.woQty * l.rate : 0,
+        }));
+
     return {
       ...b,
-      workItems: (b.workItems || []).map((item: any) => {
-        // Find this item in the current bill's lines
-        const currentLine = lines.find((l: any) => l.workItemId === item.id);
-        
-        // Sum previous quantities from previous bills
-        let prevQty = 0;
-        let prevAmt = 0;
-        
-        previousBills.forEach((pb: any) => {
-          const pbLine = pb.lines?.find((l: any) => l.workItemId === item.id);
-          if (pbLine) {
-            prevQty += (pbLine.currentQty || 0);
-            prevAmt += (pbLine.currentAmount || 0);
-          }
-        });
-
-        const currQty = currentLine?.currentQty || 0;
-        const currAmt = currentLine?.currentAmount || 0;
-
-        return {
-          id: item.id,
-          name: item.name || "Work Item",
-          unit: item.unit || "%",
-          previousAmt: prevAmt,
-          currentAmt: currAmt,
-          cumulativeAmt: prevAmt + currAmt,
-          previousQty: prevQty,
-          currentQty: currQty,
-          cumulativeQty: prevQty + currQty,
-          rate: item.rate,
-          partAmount: item.partAmount || 0,
-        };
-      })
+      workItems: items,
     };
   });
 
@@ -104,14 +116,20 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
     return sum + (b.workItems || []).reduce((ws: number, item: any) => ws + (item.currentAmt || 0), 0);
   }, 0);
 
-  const totalSupplyWork = (supplyLabourEntries || []).reduce((sum: number, se: any) => sum + (se.totalAmount || 0), 0);
-  
-  // Calculate true historical previous supply work
-  const previousSupplyWork = (site.supplyLabourEntries || [])
-    .filter((se: any) => previousBillIds.includes(se.runningBillId))
-    .reduce((sum: number, se: any) => sum + (se.totalAmount || 0), 0);
+  const previousTowerWork = mockBuildings.reduce((sum: number, b: any) => {
+    return sum + (b.workItems || []).reduce((ws: number, item: any) => ws + (item.previousAmt || 0), 0);
+  }, 0);
+
+  // Supply line check
+  const supplyLine = lines.find((l: any) => l.isSupplyLabour);
+  const totalSupplyWork = supplyLine?.currentAmount ?? (supplyLabourEntries || []).reduce((sum: number, se: any) => sum + (se.totalAmount || 0), 0);
+  const previousSupplyWork = supplyLine?.previousAmount ?? 0;
 
   const grossBillTotal = totalTowerWork + totalSupplyWork;
+  const previousBillTotal = previousTowerWork + previousSupplyWork;
+  const cumulativeBillTotal = previousBillTotal + grossBillTotal;
+
+  const totalContractValue = site.buildings.reduce((sum: number, b: any) => sum + (b.approxArea || 0) * (b.contractRate || 0), 0);
 
   const cgst = grossBillTotal * (taxPcts.cgstPct / 100);
   const sgst = grossBillTotal * (taxPcts.sgstPct / 100);
@@ -136,7 +154,7 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
             Historical RA Bill Package ({bill.billNo})
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Full snapshot statement view. Contains Sheet 1 (Invoice), Sheet 2 (Abstract), Tower Sheets, Supply Sheet & Balance Sheet.
+            Locked snapshot statement view. Contains Sheet 1 (Invoice), Sheet 2 (Abstract), Tower Sheets, Supply Sheet & Balance Sheet.
           </p>
         </div>
 
@@ -287,7 +305,7 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                 );
               })}
 
-              {totalSupplyWork > 0 && (
+              {(totalSupplyWork > 0 || previousSupplyWork > 0) && (
                 <TR>
                   <TD>{mockBuildings.length + 1}</TD>
                   <TD className="font-bold">Extra Labour Supply Billed</TD>
@@ -304,10 +322,10 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
               )}
 
               <TR className="bg-muted/80 font-bold border-t-2">
-                <TD colSpan={8} className="text-right">TOTAL AMOUNT</TD>
-                <TD className="font-mono">₹0.00</TD>
+                <TD colSpan={8} className="text-right uppercase">Total Value of Work Done (Cumulative)</TD>
+                <TD className="font-mono">{formatINR(previousBillTotal)}</TD>
                 <TD className="font-mono text-emerald-500">{formatINR(grossBillTotal)}</TD>
-                <TD className="font-mono">{formatINR(grossBillTotal)}</TD>
+                <TD className="font-mono">{formatINR(cumulativeBillTotal)}</TD>
               </TR>
               <TR>
                 <TD colSpan={8} className="text-right text-xs">ADD CGST @ {taxPcts.cgstPct}%</TD>
@@ -338,6 +356,10 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                 <TD></TD>
                 <TD className="font-mono text-emerald-500">{formatINR(netPayable)}</TD>
                 <TD className="font-mono text-emerald-500">{formatINR(netPayable)}</TD>
+              </TR>
+              <TR className="bg-muted/30 font-bold text-xs border-t">
+                <TD colSpan={8} className="text-right">GROSS CONTRACT AMOUNT</TD>
+                <TD colSpan={3} className="text-right font-mono pr-4">{formatINR(totalContractValue)}</TD>
               </TR>
             </TBody>
           </Table>
@@ -404,6 +426,7 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                       <TH>#</TH>
                       <TH>Particulars of Item</TH>
                       <TH>Unit</TH>
+                      <TH className="text-right">Item Amount (₹)</TH>
                       <TH className="text-center">Previous Qty (%)</TH>
                       <TH className="text-center">This Bill Qty (%)</TH>
                       <TH className="text-center">Cumulative Qty (%)</TH>
@@ -413,28 +436,46 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                     </TR>
                   </THead>
                   <TBody>
-                    {items.map((item: any, i: number) => (
-                      <TR key={item.id}>
-                        <TD>{i + 1}</TD>
-                        <TD className="font-medium">{item.name}</TD>
-                        <TD>{item.unit}</TD>
-                        <TD className="font-mono text-center">{item.previousQty}%</TD>
-                        <TD className="font-mono text-emerald-500 font-semibold text-center">{item.currentQty}%</TD>
-                        <TD className="font-mono text-center font-bold">{item.cumulativeQty || (item.previousQty + item.currentQty)}%</TD>
-                        <TD className="font-mono text-right">{formatINR(item.previousAmt)}</TD>
-                        <TD className="font-mono text-emerald-500 font-bold text-right">{formatINR(item.currentAmt)}</TD>
-                        <TD className="font-mono font-bold text-right">{formatINR(item.cumulativeAmt || (item.previousAmt + item.currentAmt))}</TD>
-                      </TR>
-                    ))}
+                    {items.map((item: any, i: number) => {
+                      const prevQ = item.previousQty || 0;
+                      const currQ = item.currentQty || 0;
+                      const cumQ = item.cumulativeQty || (prevQ + currQ);
+                      const prevA = item.previousAmt || 0;
+                      const currA = item.currentAmt || 0;
+                      const cumA = item.cumulativeAmt || (prevA + currA);
+
+                      return (
+                        <TR key={item.id}>
+                          <TD>{i + 1}</TD>
+                          <TD className="font-medium">{item.name}</TD>
+                          <TD>{item.unit || "%"}</TD>
+                          <TD className="font-mono text-right font-semibold text-muted-foreground">{formatINR(item.partAmount || 0)}</TD>
+                          <TD className="font-mono text-center">{prevQ}%</TD>
+                          <TD className="font-mono text-emerald-500 font-semibold text-center">{currQ}%</TD>
+                          <TD className="font-mono text-center font-bold">{cumQ}%</TD>
+                          <TD className="font-mono text-right">{formatINR(prevA)}</TD>
+                          <TD className="font-mono text-emerald-500 font-bold text-right">{formatINR(currA)}</TD>
+                          <TD className="font-mono font-bold text-right">{formatINR(cumA)}</TD>
+                        </TR>
+                      );
+                    })}
 
                     <TR className="bg-muted/80 font-bold border-t-2 text-xs">
-                      <TD colSpan={3} className="text-right uppercase tracking-wider">TOTAL {b.name.toUpperCase()} AMOUNT</TD>
+                      <TD colSpan={4} className="text-right uppercase tracking-wider">TOTAL {b.name.toUpperCase()} AMOUNT</TD>
                       <TD className="text-center font-mono">{totPrevQ}%</TD>
                       <TD className="text-center font-mono text-emerald-500">{totCurrQ}%</TD>
                       <TD className="text-center font-mono font-bold">{totCumQ}%</TD>
                       <TD className="text-right font-mono">{formatINR(totPrevA)}</TD>
                       <TD className="text-right font-mono text-emerald-500 font-black text-sm">{formatINR(totCurrA)}</TD>
                       <TD className="text-right font-mono font-black text-sm">{formatINR(totCumA)}</TD>
+                    </TR>
+                    <TR className="bg-muted/30 font-bold text-xs border-t">
+                      <TD colSpan={7} className="text-right">GROSS CONTRACT AMOUNT FOR {b.name.toUpperCase()}</TD>
+                      <TD colSpan={3} className="text-right font-mono pr-4">{formatINR(totalVal)}</TD>
+                    </TR>
+                    <TR className="bg-red-500/10 text-red-700 font-bold text-xs">
+                      <TD colSpan={7} className="text-right">BALANCE AMOUNT TO BE BILLED FOR {b.name.toUpperCase()}</TD>
+                      <TD colSpan={3} className="text-right font-mono pr-4">{formatINR(totalVal - totCumA)}</TD>
                     </TR>
                   </TBody>
                 </Table>
@@ -444,6 +485,7 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
         </Card>
       )}
 
+      {/* TAB CONTENT: SUPPLY SHEET */}
       {activeSheetTab === "supply" && (
         <Card className="p-6 space-y-6 bg-background">
           <BillHeaderBanner site={site} bill={bill} sheetTitle="Sheet 5: Client Extra Supply Labour Log" />
@@ -481,59 +523,70 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                     </TR>
                   </THead>
                   <TBody>
-                    {entries.map((se: any) => {
-                      const fHrs = (se.fitterQty || 0) * (se.fitterHours || 8);
-                      const hHrs = (se.helperQty || 0) * (se.helperHours || 8);
+                    {entries.length === 0 ? (
+                      <TR>
+                        <TD colSpan={10} className="text-center py-6 text-muted-foreground italic">
+                          No extra supply labour entries were billed under this RA Bill.
+                        </TD>
+                      </TR>
+                    ) : (
+                      entries.map((se: any) => {
+                        const fHrs = (se.fitterQty || 0) * (se.fitterHours || 8);
+                        const hHrs = (se.helperQty || 0) * (se.helperHours || 8);
 
-                      return (
-                        <TR key={se.id}>
-                          <TD className="font-mono text-xs whitespace-nowrap">{formatDate(se.date)}</TD>
-                          <TD className="font-mono text-xs font-semibold">{se.challanNo || "—"}</TD>
-                          <TD className="font-medium">{se.description}</TD>
-                          <TD className="font-mono text-center">{se.fitterQty || 0}</TD>
-                          <TD className="font-mono text-center">{se.fitterHours || 8}h</TD>
-                          <TD className="font-mono text-center font-semibold text-blue-600">{fHrs}h</TD>
-                          <TD className="font-mono text-center">{se.helperQty || 0}</TD>
-                          <TD className="font-mono text-center">{se.helperHours || 8}h</TD>
-                          <TD className="font-mono text-center font-semibold text-purple-600">{hHrs}h</TD>
-                          <TD className="font-mono font-bold text-emerald-600 text-right">{formatINR(se.totalAmount)}</TD>
+                        return (
+                          <TR key={se.id}>
+                            <TD className="font-mono text-xs whitespace-nowrap">{formatDate(se.date)}</TD>
+                            <TD className="font-mono text-xs font-semibold">{se.challanNo || "—"}</TD>
+                            <TD className="font-medium">{se.description}</TD>
+                            <TD className="font-mono text-center">{se.fitterQty || 0}</TD>
+                            <TD className="font-mono text-center">{se.fitterHours || 8}h</TD>
+                            <TD className="font-mono text-center font-semibold text-blue-600">{fHrs}h</TD>
+                            <TD className="font-mono text-center">{se.helperQty || 0}</TD>
+                            <TD className="font-mono text-center">{se.helperHours || 8}h</TD>
+                            <TD className="font-mono text-center font-semibold text-purple-600">{hHrs}h</TD>
+                            <TD className="font-mono font-bold text-emerald-600 text-right">{formatINR(se.totalAmount)}</TD>
+                          </TR>
+                        );
+                      })
+                    )}
+
+                    {entries.length > 0 && (
+                      <>
+                        <TR className="bg-muted/40 font-bold border-t border-b">
+                          <TD colSpan={3} className="text-right uppercase tracking-wider text-xs">Total Hours</TD>
+                          <TD colSpan={2}></TD>
+                          <TD className="text-center font-mono text-blue-600 font-bold">{totFitterHrs} Hrs</TD>
+                          <TD colSpan={2}></TD>
+                          <TD className="text-center font-mono text-purple-600 font-bold">{totHelperHrs} Hrs</TD>
+                          <TD></TD>
                         </TR>
-                      );
-                    })}
-
-                    {/* Excel Sheet Summary Rows */}
-                    <TR className="bg-muted/40 font-bold border-t border-b">
-                      <TD colSpan={3} className="text-right uppercase tracking-wider text-xs">Total Hours</TD>
-                      <TD colSpan={2}></TD>
-                      <TD className="text-center font-mono text-blue-600 font-bold">{totFitterHrs} Hrs</TD>
-                      <TD colSpan={2}></TD>
-                      <TD className="text-center font-mono text-purple-600 font-bold">{totHelperHrs} Hrs</TD>
-                      <TD></TD>
-                    </TR>
-                    <TR className="bg-muted/30 font-semibold border-b">
-                      <TD colSpan={3} className="text-right text-xs">Total Days (Nos = Hrs / 8)</TD>
-                      <TD colSpan={2}></TD>
-                      <TD className="text-center font-mono text-blue-600 font-bold">{fitterDays} Nos</TD>
-                      <TD colSpan={2}></TD>
-                      <TD className="text-center font-mono text-purple-600 font-bold">{helperDays} Nos</TD>
-                      <TD></TD>
-                    </TR>
-                    <TR className="bg-muted/30 font-semibold border-b">
-                      <TD colSpan={3} className="text-right text-xs">Rate (₹)</TD>
-                      <TD colSpan={2}></TD>
-                      <TD className="text-center font-mono text-blue-600 font-bold">₹1,100 /day</TD>
-                      <TD colSpan={2}></TD>
-                      <TD className="text-center font-mono text-purple-600 font-bold">₹800 /day</TD>
-                      <TD></TD>
-                    </TR>
-                    <TR className="bg-emerald-500/10 font-bold text-sm border-t-2 border-emerald-500/30">
-                      <TD colSpan={3} className="text-right uppercase tracking-wider text-emerald-800 dark:text-emerald-300">TOTAL SUPPLY AMOUNT (₹)</TD>
-                      <TD colSpan={2}></TD>
-                      <TD className="text-center font-mono text-blue-600 font-bold">{formatINR(fitterAmt)}</TD>
-                      <TD colSpan={2}></TD>
-                      <TD className="text-center font-mono text-purple-600 font-bold">{formatINR(helperAmt)}</TD>
-                      <TD className="font-mono text-emerald-600 dark:text-emerald-400 text-right text-base font-black">{formatINR(totalSupplyWork)}</TD>
-                    </TR>
+                        <TR className="bg-muted/30 font-semibold border-b">
+                          <TD colSpan={3} className="text-right text-xs">Total Days (Nos = Hrs / 8)</TD>
+                          <TD colSpan={2}></TD>
+                          <TD className="text-center font-mono text-blue-600 font-bold">{fitterDays} Nos</TD>
+                          <TD colSpan={2}></TD>
+                          <TD className="text-center font-mono text-purple-600 font-bold">{helperDays} Nos</TD>
+                          <TD></TD>
+                        </TR>
+                        <TR className="bg-muted/30 font-semibold border-b">
+                          <TD colSpan={3} className="text-right text-xs">Rate (₹)</TD>
+                          <TD colSpan={2}></TD>
+                          <TD className="text-center font-mono text-blue-600 font-bold">₹1,100 /day</TD>
+                          <TD colSpan={2}></TD>
+                          <TD className="text-center font-mono text-purple-600 font-bold">₹800 /day</TD>
+                          <TD></TD>
+                        </TR>
+                        <TR className="bg-emerald-500/10 font-bold text-sm border-t-2 border-emerald-500/30">
+                          <TD colSpan={3} className="text-right uppercase tracking-wider text-emerald-800 dark:text-emerald-300">TOTAL SUPPLY AMOUNT (₹)</TD>
+                          <TD colSpan={2}></TD>
+                          <TD className="text-center font-mono text-blue-600 font-bold">{formatINR(fitterAmt)}</TD>
+                          <TD colSpan={2}></TD>
+                          <TD className="text-center font-mono text-purple-600 font-bold">{formatINR(helperAmt)}</TD>
+                          <TD className="font-mono text-emerald-600 dark:text-emerald-400 text-right text-base font-black">{formatINR(totalSupplyWork)}</TD>
+                        </TR>
+                      </>
+                    )}
                   </TBody>
                 </Table>
               </div>
@@ -542,13 +595,13 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
         </Card>
       )}
 
+      {/* TAB CONTENT: BALANCE SHEET */}
       {activeSheetTab === "balance" && (
         <div className="space-y-6">
           <BillHeaderBanner site={site} bill={bill} sheetTitle="Sheet 6: Client Ledger & Balance Sheet" />
           <SiteBalanceSheet site={site} hidePaymentForm={true} />
         </div>
       )}
-
     </div>
   );
 }

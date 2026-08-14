@@ -20,7 +20,6 @@ export async function GET(
         supplyLabourEntries: { orderBy: { date: "asc" } },
         bills: {
           orderBy: { createdAt: "desc" },
-          take: 1,
           include: { lines: true, supplyLabourEntries: true },
         },
         payments: { orderBy: { date: "asc" } },

@@ -9,7 +9,21 @@ import { Badge } from "@/components/ui/badge";
 import { formatINR, formatDate } from "@/lib/utils";
 import { generateRunningBillAction } from "../bill-actions";
 import { SiteBalanceSheet } from "./site-balance-sheet";
-import { Receipt, FileSpreadsheet, Printer, Plus, CheckCircle2, Building2, Users, DollarSign, Loader2 } from "lucide-react";
+import { HistoricalBillViewer } from "../bills/[billId]/historical-bill-viewer";
+import {
+  Receipt,
+  FileSpreadsheet,
+  Printer,
+  Plus,
+  CheckCircle2,
+  Building2,
+  Users,
+  DollarSign,
+  Loader2,
+  History,
+  Lock,
+  ArrowLeft,
+} from "lucide-react";
 
 
 function BillHeaderBanner({ site, latestBill, sheetTitle }: { site: any; latestBill: any; sheetTitle?: string }) {
@@ -47,6 +61,7 @@ function BillHeaderBanner({ site, latestBill, sheetTitle }: { site: any; latestB
 }
 
 export function RABillViewer({ site }: { site: any }) {
+  const [selectedBillMode, setSelectedBillMode] = useState<string>("live");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -112,43 +127,99 @@ export function RABillViewer({ site }: { site: any }) {
     window.print();
   };
 
+  const selectedHistoricalBill = selectedBillMode !== "live" ? bills.find((b: any) => b.id === selectedBillMode) : null;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4 bg-muted/40 p-4 rounded-xl border print:hidden">
-        <div>
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <Receipt className="h-5 w-5 text-emerald-500" />
-            RA Bill Generator & Full Multi-Sheet Package
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Consolidates Sheet 1 (Tax Invoice), Sheet 2 (Abstract), Tower Sheets, Supply Sheet & Balance Sheet into one bill bundle.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button onClick={handleDownloadExcel} variant="outline" className="gap-2 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10">
-            <FileSpreadsheet className="h-4 w-4" /> Download Complete Excel (.xlsx)
-          </Button>
-
-          <Button onClick={handleDownloadPdfPackage} variant="outline" className="gap-2 border-indigo-500/40 text-indigo-600 hover:bg-indigo-500/10">
-            <Printer className="h-4 w-4" /> Download Official PDF Package (.pdf)
-          </Button>
-
-          <Button onClick={() => setIsGenerating(!isGenerating)} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
-            <Plus className="h-4 w-4" /> Generate New RA Bill
-          </Button>
-        </div>
-      </div>
-
-      {successMessage && (
-        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 p-4 rounded-lg flex items-center justify-between">
-          <div className="flex items-center gap-2 font-medium">
-            <CheckCircle2 className="h-5 w-5" />
-            {successMessage}
+      {/* Bill History & Snapshot Mode Switcher Toolbar */}
+      {bills.length > 0 && (
+        <div className="flex items-center justify-between bg-muted/40 p-3 rounded-xl border flex-wrap gap-2 text-xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold flex items-center gap-1.5 text-foreground pr-1">
+              <History className="h-4 w-4 text-indigo-500" />
+              Bill View:
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Button
+                variant={selectedBillMode === "live" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedBillMode("live")}
+                className={`h-8 text-xs font-semibold gap-1.5 ${
+                  selectedBillMode === "live" ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""
+                }`}
+              >
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                Live Current Work (Draft RA Bill)
+              </Button>
+              {bills.map((b: any) => (
+                <Button
+                  key={b.id}
+                  variant={selectedBillMode === b.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedBillMode(b.id)}
+                  className={`h-8 text-xs font-medium gap-1.5 ${
+                    selectedBillMode === b.id ? "bg-indigo-600 hover:bg-indigo-700 text-white" : "border-indigo-500/30 text-indigo-600 dark:text-indigo-400"
+                  }`}
+                >
+                  <Lock className="h-3 w-3" />
+                  Bill {b.billNo} ({formatDate(b.billDate)})
+                </Button>
+              ))}
+            </div>
           </div>
-          <button type="button" onClick={() => setSuccessMessage(null)} className="text-emerald-700/50 hover:text-emerald-700 dark:hover:text-emerald-300">✕</button>
+
+          {selectedBillMode !== "live" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedBillMode("live")}
+              className="h-8 text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 gap-1"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" /> Back to Live Draft
+            </Button>
+          )}
         </div>
       )}
+
+      {selectedHistoricalBill ? (
+        <HistoricalBillViewer bill={{ ...selectedHistoricalBill, site }} />
+      ) : (
+        <>
+          <div className="flex items-center justify-between flex-wrap gap-4 bg-muted/40 p-4 rounded-xl border print:hidden">
+            <div>
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Receipt className="h-5 w-5 text-emerald-500" />
+                Live RA Bill Generator & Full Multi-Sheet Package
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Consolidates Sheet 1 (Tax Invoice), Sheet 2 (Abstract), Tower Sheets, Supply Sheet & Balance Sheet into one bill bundle.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button onClick={handleDownloadExcel} variant="outline" className="gap-2 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10">
+                <FileSpreadsheet className="h-4 w-4" /> Download Complete Excel (.xlsx)
+              </Button>
+
+              <Button onClick={handleDownloadPdfPackage} variant="outline" className="gap-2 border-indigo-500/40 text-indigo-600 hover:bg-indigo-500/10">
+                <Printer className="h-4 w-4" /> Download Official PDF Package (.pdf)
+              </Button>
+
+              <Button onClick={() => setIsGenerating(!isGenerating)} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="h-4 w-4" /> Generate New RA Bill
+              </Button>
+            </div>
+          </div>
+
+          {successMessage && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 p-4 rounded-lg flex items-center justify-between">
+              <div className="flex items-center gap-2 font-medium">
+                <CheckCircle2 className="h-5 w-5" />
+                {successMessage}
+              </div>
+              <button type="button" onClick={() => setSuccessMessage(null)} className="text-emerald-700/50 hover:text-emerald-700 dark:hover:text-emerald-300">✕</button>
+            </div>
+          )}
 
       {isGenerating && (
         <Card className="border-emerald-500/30 bg-emerald-500/5">
@@ -672,7 +743,8 @@ export function RABillViewer({ site }: { site: any }) {
           <SiteBalanceSheet site={site} hidePaymentForm={true} />
         </div>
       )}
-
+        </>
+      )}
     </div>
   );
 }
