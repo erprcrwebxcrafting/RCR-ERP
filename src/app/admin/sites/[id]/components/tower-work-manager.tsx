@@ -127,27 +127,33 @@ export function TowerWorkManager({ site }: { site: any }) {
     }
 
     setIsSaving(true);
-    const itemsToUpdate = (selectedBuilding.workItems || []).map((item: any) => {
-      const state = progressState[item.id];
-      return {
-        id: item.id,
-        name: state?.name ?? item.name,
-        previousQty: state?.previousQty ?? (item.previousQty || 0),
-        currentQty: state?.currentQty ?? (item.currentQty || 0),
-        previousPct: state?.previousPct ?? (item.previousPct || 0),
-        currentPct: state?.currentPct ?? (item.currentPct || 0),
-        cumulativePct: state?.cumulativePct ?? (item.cumulativePct || 0),
-        partAmount: state?.partAmount ?? (item.partAmount || 0),
-        previousAmt: state?.previousAmt ?? (item.previousAmt || 0),
-        currentAmt: state?.currentAmt ?? (item.currentAmt || 0),
-        cumulativeAmt: state?.cumulativeAmt ?? (item.cumulativeAmt || 0),
-      };
-    });
+    setSaveMessage("Saving...");
+    try {
+      const itemsToUpdate = (selectedBuilding.workItems || []).map((item: any) => {
+        const state = progressState[item.id];
+        return {
+          id: item.id,
+          name: state?.name ?? item.name,
+          previousQty: state?.previousQty ?? (item.previousQty || 0),
+          currentQty: state?.currentQty ?? (item.currentQty || 0),
+          previousPct: state?.previousPct ?? (item.previousPct || 0),
+          currentPct: state?.currentPct ?? (item.currentPct || 0),
+          cumulativePct: state?.cumulativePct ?? (item.cumulativePct || 0),
+          partAmount: state?.partAmount ?? (item.partAmount || 0),
+          previousAmt: state?.previousAmt ?? (item.previousAmt || 0),
+          currentAmt: state?.currentAmt ?? (item.currentAmt || 0),
+          cumulativeAmt: state?.cumulativeAmt ?? (item.cumulativeAmt || 0),
+        };
+      });
 
-    await updateTowerWorkProgressAction(site.id, itemsToUpdate);
-    setIsSaving(false);
-    setSaveMessage("Saved!");
-    setTimeout(() => setSaveMessage(null), 3000);
+      await updateTowerWorkProgressAction(site.id, itemsToUpdate);
+      setSaveMessage("Saved successfully!");
+    } catch (e: any) {
+      alert("Failed to save: " + (e?.message || "Unknown error"));
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setSaveMessage(null), 3000);
+    }
   };
 
   return (

@@ -9,36 +9,38 @@ export const dynamic = 'force-dynamic';
 
 export default async function SiteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const site = await prisma.site.findUnique({
-    where: { id },
-    include: {
-      client: true,
-      buildings: { orderBy: [{ order: "asc" }, { createdAt: "asc" }], include: { workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] } } },
-      workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
-      supplyLabourEntries: { orderBy: { date: "asc" } },
-      labourCategories: { orderBy: { order: "asc" }, include: { labours: true } },
-      supervisors: { include: { supervisor: true } },
-      bills: { orderBy: { createdAt: "desc" }, include: { lines: true, supplyLabourEntries: { orderBy: { date: "asc" } } } },
-      quotations: { orderBy: { createdAt: "desc" } },
-      payments: { orderBy: { date: "desc" } },
-      labourEntries: { orderBy: { createdAt: "desc" } },
-      documents: { orderBy: { createdAt: "desc" } },
-    },
-  });
+
+  const [site, allSupervisors, allSites] = await Promise.all([
+    prisma.site.findUnique({
+      where: { id },
+      include: {
+        client: true,
+        buildings: { orderBy: [{ order: "asc" }, { createdAt: "asc" }], include: { workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] } } },
+        workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
+        supplyLabourEntries: { orderBy: { date: "asc" } },
+        labourCategories: { orderBy: { order: "asc" }, include: { labours: true } },
+        supervisors: { include: { supervisor: true } },
+        bills: { orderBy: { createdAt: "desc" }, include: { lines: true, supplyLabourEntries: { orderBy: { date: "asc" } } } },
+        quotations: { orderBy: { createdAt: "desc" } },
+        payments: { orderBy: { date: "desc" } },
+        labourEntries: { orderBy: { createdAt: "desc" } },
+        documents: { orderBy: { createdAt: "desc" } },
+      },
+    }),
+    prisma.user.findMany({ where: { role: "SUPERVISOR" }, orderBy: { name: "asc" } }),
+    prisma.site.findMany({
+      where: { active: true },
+      select: {
+        id: true,
+        projectName: true,
+        labourCategories: { select: { id: true, name: true } },
+        supervisors: { select: { supervisorId: true, supervisor: { select: { name: true } } } }
+      },
+      orderBy: { projectName: "asc" }
+    }),
+  ]);
+
   if (!site) notFound();
-
-  const allSupervisors = await prisma.user.findMany({ where: { role: "SUPERVISOR" }, orderBy: { name: "asc" } });
-
-  const allSites = await prisma.site.findMany({
-    where: { active: true },
-    select: {
-      id: true,
-      projectName: true,
-      labourCategories: { select: { id: true, name: true } },
-      supervisors: { select: { supervisorId: true, supervisor: { select: { name: true } } } }
-    },
-    orderBy: { projectName: "asc" }
-  });
 
   // labourEntries doesn't have a direct relation to Labour name in the schema — resolve it here
   const labourIds = [...new Set(site.labourEntries.map((e) => e.labourId))];

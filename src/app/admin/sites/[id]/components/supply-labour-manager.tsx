@@ -138,28 +138,34 @@ export function SupplyLabourManager({ site }: { site: any }) {
 
   const handleSaveAll = async () => {
     setIsSaving(true);
-    const unbilledOnly = rawEntries.filter((e: any) => !e.runningBillId);
-    const updates = unbilledOnly.map((e: any) => {
-      const state = entriesState[e.id] || {};
-      return {
-        id: e.id,
-        date: state.date,
-        challanNo: state.challanNo,
-        description: state.description,
-        fitterQty: state.fitterQty,
-        fitterHours: state.fitterHours,
-        fitterRate: state.fitterRate,
-        helperQty: state.helperQty,
-        helperHours: state.helperHours,
-        helperRate: state.helperRate,
-        totalAmount: state.totalAmount,
-      };
-    });
+    setSaveMessage("Saving...");
+    try {
+      const unbilledOnly = rawEntries.filter((e: any) => !e.runningBillId);
+      const updates = unbilledOnly.map((e: any) => {
+        const state = entriesState[e.id] || {};
+        return {
+          id: e.id,
+          date: state.date,
+          challanNo: state.challanNo,
+          description: state.description,
+          fitterQty: state.fitterQty,
+          fitterHours: state.fitterHours,
+          fitterRate: state.fitterRate,
+          helperQty: state.helperQty,
+          helperHours: state.helperHours,
+          helperRate: state.helperRate,
+          totalAmount: state.totalAmount,
+        };
+      });
 
-    await updateSupplyLabourEntriesAction(site.id, updates);
-    setIsSaving(false);
-    setSaveMessage("Saved!");
-    setTimeout(() => setSaveMessage(null), 3000);
+      await updateSupplyLabourEntriesAction(site.id, updates);
+      setSaveMessage("Saved successfully!");
+    } catch (e: any) {
+      alert("Failed to save supply entries: " + (e?.message || "Unknown error"));
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setSaveMessage(null), 3000);
+    }
   };
 
   // Split into unbilled (Current / This Bill) and billed (Previous Bills)
