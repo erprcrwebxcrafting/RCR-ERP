@@ -7,8 +7,11 @@ export async function recordSupervisorPayment(formData: FormData) {
   const amount = parseFloat(formData.get("amount") as string);
   const transactionId = formData.get("transactionId") as string;
   const reason = formData.get("reason") as string;
+  const dateStr = formData.get("date") as string;
 
   if (!supervisorId || isNaN(amount)) return;
+
+  const date = dateStr ? new Date(dateStr) : new Date();
 
   await prisma.supervisorPayment.create({
     data: {
@@ -16,6 +19,7 @@ export async function recordSupervisorPayment(formData: FormData) {
       amount,
       transactionId,
       reason,
+      date,
     },
   });
 

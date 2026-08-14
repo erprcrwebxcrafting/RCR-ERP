@@ -35,114 +35,137 @@ export default async function AdminDashboard() {
   const currentDate = format(new Date(), "EEEE, MMMM do, yyyy");
 
   const statCards = [
-    { label: "Clients", value: clients, icon: Building2, color: "text-blue-500", bg: "bg-blue-500/10" },
-    { label: "Active Sites", value: sites, icon: MapPin, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-    { label: "Supervisors", value: supervisors, icon: HardHat, color: "text-amber-500", bg: "bg-amber-500/10" },
-    { label: "Active Labours", value: labours, icon: Users, color: "text-purple-500", bg: "bg-purple-500/10" },
+    { label: "Total Clients", value: clients, icon: Building2, color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+    { label: "Active Sites", value: sites, icon: MapPin, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+    { label: "Supervisors", value: supervisors, icon: HardHat, color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+    { label: "Active Labours", value: labours, icon: Users, color: "text-purple-500", bg: "bg-purple-500/10", border: "border-purple-500/20" },
   ];
 
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-8 pb-10 animate-in fade-in duration-700">
       {/* Hero Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 p-8 text-white shadow-lg">
-        <div className="absolute -right-10 -top-10 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl"></div>
-        <div className="absolute -bottom-10 -left-10 h-64 w-64 rounded-full bg-purple-500/20 blur-3xl"></div>
-        <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Welcome back, Admin 👋</h1>
-            <p className="mt-2 text-slate-300">Here's what's happening across your projects today.</p>
-            <p className="mt-1 text-sm text-slate-400">{currentDate}</p>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-8 sm:p-12 text-white shadow-2xl shadow-blue-500/20 border border-blue-400/20">
+        {/* Dynamic Background Effects */}
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 h-80 w-80 rounded-full bg-white/10 blur-3xl animate-pulse pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-80 w-80 rounded-full bg-purple-400/20 blur-3xl animate-pulse pointer-events-none" style={{ animationDelay: '2s' }}></div>
+        
+        {/* Subtle geometric pattern */}
+        <div className="absolute inset-0 opacity-[0.05] bg-[radial-gradient(circle_at_center,rgba(255,255,255,1)_1.5px,transparent_1.5px)] bg-[length:24px_24px] pointer-events-none"></div>
+
+        <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-4">
+            <div className="inline-flex items-center rounded-full bg-white/20 px-3.5 py-1.5 text-sm font-semibold text-white backdrop-blur-md shadow-sm border border-white/20">
+              <span className="relative flex h-2.5 w-2.5 mr-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
+              </span>
+              Live Dashboard Overview
+            </div>
+            
+            <div className="space-y-1.5">
+              <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white drop-shadow-sm">
+                Welcome back, Admin 👋
+              </h1>
+              <p className="text-blue-100 text-base sm:text-lg max-w-2xl font-medium leading-relaxed drop-shadow-sm">
+                <span className="text-white/80">{currentDate}</span> • Here's what's happening across your projects today. Keep up the great work!
+              </p>
+            </div>
           </div>
-          <div className="flex gap-3">
-            <Button variant="secondary" className="gap-2 bg-white/10 hover:bg-white/20 text-white border-0 backdrop-blur-md transition-all" asChild>
-              <Link href="/admin/quotations/new"><PlusCircle className="h-4 w-4" /> New Quotation</Link>
+          
+          <div className="flex flex-wrap items-center gap-4 mt-2 lg:mt-0">
+            <Button className="h-12 px-6 gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-base border border-white/20 backdrop-blur-md shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-xl" asChild>
+              <Link href="/admin/quotations/new"><PlusCircle className="h-5 w-5" /> New Quotation</Link>
             </Button>
-            <Button className="gap-2 bg-blue-600 hover:bg-blue-700 shadow-blue-500/25 shadow-lg transition-all" asChild>
-              <Link href="/admin/sites/new"><MapPin className="h-4 w-4" /> Add Site</Link>
+            <Button className="h-12 px-6 gap-2 bg-white text-blue-600 hover:bg-slate-50 font-bold text-base shadow-xl shadow-blue-900/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl rounded-xl" asChild>
+              <Link href="/admin/sites/new"><MapPin className="h-5 w-5" /> Add Site</Link>
             </Button>
           </div>
         </div>
       </div>
 
       {/* Top Level Financials */}
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {/* Total Billed */}
-        <Card className="group relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-1 border-slate-200 dark:border-slate-800">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 transition-opacity group-hover:opacity-100" />
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2 font-medium">
-              <div className="rounded-md bg-blue-500/10 p-2 text-blue-600 dark:text-blue-400">
+        <Card className="group relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 border-slate-200 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+          <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-blue-500/10 blur-3xl transition-all duration-500 group-hover:bg-blue-500/20" />
+          <CardHeader className="pb-2 relative z-10">
+            <CardDescription className="flex items-center justify-between font-semibold text-slate-500 dark:text-slate-400">
+              <span className="uppercase tracking-wider text-xs">Total Billed</span>
+              <div className="rounded-xl bg-blue-500/10 p-2.5 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-500/20 group-hover:scale-110 transition-transform duration-300">
                 <Receipt className="h-4 w-4" />
               </div>
-              Total Billed
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative z-10">
             <div className="flex items-baseline gap-2">
-              <h2 className="text-3xl font-bold tracking-tight">{formatINR(totalBilled)}</h2>
+              <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-800 dark:text-slate-100">{formatINR(totalBilled)}</h2>
             </div>
-            <p className="mt-2 flex items-center text-xs text-muted-foreground">
-              <ArrowUpRight className="mr-1 h-3 w-3 text-emerald-500" />
+            <div className="mt-4 flex items-center inline-flex bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-500/20">
+              <ArrowUpRight className="mr-1 h-3.5 w-3.5" />
               Across {bills.length} running bills
-            </p>
+            </div>
           </CardContent>
         </Card>
 
         {/* Total Received */}
-        <Card className="group relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-1 border-slate-200 dark:border-slate-800">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 opacity-0 transition-opacity group-hover:opacity-100" />
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2 font-medium">
-              <div className="rounded-md bg-emerald-500/10 p-2 text-emerald-600 dark:text-emerald-400">
+        <Card className="group relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 border-slate-200 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+          <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-500/10 blur-3xl transition-all duration-500 group-hover:bg-emerald-500/20" />
+          <CardHeader className="pb-2 relative z-10">
+            <CardDescription className="flex items-center justify-between font-semibold text-slate-500 dark:text-slate-400">
+              <span className="uppercase tracking-wider text-xs">Total Received</span>
+              <div className="rounded-xl bg-emerald-500/10 p-2.5 text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-500/20 group-hover:scale-110 transition-transform duration-300">
                 <Wallet className="h-4 w-4" />
               </div>
-              Total Received
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative z-10">
             <div className="flex items-baseline gap-2">
-              <h2 className="text-3xl font-bold tracking-tight">{formatINR(totalReceived)}</h2>
+              <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-800 dark:text-slate-100">{formatINR(totalReceived)}</h2>
             </div>
-            <p className="mt-2 flex items-center text-xs text-muted-foreground">
-              <ArrowUpRight className="mr-1 h-3 w-3 text-emerald-500" />
+            <div className="mt-4 flex items-center inline-flex bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-500/20">
+              <ArrowUpRight className="mr-1 h-3.5 w-3.5" />
               Payments collected
-            </p>
+            </div>
           </CardContent>
         </Card>
 
         {/* Outstanding Balance */}
-        <Card className="group relative overflow-hidden transition-all hover:shadow-md hover:-translate-y-1 border-slate-200 dark:border-slate-800">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-orange-500/5 opacity-0 transition-opacity group-hover:opacity-100" />
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2 font-medium">
-              <div className="rounded-md bg-amber-500/10 p-2 text-amber-600 dark:text-amber-400">
+        <Card className="group relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 border-slate-200 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl sm:col-span-2 lg:col-span-1">
+          <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-orange-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+          <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-rose-500/10 blur-3xl transition-all duration-500 group-hover:bg-rose-500/20" />
+          <CardHeader className="pb-2 relative z-10">
+            <CardDescription className="flex items-center justify-between font-semibold text-slate-500 dark:text-slate-400">
+              <span className="uppercase tracking-wider text-xs">Outstanding Balance</span>
+              <div className="rounded-xl bg-rose-500/10 p-2.5 text-rose-600 dark:text-rose-400 shadow-sm border border-rose-500/20 group-hover:scale-110 transition-transform duration-300">
                 <Activity className="h-4 w-4" />
               </div>
-              Outstanding Balance
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative z-10">
             <div className="flex items-baseline gap-2">
-              <h2 className="text-3xl font-bold tracking-tight text-amber-600 dark:text-amber-500">{formatINR(outstanding)}</h2>
+              <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-rose-600 dark:text-rose-500">{formatINR(outstanding)}</h2>
             </div>
-            <p className="mt-2 flex items-center text-xs text-muted-foreground">
-              <ArrowDownRight className="mr-1 h-3 w-3 text-amber-500" />
+            <div className="mt-4 flex items-center inline-flex bg-rose-500/10 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-full text-xs font-semibold border border-rose-500/20">
+              <ArrowDownRight className="mr-1 h-3.5 w-3.5" />
               Pending collection
-            </p>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Operational Stats Grid */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {statCards.map((c) => (
-          <Card key={c.label} className="group transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statCards.map((c, i) => (
+          <Card key={c.label} className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700" style={{ animationDelay: `${i * 100}ms` }}>
+            <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-20 transition-opacity duration-500" style={{ color: 'inherit' }} />
             <CardContent className="flex items-center justify-between p-6">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">{c.label}</p>
-                <p className="text-2xl font-bold tracking-tight">{c.value}</p>
+                <p className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{c.label}</p>
+                <p className="text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">{c.value}</p>
               </div>
-              <div className={`rounded-full p-3 transition-transform group-hover:scale-110 ${c.bg}`}>
+              <div className={`rounded-2xl p-3.5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 border ${c.bg} ${c.border}`}>
                 <c.icon className={`h-6 w-6 ${c.color}`} />
               </div>
             </CardContent>
@@ -151,18 +174,34 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Chart Section */}
-      <Card className="overflow-hidden shadow-sm">
-        <CardHeader className="border-b bg-muted/20 pb-4">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5 text-blue-500" />
-            Revenue by Site
-          </CardTitle>
-          <CardDescription>Billed amounts distributed across active projects</CardDescription>
+      <Card className="overflow-hidden shadow-lg border-slate-200 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl transition-all duration-500 hover:shadow-xl">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 pb-6 px-6 sm:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-xl font-bold flex items-center gap-2.5 text-slate-800 dark:text-slate-100">
+                <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20 text-blue-500">
+                  <Activity className="h-5 w-5" />
+                </div>
+                Revenue Distribution by Site
+              </CardTitle>
+              <CardDescription className="mt-1.5 text-sm font-medium">Visual breakdown of billed amounts across active projects</CardDescription>
+            </div>
+            <div className="inline-flex items-center bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg text-sm font-medium border border-slate-200 dark:border-slate-700">
+              <span className="relative flex h-2 w-2 mr-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              Real-time Data
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="pt-6">
-          <DashboardChart data={chartData} />
+        <CardContent className="pt-8 pb-6 px-6 sm:px-8">
+          <div className="h-[350px] w-full">
+            <DashboardChart data={chartData} />
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 }
+

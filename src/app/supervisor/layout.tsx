@@ -16,9 +16,9 @@ export default async function SupervisorLayout({ children }: { children: React.R
   );
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-background">
       <SupervisorSidebar userName={session?.user?.name} logoutButton={logoutButton} />
-      <main className="flex-1 overflow-x-hidden">
+      <main className="flex-1 overflow-x-hidden pt-16 md:pt-0">
         <div className="mx-auto max-w-5xl p-4 md:p-8">{children}</div>
       </main>
     </div>

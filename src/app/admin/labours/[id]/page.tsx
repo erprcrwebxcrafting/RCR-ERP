@@ -6,7 +6,7 @@ import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { PaymentForm } from "@/app/admin/labours/[id]/payment-form";
 import Link from "next/link";
-import { ArrowLeft, User, Phone, Calendar, CreditCard, Building, WalletCards } from "lucide-react";
+import { ArrowLeft, User, Phone, Calendar, CreditCard, Building, WalletCards, History, TrendingUp, IndianRupee, ArrowRightLeft, FileText, AlertCircle } from "lucide-react";
 import { LabourForm } from "../labour-form";
 import { LabourCalendar } from "./labour-calendar";
 
@@ -56,244 +56,294 @@ export default async function LabourLedgerPage({ params }: { params: Promise<{ i
   const balance = totalEarned - totalPaid;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/admin/labours" className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Ledger: {labour.name}</h1>
-          <p className="text-muted-foreground">
-            {labour.site.projectName} — {labour.labourCategory.name}
-          </p>
+    <div className="space-y-8 pb-10 animate-in fade-in duration-700">
+      
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <Link href="/admin/labours" className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-blue-600 hover:border-blue-200 dark:hover:border-blue-800 transition-colors shadow-sm">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-400 mb-2">
+              <User className="h-3.5 w-3.5" />
+              Labour Ledger
+            </div>
+            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
+              {labour.name}
+              <Badge variant={labour.active ? "default" : "destructive"} className={`text-[10px] uppercase font-bold shadow-none ${labour.active ? 'bg-emerald-500 hover:bg-emerald-600' : ''}`}>
+                {labour.active ? "Active" : "Inactive"}
+              </Badge>
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium flex items-center gap-2">
+              <Building className="h-4 w-4 shrink-0 text-indigo-500" />
+              {labour.site.projectName} <span className="text-slate-300 dark:text-slate-700">•</span> {labour.labourCategory.name}
+            </p>
+          </div>
         </div>
       </div>
 
-      <Card className="bg-muted/30 border-muted-foreground/20">
+      <Card className="border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+        <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500" />
         <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-            <div className="space-y-4 flex-1">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                  <User className="h-6 w-6" />
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+            <div className="space-y-4 flex-1 w-full">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
+                <div className="space-y-1.5">
+                  <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-blue-500" /> Phone</div>
+                  <div className="font-semibold text-slate-800 dark:text-slate-100">{labour.phone || "—"}</div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    {labour.name}
-                    <Badge variant={labour.active ? "default" : "destructive"} className="text-[10px] uppercase">
-                      {labour.active ? "Active" : "Inactive"}
-                    </Badge>
-                  </h2>
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Building className="h-3 w-3" /> {labour.site.projectName} — {labour.labourCategory.name}
-                  </p>
+                <div className="space-y-1.5">
+                  <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-indigo-500" /> Joined Date</div>
+                  <div className="font-semibold text-slate-800 dark:text-slate-100">{labour.joiningDate ? formatDate(labour.joiningDate) : "—"}</div>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-4">
-                <div className="space-y-1">
-                  <div className="text-muted-foreground flex items-center gap-1.5"><Phone className="h-3 w-3" /> Phone</div>
-                  <div className="font-medium">{labour.phone || "—"}</div>
+                <div className="space-y-1.5">
+                  <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-violet-500" /> Aadhar</div>
+                  <div className="font-semibold text-slate-800 dark:text-slate-100">{labour.aadharNumber || "—"}</div>
                 </div>
-                <div className="space-y-1">
-                  <div className="text-muted-foreground flex items-center gap-1.5"><Calendar className="h-3 w-3" /> Joined Date</div>
-                  <div className="font-medium">{labour.joiningDate ? formatDate(labour.joiningDate) : "—"}</div>
+                <div className="space-y-1.5">
+                  <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><Building className="h-3.5 w-3.5 text-emerald-500" /> Bank Name</div>
+                  <div className="font-semibold text-slate-800 dark:text-slate-100">{labour.bankName || "—"}</div>
                 </div>
-                <div className="space-y-1">
-                  <div className="text-muted-foreground flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Aadhar</div>
-                  <div className="font-medium">{labour.aadharNumber || "—"}</div>
+                <div className="space-y-1.5">
+                  <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><WalletCards className="h-3.5 w-3.5 text-amber-500" /> Account No.</div>
+                  <div className="font-semibold text-slate-800 dark:text-slate-100">{labour.accountNumber || "—"}</div>
                 </div>
-                <div className="space-y-1">
-                  <div className="text-muted-foreground flex items-center gap-1.5"><WalletCards className="h-3 w-3" /> Bank Name</div>
-                  <div className="font-medium">{labour.bankName || "—"}</div>
+                <div className="space-y-1.5">
+                  <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5 text-rose-500" /> IFSC Code</div>
+                  <div className="font-semibold text-slate-800 dark:text-slate-100">{labour.ifscCode || "—"}</div>
                 </div>
-                <div className="space-y-1">
-                  <div className="text-muted-foreground flex items-center gap-1.5"> Account No.</div>
-                  <div className="font-medium">{labour.accountNumber || "—"}</div>
+                <div className="space-y-1.5 col-span-2 md:col-span-2">
+                  <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5">Bank Branch</div>
+                  <div className="font-semibold text-slate-800 dark:text-slate-100">{labour.bankBranch || "—"}</div>
                 </div>
-                <div className="space-y-1">
-                  <div className="text-muted-foreground flex items-center gap-1.5"> IFSC Code</div>
-                  <div className="font-medium">{labour.ifscCode || "—"}</div>
-                </div>
-                <div className="space-y-1">
-                  <div className="text-muted-foreground flex items-center gap-1.5"> Bank Branch</div>
-                  <div className="font-medium">{labour.bankBranch || "—"}</div>
-                </div>
-                <div className="space-y-1 col-span-2 md:col-span-4 border-t border-border/50 pt-3 mt-1">
-                  <div className="text-muted-foreground flex items-center gap-1.5 text-xs">Address</div>
-                  <div className="font-medium">{labour.address || "—"}</div>
+                <div className="space-y-1.5 col-span-2 md:col-span-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 mt-2">
+                  <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-1">Address</div>
+                  <div className="font-medium text-slate-700 dark:text-slate-300">{labour.address || "—"}</div>
                 </div>
               </div>
             </div>
             
-            <div className="shrink-0 flex items-center gap-2 border-t md:border-t-0 md:border-l pt-4 md:pt-0 md:pl-6">
+            <div className="shrink-0 flex items-center md:items-start justify-end w-full md:w-auto border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800 pt-6 md:pt-0 md:pl-6">
                <LabourForm sites={sites as any} labour={labour} />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Hajari Rate</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{dailyWage}</div>
-            <p className="text-xs text-muted-foreground">Per Hajari</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Earned</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">₹{totalEarned.toLocaleString("en-IN")}</div>
-            <p className="text-xs text-muted-foreground">From {presentDays} Hajaris</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Paid</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{totalPaid.toLocaleString("en-IN")}</div>
-            <p className="text-xs text-muted-foreground">Across {labour.payments.length} transactions</p>
-          </CardContent>
-        </Card>
-        <Card className={balance > 0 ? "border-red-200 bg-red-50/50 dark:bg-red-950/20" : ""}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Outstanding Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${balance > 0 ? "text-red-600" : ""}`}>
-              ₹{balance.toLocaleString("en-IN")}
+      {/* KPI Cards */}
+      <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900">
+          <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-blue-500/10 blur-2xl transition-all duration-500 group-hover:bg-blue-500/20" />
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="h-10 w-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <IndianRupee className="h-5 w-5 text-blue-600" />
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">Amount to be cleared</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Hajari Rate</p>
+            <p className="text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{dailyWage}</p>
+            <p className="text-xs text-slate-400 font-medium mt-1">Per Hajari</p>
+          </CardContent>
+        </Card>
+
+        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900">
+          <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-emerald-500/10 blur-2xl transition-all duration-500 group-hover:bg-emerald-500/20" />
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <TrendingUp className="h-5 w-5 text-emerald-600" />
+              </div>
+            </div>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Earned</p>
+            <p className="text-3xl font-black tracking-tight text-emerald-600 dark:text-emerald-500">₹{totalEarned.toLocaleString("en-IN")}</p>
+            <p className="text-xs text-slate-400 font-medium mt-1">From {presentDays} Hajaris</p>
+          </CardContent>
+        </Card>
+
+        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900">
+          <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-indigo-500/10 blur-2xl transition-all duration-500 group-hover:bg-indigo-500/20" />
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="h-10 w-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <History className="h-5 w-5 text-indigo-600" />
+              </div>
+            </div>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Paid</p>
+            <p className="text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{totalPaid.toLocaleString("en-IN")}</p>
+            <p className="text-xs text-slate-400 font-medium mt-1">Across {labour.payments.length} transactions</p>
+          </CardContent>
+        </Card>
+
+        <Card className={`group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${balance > 0 ? "border-rose-200 bg-rose-50/50 dark:border-rose-900/50 dark:bg-rose-950/20" : "border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900"}`}>
+          <div className={`absolute -right-8 -top-8 h-28 w-28 rounded-full blur-2xl transition-all duration-500 ${balance > 0 ? "bg-rose-500/10 group-hover:bg-rose-500/20" : "bg-slate-500/10 group-hover:bg-slate-500/20"}`} />
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 ${balance > 0 ? "bg-rose-500/10 border border-rose-500/20" : "bg-slate-500/10 border border-slate-500/20"}`}>
+                <AlertCircle className={`h-5 w-5 ${balance > 0 ? "text-rose-600" : "text-slate-500"}`} />
+              </div>
+            </div>
+            <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${balance > 0 ? "text-rose-600/80 dark:text-rose-400/80" : "text-slate-500 dark:text-slate-400"}`}>Outstanding Balance</p>
+            <p className={`text-3xl font-black tracking-tight ${balance > 0 ? "text-rose-600 dark:text-rose-500" : "text-slate-800 dark:text-slate-100"}`}>
+              ₹{balance.toLocaleString("en-IN")}
+            </p>
+            <p className={`text-xs font-medium mt-1 ${balance > 0 ? "text-rose-500/70 dark:text-rose-400/70" : "text-slate-400"}`}>Amount to be cleared</p>
           </CardContent>
         </Card>
       </div>
 
       <LabourCalendar attendances={allAttendance as any} payments={labour.payments} />
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-8 md:grid-cols-2">
         {/* Payouts Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">Payment History</h2>
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
+                <History className="h-4 w-4 text-indigo-600" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Payment History</h2>
+            </div>
             <PaymentForm labourId={labour.id} />
           </div>
-          <Card>
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Date</TH>
-                  <TH>Amount</TH>
-                  <TH>Details</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {labour.payments.map((p: any) => (
-                  <TR key={p.id}>
-                    <TD>{formatDate(p.date)}</TD>
-                    <TD className="font-medium text-red-600">- ₹{p.amount.toLocaleString("en-IN")}</TD>
-                    <TD>
-                      <div className="text-sm">{p.reason || "Payout"}</div>
-                      {p.transactionId && <div className="text-xs text-muted-foreground">Tx: {p.transactionId}</div>}
-                    </TD>
-                  </TR>
-                ))}
-                {labour.payments.length === 0 && (
+          <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md">
+            <div className="overflow-x-auto">
+              <Table>
+                <THead className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
                   <TR>
-                    <TD colSpan={3} className="py-8 text-center text-muted-foreground">
-                      No payments recorded yet.
-                    </TD>
+                    <TH className="font-semibold text-slate-600 dark:text-slate-300">Date</TH>
+                    <TH className="font-semibold text-slate-600 dark:text-slate-300">Amount</TH>
+                    <TH className="font-semibold text-slate-600 dark:text-slate-300">Details</TH>
                   </TR>
-                )}
-              </TBody>
-            </Table>
+                </THead>
+                <TBody>
+                  {labour.payments.map((p: any) => (
+                    <TR key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <TD className="whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">{formatDate(p.date)}</TD>
+                      <TD className="whitespace-nowrap font-bold text-rose-600 dark:text-rose-400">- ₹{p.amount.toLocaleString("en-IN")}</TD>
+                      <TD>
+                        <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{p.reason || "Payout"}</div>
+                        {p.transactionId && <div className="text-xs text-slate-500 mt-0.5 font-mono">Tx: {p.transactionId}</div>}
+                      </TD>
+                    </TR>
+                  ))}
+                  {labour.payments.length === 0 && (
+                    <TR>
+                      <TD colSpan={3} className="py-12 text-center">
+                        <div className="inline-flex flex-col items-center justify-center">
+                          <History className="h-8 w-8 text-slate-300 mb-3" />
+                          <p className="text-slate-500 font-medium">No payments recorded yet.</p>
+                        </div>
+                      </TD>
+                    </TR>
+                  )}
+                </TBody>
+              </Table>
+            </div>
           </Card>
         </div>
 
         {/* Recent Attendance Section */}
         <div className="space-y-4">
-          <h2 className="text-lg font-medium">Recent Attendance</h2>
-          <Card>
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Date</TH>
-                  <TH>Status</TH>
-                  <TH>Earned</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {labour.attendances.map((a: any) => {
-                  const appliedRate = a.hajariRate || dailyWage;
-                  const dayEarned = (a.hajari || 0) * appliedRate;
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+              <Calendar className="h-4 w-4 text-emerald-600" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Recent Attendance</h2>
+          </div>
+          <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md">
+            <div className="overflow-x-auto">
+              <Table>
+                <THead className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
+                  <TR>
+                    <TH className="font-semibold text-slate-600 dark:text-slate-300">Date</TH>
+                    <TH className="font-semibold text-slate-600 dark:text-slate-300">Status</TH>
+                    <TH className="font-semibold text-slate-600 dark:text-slate-300">Earned</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {labour.attendances.map((a: any) => {
+                    const appliedRate = a.hajariRate || dailyWage;
+                    const dayEarned = (a.hajari || 0) * appliedRate;
 
-                  return (
-                    <TR key={a.id}>
-                      <TD>{formatDate(a.date)}</TD>
-                      <TD>
-                        <Badge variant={a.hajari > 0 ? "secondary" : "destructive"}>
-                          {a.hajari > 0 ? `${a.hajari} Hajari` : "Absent"}
-                        </Badge>
-                      </TD>
-                      <TD className="text-green-600 font-medium">
-                        {dayEarned > 0 ? `+ ₹${dayEarned}` : "—"}
+                    return (
+                      <TR key={a.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <TD className="whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">{formatDate(a.date)}</TD>
+                        <TD>
+                          <Badge className={`${a.hajari > 0 ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" : "bg-rose-500/10 text-rose-700 border-rose-500/20"} shadow-none font-bold`}>
+                            {a.hajari > 0 ? `${a.hajari} Hajari` : "Absent"}
+                          </Badge>
+                        </TD>
+                        <TD className="text-emerald-600 font-bold">
+                          {dayEarned > 0 ? `+ ₹${dayEarned}` : "—"}
+                        </TD>
+                      </TR>
+                    );
+                  })}
+                  {labour.attendances.length === 0 && (
+                    <TR>
+                      <TD colSpan={3} className="py-12 text-center">
+                        <div className="inline-flex flex-col items-center justify-center">
+                          <Calendar className="h-8 w-8 text-slate-300 mb-3" />
+                          <p className="text-slate-500 font-medium">No attendance marked yet.</p>
+                        </div>
                       </TD>
                     </TR>
-                  );
-                })}
-                {labour.attendances.length === 0 && (
-                  <TR>
-                    <TD colSpan={3} className="py-8 text-center text-muted-foreground">
-                      No attendance marked yet.
-                    </TD>
-                  </TR>
-                )}
-              </TBody>
-            </Table>
+                  )}
+                </TBody>
+              </Table>
+            </div>
           </Card>
         </div>
       </div>
 
       {/* Transfer History Section */}
       <div className="space-y-4">
-        <h2 className="text-lg font-medium">Transfer History</h2>
-        <Card>
-          <Table>
-            <THead>
-              <TR>
-                <TH>Date</TH>
-                <TH>From Site</TH>
-                <TH>To Site</TH>
-                <TH>Wage Change</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {labour.transferHistory?.map((t: any) => (
-                <TR key={t.id}>
-                  <TD>{formatDate(t.transferDate)}</TD>
-                  <TD>{t.fromSite?.projectName || "—"}</TD>
-                  <TD>{t.toSite.projectName}</TD>
-                  <TD>
-                    <div className="text-sm">
-                      ₹{t.previousDailyWage} → ₹{t.newDailyWage}
-                    </div>
-                  </TD>
-                </TR>
-              ))}
-              {(!labour.transferHistory || labour.transferHistory.length === 0) && (
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+            <ArrowRightLeft className="h-4 w-4 text-blue-600" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Transfer History</h2>
+        </div>
+        <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md">
+          <div className="overflow-x-auto">
+            <Table>
+              <THead className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
                 <TR>
-                  <TD colSpan={4} className="py-8 text-center text-muted-foreground">
-                    No transfers recorded.
-                  </TD>
+                  <TH className="font-semibold text-slate-600 dark:text-slate-300">Date</TH>
+                  <TH className="font-semibold text-slate-600 dark:text-slate-300">From Site</TH>
+                  <TH className="font-semibold text-slate-600 dark:text-slate-300">To Site</TH>
+                  <TH className="font-semibold text-slate-600 dark:text-slate-300">Wage Change</TH>
                 </TR>
-              )}
-            </TBody>
-          </Table>
+              </THead>
+              <TBody>
+                {labour.transferHistory?.map((t: any) => (
+                  <TR key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <TD className="whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">{formatDate(t.transferDate)}</TD>
+                    <TD className="font-medium text-slate-700 dark:text-slate-300">{t.fromSite?.projectName || "—"}</TD>
+                    <TD className="font-bold text-slate-800 dark:text-slate-100">{t.toSite.projectName}</TD>
+                    <TD>
+                      <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 text-xs font-semibold text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50">
+                        <span>₹{t.previousDailyWage}</span>
+                        <ArrowRightLeft className="h-3 w-3" />
+                        <span>₹{t.newDailyWage}</span>
+                      </div>
+                    </TD>
+                  </TR>
+                ))}
+                {(!labour.transferHistory || labour.transferHistory.length === 0) && (
+                  <TR>
+                    <TD colSpan={4} className="py-12 text-center">
+                      <div className="inline-flex flex-col items-center justify-center">
+                        <ArrowRightLeft className="h-8 w-8 text-slate-300 mb-3" />
+                        <p className="text-slate-500 font-medium">No transfers recorded.</p>
+                      </div>
+                    </TD>
+                  </TR>
+                )}
+              </TBody>
+            </Table>
+          </div>
         </Card>
       </div>
     </div>

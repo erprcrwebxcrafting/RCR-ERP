@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, MapPin, ClipboardList, HardHat, User } from "lucide-react";
+import { LayoutDashboard, MapPin, ClipboardList, HardHat, User, Menu, X } from "lucide-react";
+import { useState, useEffect } from "react";
 
 const nav = [
   { href: "/supervisor", label: "Dashboard", icon: LayoutDashboard },
@@ -20,9 +21,15 @@ export function SupervisorSidebar({
   logoutButton: React.ReactNode
 }) {
   const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState(false);
 
-  return (
-    <aside className="hidden w-[280px] shrink-0 flex-col bg-[#0b1120] text-slate-300 md:flex shadow-2xl relative z-10 border-r border-slate-800/60 overflow-hidden">
+  // Close sidebar on route change on mobile
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
+  const sidebarContent = (
+    <>
       {/* Decorative background gradients */}
       <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-br from-blue-600/10 via-transparent to-transparent pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-full h-64 bg-gradient-to-tl from-sky-600/10 via-transparent to-transparent pointer-events-none" />
@@ -87,6 +94,53 @@ export function SupervisorSidebar({
         
         {logoutButton}
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile Top Bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0b1120] flex items-center justify-between px-4 z-40 border-b border-slate-800/60 shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-white p-1">
+            <img src="/rcr-logo.png" alt="RCR Logo" className="w-full h-full object-contain" />
+          </div>
+          <span className="font-bold text-white text-sm tracking-wide">Supervisor Portal</span>
+        </div>
+        <button 
+          onClick={() => setIsOpen(true)}
+          className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+        >
+          <Menu className="h-6 w-6" />
+        </button>
+      </div>
+
+      {/* Mobile Overlay & Sidebar */}
+      {isOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+            onClick={() => setIsOpen(false)}
+          />
+          
+          {/* Sidebar Panel */}
+          <aside className="relative flex w-[280px] flex-col bg-[#0b1120] text-slate-300 h-full shadow-2xl animate-in slide-in-from-left duration-300">
+            <button 
+              onClick={() => setIsOpen(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 rounded-lg z-50 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden w-[280px] shrink-0 flex-col bg-[#0b1120] text-slate-300 md:flex shadow-2xl relative z-10 border-r border-slate-800/60 overflow-hidden min-h-screen">
+        {sidebarContent}
+      </aside>
+    </>
   );
 }
