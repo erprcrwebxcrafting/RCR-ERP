@@ -73,12 +73,7 @@ const styles = StyleSheet.create({
   metaValue: {
     marginBottom: 4,
   },
-  table: {
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 2,
-  },
+  table: { width: "100%", borderTopWidth: 1, borderLeftWidth: 1, borderColor: "#e5e7eb" },
   tr: {
     flexDirection: "row",
     borderBottomWidth: 1,
@@ -86,17 +81,8 @@ const styles = StyleSheet.create({
     minHeight: 24,
     alignItems: "center",
   },
-  th: {
-    padding: 6,
-    fontFamily: "Helvetica-Bold",
-    backgroundColor: "#f9fafb",
-    color: "#111827",
-    fontSize: 8,
-  },
-  td: {
-    padding: 6,
-    fontSize: 8,
-  },
+  th: { padding: 6, fontFamily: "Helvetica-Bold", backgroundColor: "#f9fafb", color: "#111827", fontSize: 8, borderRightWidth: 1, borderColor: "#e5e7eb" },
+  td: { padding: 6, fontSize: 8, borderRightWidth: 1, borderColor: "#e5e7eb" },
   trTotal: {
     backgroundColor: "#f3f4f6",
     fontFamily: "Helvetica-Bold",
@@ -133,18 +119,15 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: "#111827",
   },
-  signImage: {
-    width: 80,
-    height: 40,
-    marginVertical: 4,
-  },
+  signImage: { width: 80, height: 40, marginVertical: 4 },
+  footerContainer: { position: "absolute", bottom: 30, left: 30, right: 30, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", borderTopWidth: 1, borderTopColor: "#cbd5e1", paddingTop: 10 }
 });
 
 function formatINR(num: number) {
   return "Rs. " + (num || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function PageHeader({ title, site, bill, logoStr }: { title: string, site: any, bill: any, logoStr: string | null }) {
+function PageHeader({ title, site, bill, logoStr, settings }: { title: string, site: any, bill: any, logoStr: string | null, settings?: any }) {
   const billDate = bill?.billDate ? new Date(bill.billDate).toLocaleDateString("en-IN") : new Date().toLocaleDateString("en-IN");
   return (
     <View style={{ marginBottom: 15 }} fixed>
@@ -152,8 +135,15 @@ function PageHeader({ title, site, bill, logoStr }: { title: string, site: any, 
         <View style={{ flexDirection: "row", alignItems: "center", width: "65%" }}>
           {logoStr && <Image src={logoStr} style={styles.logoContainer} />}
           <View style={styles.headerTextContainer}>
-            <Text style={styles.companyName}>RCR ENTERPRISES</Text>
+            <Text style={styles.companyName}>{settings?.companyName || "RCR ENTERPRISES"}</Text>
             <Text style={styles.companySubtext}>GST NO: {site?.gstNo || "27AAJFN6629D1Z5"} | CONCRETE & REINFORCEMENT WORK</Text>
+            <Text style={{ fontSize: 7, color: "#4f46e5", marginTop: 2, fontFamily: "Helvetica-Bold" }}>
+              {[
+                settings?.phone && `Ph: ${settings.phone}`,
+                settings?.email && `Email: ${settings.email}`,
+                settings?.website && `Web: ${settings.website}`
+              ].filter(Boolean).join("  |  ")}
+            </Text>
           </View>
         </View>
         <View style={styles.sheetTitleBox}>
@@ -178,20 +168,18 @@ function PageHeader({ title, site, bill, logoStr }: { title: string, site: any, 
   );
 }
 
-function PageFooter({ signStr }: { signStr: string | null }) {
+function PageFooter({ signStr, settings }: { signStr: string | null, settings?: any }) {
   return (
-    <View fixed>
-      <View style={styles.signBox}>
-        <Text style={styles.signLabel}>FOR RCR ENTERPRISES</Text>
-        {signStr && <Image src={signStr} style={styles.signImage} />}
-        <Text style={{ fontSize: 7, color: "#374151", fontFamily: "Helvetica-Bold", marginTop: signStr ? 0 : 30 }}>AUTHORISED SIGNATORY</Text>
+    <View fixed style={styles.footerContainer}>
+      <View style={{ flex: 1, paddingRight: 20 }}>
+        <Text style={{ color: "#4b5563", fontSize: 8 }}>{settings?.address || "Office No- 04, Raipada, Nr. Anand Gaushalla, Chandansar Road, Virar (E) - 401305"}</Text>
+        <Text style={{ color: "#4b5563", fontSize: 8, marginTop: 4 }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
-      <Text style={styles.footerText} render={({ pageNumber, totalPages }) => (
-        `Office No- 04, Raipada, Nr. Anand Gaushalla, Chandansar Road, Virar (E) - 401305`
-      )} />
-      <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => (
-        `Page ${pageNumber} of ${totalPages}`
-      )} />
+      <View style={{ width: 120, alignItems: "center" }}>
+        <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 8, color: "#111827" }}>FOR {settings?.companyName?.toUpperCase() || "RCR ENTERPRISES"}</Text>
+        {signStr ? <Image src={signStr} style={{ width: 80, height: 40, marginVertical: 4 }} /> : <View style={{ height: 40, marginVertical: 4 }} />}
+        <Text style={{ fontSize: 7, color: "#374151", fontFamily: "Helvetica-Bold" }}>AUTHORISED SIGNATORY</Text>
+      </View>
     </View>
   );
 }
@@ -218,7 +206,7 @@ function TaxInvoice({ data, logoStr, signStr }: any) {
 
   return (
     <Page size="A4" style={styles.page}>
-      <PageHeader title="TAX INVOICE" site={site} bill={runningBill} logoStr={logoStr} />
+      <PageHeader title="TAX INVOICE" site={site} bill={runningBill} logoStr={logoStr} settings={data.settings} />
       
       <View style={styles.table}>
         <View style={styles.tr}>
@@ -280,7 +268,7 @@ function TaxInvoice({ data, logoStr, signStr }: any) {
         <Text>BANK NAME: ICICI BANK LTD.</Text>
       </View>
 
-      <PageFooter signStr={signStr} />
+      <PageFooter signStr={signStr} settings={data.settings} />
     </Page>
   );
 }
@@ -303,7 +291,7 @@ function AbstractSummary({ data, logoStr, signStr }: any) {
 
   return (
     <Page size="A4" style={styles.page}>
-      <PageHeader title="ABSTRACT SUMMARY" site={site} bill={runningBill} logoStr={logoStr} />
+      <PageHeader title="ABSTRACT SUMMARY" site={site} bill={runningBill} logoStr={logoStr} settings={data.settings} />
       
       <View style={styles.table}>
         <View style={styles.tr}>
@@ -407,7 +395,7 @@ function AbstractSummary({ data, logoStr, signStr }: any) {
         )}
       </View>
 
-      <PageFooter signStr={signStr} />
+      <PageFooter signStr={signStr} settings={data.settings} />
     </Page>
   );
 }
@@ -426,10 +414,10 @@ function TowerPages({ data, logoStr, signStr }: any) {
     
     return (
       <Page size="A4" style={styles.page} key={tower.id}>
-        <PageHeader title={`BUILDING - ${tower.name.toUpperCase()}`} site={site} bill={runningBill} logoStr={logoStr} />
+        <PageHeader title={`BUILDING - ${tower.name.toUpperCase()}`} site={site} bill={runningBill} logoStr={logoStr} settings={data.settings} />
         
         <Text style={{ marginBottom: 10, fontFamily: "Helvetica-Bold", color: "#4f46e5", fontSize: 9 }}>
-          BUA Area: {approxArea.toLocaleString()} Sft  @  Rs. {contractRate}/Sft  =  {formatINR(totalTowerVal)}
+          Approx BUA Area: {approxArea.toLocaleString()} Sft  @  Rs. {contractRate}/Sft  =  {formatINR(totalTowerVal)}
         </Text>
         
         <View style={styles.table}>
@@ -500,7 +488,7 @@ function TowerPages({ data, logoStr, signStr }: any) {
           </View>
         </View>
         
-        <PageFooter signStr={signStr} />
+        <PageFooter signStr={signStr} settings={data.settings} />
       </Page>
     );
   });
@@ -515,7 +503,7 @@ function SupplyPage({ data, logoStr, signStr }: any) {
 
   return (
     <Page size="A4" style={styles.page}>
-      <PageHeader title="EXTRA LABOUR SUPPLY" site={site} bill={runningBill} logoStr={logoStr} />
+      <PageHeader title="EXTRA LABOUR SUPPLY" site={site} bill={runningBill} logoStr={logoStr} settings={data.settings} />
       
       <View style={styles.table}>
         <View style={styles.tr} fixed>
@@ -575,7 +563,7 @@ function SupplyPage({ data, logoStr, signStr }: any) {
         );
       })()}
 
-      <PageFooter signStr={signStr} />
+      <PageFooter signStr={signStr} settings={data.settings} />
     </Page>
   );
 }
@@ -619,6 +607,8 @@ function LedgerPage({ data, logoStr, signStr }: any) {
       paymentRecd: p.amount || 0,
       tdsAmt: 0,
       gstAmt: 0,
+      paymentMode: p.mode,
+      paymentRef: p.reference,
     });
   });
 
@@ -631,21 +621,23 @@ function LedgerPage({ data, logoStr, signStr }: any) {
 
   return (
     <Page size="A4" orientation="landscape" style={styles.landscapePage}>
-      <PageHeader title="CLIENT LEDGER & BALANCE SHEET" site={site} bill={runningBill} logoStr={logoStr} />
+      <PageHeader title="CLIENT LEDGER & BALANCE SHEET" site={site} bill={runningBill} logoStr={logoStr} settings={data.settings} />
       
       <View style={styles.table}>
         <View style={styles.tr} fixed>
-          <Text style={[styles.th, { width: "4%" }]}>Sr.</Text>
-          <Text style={[styles.th, { width: "10%" }]}>Date</Text>
-          <Text style={[styles.th, { width: "16%" }]}>Particulars</Text>
-          <Text style={[styles.th, { width: "10%", textAlign: "right" }]}>Bill Gross</Text>
-          <Text style={[styles.th, { width: "8%", textAlign: "right" }]}>Retention</Text>
-          <Text style={[styles.th, { width: "10%", textAlign: "right" }]}>Net Bill</Text>
-          <Text style={[styles.th, { width: "10%", textAlign: "right" }]}>Received</Text>
-          <Text style={[styles.th, { width: "8%", textAlign: "right" }]}>1% TDS</Text>
-          <Text style={[styles.th, { width: "10%", textAlign: "right" }]}>Balance</Text>
-          <Text style={[styles.th, { width: "8%", textAlign: "right" }]}>GST</Text>
-          <Text style={[styles.th, { width: "10%", textAlign: "right" }]}>Bal + GST</Text>
+          <Text style={[styles.th, { width: "3%" }]}>Sr.</Text>
+          <Text style={[styles.th, { width: "8%" }]}>Date</Text>
+          <Text style={[styles.th, { width: "14%" }]}>Particulars</Text>
+          <Text style={[styles.th, { width: "8%", textAlign: "right" }]}>Bill Gross</Text>
+          <Text style={[styles.th, { width: "6%", textAlign: "right" }]}>Ret.</Text>
+          <Text style={[styles.th, { width: "8%", textAlign: "right" }]}>Net Bill</Text>
+          <Text style={[styles.th, { width: "10%", textAlign: "left" }]}>Mode & Ref</Text>
+          <Text style={[styles.th, { width: "8%", textAlign: "right" }]}>A/c Credited</Text>
+          <Text style={[styles.th, { width: "5%", textAlign: "right" }]}>1% TDS</Text>
+          <Text style={[styles.th, { width: "8%", textAlign: "right" }]}>Advance</Text>
+          <Text style={[styles.th, { width: "8%", textAlign: "right" }]}>Balance</Text>
+          <Text style={[styles.th, { width: "6%", textAlign: "right" }]}>GST</Text>
+          <Text style={[styles.th, { width: "8%", textAlign: "right" }]}>Bal+GST</Text>
         </View>
 
         {ledger.map((item: any, idx: number) => {
@@ -663,22 +655,24 @@ function LedgerPage({ data, logoStr, signStr }: any) {
 
           return (
             <View style={styles.tr} key={idx} wrap={false}>
-              <Text style={[styles.td, { width: "4%" }]}>{idx + 1}</Text>
-              <Text style={[styles.td, { width: "10%" }]}>{item.date.toLocaleDateString("en-IN")}</Text>
-              <Text style={[styles.td, { width: "16%", fontFamily: "Helvetica-Bold" }]}>{item.refName.slice(0, 24)}</Text>
-              <Text style={[styles.td, { width: "10%", textAlign: "right" }]}>{item.type === "BILL" ? formatINR(item.grossAmount) : "-"}</Text>
-              <Text style={[styles.td, { width: "8%", textAlign: "right" }]}>{item.type === "BILL" ? formatINR(item.retentionAmt) : "-"}</Text>
-              <Text style={[styles.td, { width: "10%", textAlign: "right" }]}>{item.type === "BILL" ? formatINR(item.netBilledAmt) : "-"}</Text>
-              <Text style={[styles.td, { width: "10%", textAlign: "right", color: "#16a34a", fontFamily: "Helvetica-Bold" }]}>{item.type === "PAYMENT" ? formatINR(item.paymentRecd) : "-"}</Text>
-              <Text style={[styles.td, { width: "8%", textAlign: "right" }]}>{item.type === "BILL" ? formatINR(item.tdsAmt) : "-"}</Text>
-              <Text style={[styles.td, { width: "10%", textAlign: "right", fontFamily: "Helvetica-Bold", color: runBal > 0 ? "#dc2626" : "#16a34a" }]}>{formatINR(runBal)}</Text>
-              <Text style={[styles.td, { width: "8%", textAlign: "right" }]}>{item.type === "BILL" ? formatINR(item.gstAmt) : "-"}</Text>
-              <Text style={[styles.td, { width: "10%", textAlign: "right", fontFamily: "Helvetica-Bold", color: balWithGst > 0 ? "#dc2626" : "#16a34a" }]}>{formatINR(balWithGst)}</Text>
+              <Text style={[styles.td, { width: "3%" }]}>{idx + 1}</Text>
+              <Text style={[styles.td, { width: "8%" }]}>{item.date.toLocaleDateString("en-IN")}</Text>
+              <Text style={[styles.td, { width: "14%", fontFamily: "Helvetica-Bold" }]}>{item.refName.slice(0, 24)}</Text>
+              <Text style={[styles.td, { width: "8%", textAlign: "right", color: "#4b5563" }]}>{item.type === "BILL" ? formatINR(item.grossAmount) : "-"}</Text>
+              <Text style={[styles.td, { width: "6%", textAlign: "right", color: "#ef4444" }]}>{item.type === "BILL" ? formatINR(item.retentionAmt) : "-"}</Text>
+              <Text style={[styles.td, { width: "8%", textAlign: "right" }]}>{item.type === "BILL" ? formatINR(item.netBilledAmt) : "-"}</Text>
+              <Text style={[styles.td, { width: "10%", textAlign: "left", color: "#6b7280", fontSize: 7 }]}>{item.type === "PAYMENT" ? [item.paymentMode, item.paymentRef].filter(Boolean).join(" | ").slice(0, 35) : "-"}</Text>
+              <Text style={[styles.td, { width: "8%", textAlign: "right", color: "#16a34a", fontFamily: "Helvetica-Bold" }]}>{item.type === "PAYMENT" ? formatINR(item.paymentRecd) : "-"}</Text>
+              <Text style={[styles.td, { width: "5%", textAlign: "right" }]}>{item.type === "BILL" ? formatINR(item.tdsAmt) : "-"}</Text>
+              <Text style={[styles.td, { width: "8%", textAlign: "right", color: "#16a34a" }]}>{formatINR(cumAdv)}</Text>
+              <Text style={[styles.td, { width: "8%", textAlign: "right", fontFamily: "Helvetica-Bold", color: runBal > 0 ? "#dc2626" : "#16a34a" }]}>{formatINR(runBal)}</Text>
+              <Text style={[styles.td, { width: "6%", textAlign: "right", color: "#4b5563" }]}>{item.type === "BILL" ? formatINR(item.gstAmt) : "-"}</Text>
+              <Text style={[styles.td, { width: "8%", textAlign: "right", fontFamily: "Helvetica-Bold", color: balWithGst > 0 ? "#dc2626" : "#16a34a" }]}>{formatINR(balWithGst)}</Text>
             </View>
           );
         })}
       </View>
-      <PageFooter signStr={signStr} />
+      <PageFooter signStr={signStr} settings={data.settings} />
     </Page>
   );
 }
@@ -718,6 +712,7 @@ export async function generateBillPdfPackage(data: {
   towers: any[];
   supplyEntries: any[];
   payments: any[];
+  settings?: any;
 }): Promise<Uint8Array> {
   const logoPath = path.join(process.cwd(), "public", "rcr-logo.png");
   const signPath = path.join(process.cwd(), "public", "sign&logo.png");

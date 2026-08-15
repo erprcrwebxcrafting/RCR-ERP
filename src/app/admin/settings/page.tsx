@@ -1,7 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Building2, Mail, Phone, MapPin, Receipt, ShieldCheck } from "lucide-react";
+import { Settings, Building2, ShieldCheck } from "lucide-react";
+import { prisma } from "@/lib/prisma";
+import { SettingsForm } from "./settings-form";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const globalSettings = await prisma.globalSettings.findUnique({
+    where: { id: "global" },
+  });
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-10">
       
@@ -36,46 +42,7 @@ export default function SettingsPage() {
                <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-100">Company Details</CardTitle>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              
-              <div className="flex items-start gap-3">
-                 <div className="mt-0.5"><Receipt className="h-4 w-4 text-slate-400" /></div>
-                 <div>
-                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Company Name & GST</p>
-                   <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-1">RCR Enterprises</p>
-                   <p className="text-sm text-slate-600 dark:text-slate-400">27CIMPR8276H1ZF</p>
-                 </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                 <div className="mt-0.5"><MapPin className="h-4 w-4 text-slate-400" /></div>
-                 <div>
-                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Registered Address</p>
-                   <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mt-1">
-                     (Address configuration available in upcoming update)
-                   </p>
-                 </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                 <div className="mt-0.5"><Mail className="h-4 w-4 text-slate-400" /></div>
-                 <div>
-                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Email</p>
-                   <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-1">rcrenterprises786@gmail.com</p>
-                 </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                 <div className="mt-0.5"><Phone className="h-4 w-4 text-slate-400" /></div>
-                 <div>
-                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Number</p>
-                   <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-1">+91 9619439243</p>
-                 </div>
-              </div>
-
-            </div>
-          </CardContent>
+          <SettingsForm settings={globalSettings} />
         </Card>
 
         {/* Security / Audit Log Planner */}

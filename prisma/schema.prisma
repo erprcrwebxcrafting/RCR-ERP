@@ -397,3 +397,13 @@ model SupervisorTransferHistory {
   transferDate        DateTime @default(now())
   createdAt           DateTime @default(now())
 }
+
+model GlobalSettings {
+  id          String   @id @default("global")
+  companyName String   @default("RCR ENTERPRISES")
+  phone       String?
+  email       String?
+  website     String?
+  address     String?
+  updatedAt   DateTime @updatedAt
+}

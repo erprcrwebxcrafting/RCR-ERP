@@ -40,6 +40,10 @@ export async function GET(
       return new NextResponse("Bill not found", { status: 404 });
     }
 
+    const globalSettings = await prisma.globalSettings.findUnique({
+      where: { id: "global" },
+    });
+
     const { site, lines, supplyLabourEntries } = bill;
 
     // Reconstruct towers from snapshotted lines for PDF generation
@@ -119,6 +123,7 @@ export async function GET(
       towers: reconstructedTowers,
       supplyEntries: supplyLabourEntries,
       payments: site.payments,
+      settings: globalSettings,
     });
 
     const filename = `${site.projectName.replace(/[^a-zA-Z0-9]/g, "_")}_${bill.billNo.replace(/[^a-zA-Z0-9]/g, "_")}_RA_BILL.pdf`;
