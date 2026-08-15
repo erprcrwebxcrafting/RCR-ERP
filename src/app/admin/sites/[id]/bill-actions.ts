@@ -61,8 +61,8 @@ export async function deleteTowerWorkItemAction(siteId: string, workItemId: stri
 }
 
 export async function addSupplyLabourEntryAction(siteId: string, formData: FormData) {
-  const challanNo = formData.get("challanNo") as string;
-  const description = formData.get("description") as string;
+  const challanNo = (formData.get("challanNo") as string || "").trim();
+  const description = (formData.get("description") as string || "").trim();
   const dateStr = formData.get("date") as string;
   const fitterQty = parseFloat((formData.get("fitterQty") as string) || "0");
   const fitterHours = parseFloat((formData.get("fitterHours") as string) || "0");
@@ -72,7 +72,38 @@ export async function addSupplyLabourEntryAction(siteId: string, formData: FormD
   const helperHours = parseFloat((formData.get("helperHours") as string) || "0");
   const helperRate = parseFloat((formData.get("helperRate") as string) || "800");
 
-  if (!description) return;
+  if (!description) {
+    throw new Error("Description is required for Labour Supply entry.");
+  }
+
+  // 1. Negative & sanity validation
+  if (fitterQty < 0 || helperQty < 0 || fitterHours < 0 || helperHours < 0 || fitterRate < 0 || helperRate < 0) {
+    throw new Error("INVALID VALUE ERROR: Quantities, hours, and rates cannot be negative.");
+  }
+  if (fitterHours > 24 || helperHours > 24) {
+    throw new Error("INVALID HOURS ERROR: Daily shift hours cannot exceed 24 hours per shift.");
+  }
+  if (fitterQty === 0 && helperQty === 0) {
+    throw new Error("EMPTY ENTRY ERROR: Please enter at least 1 Fitter or Helper count.");
+  }
+
+  const date = dateStr ? new Date(dateStr) : new Date();
+
+  // 2. Future date validation
+  const today = new Date();
+  if (new Date(date).setHours(0, 0, 0, 0) > today.setHours(0, 0, 0, 0)) {
+    throw new Error(`FUTURE DATE ERROR: Challan date (${formatDate(date)}) cannot be in the future.`);
+  }
+
+  // 3. Duplicate Challan check
+  if (challanNo) {
+    const existing = await prisma.supplyLabourEntry.findFirst({
+      where: { siteId, challanNo: { equals: challanNo, mode: "insensitive" } },
+    });
+    if (existing) {
+      throw new Error(`DUPLICATE CHALLAN ERROR: Challan No. "${challanNo}" already exists for this site! Please enter a unique challan number.`);
+    }
+  }
 
   // Amount calculation based on Excel sheet formulas:
   // If hours provided: (fitterQty * fitterHours / 8) * rate + (helperQty * helperHours / 8) * rate
@@ -92,7 +123,6 @@ export async function addSupplyLabourEntryAction(siteId: string, formData: FormD
   }
 
   const totalAmount = fitterAmt + helperAmt;
-  const date = dateStr ? new Date(dateStr) : new Date();
 
   await prisma.supplyLabourEntry.create({
     data: {
@@ -114,6 +144,17 @@ export async function addSupplyLabourEntryAction(siteId: string, formData: FormD
 }
 
 export async function deleteSupplyLabourEntryAction(siteId: string, entryId: string) {
+  const entry = await prisma.supplyLabourEntry.findUnique({
+    where: { id: entryId },
+    select: { id: true, challanNo: true, runningBillId: true },
+  });
+
+  if (!entry) return;
+
+  if (entry.runningBillId) {
+    throw new Error(`LOCK ERROR: Challan "${entry.challanNo || entry.id}" is already locked and billed in an official RA Bill. It cannot be deleted.`);
+  }
+
   await prisma.supplyLabourEntry.delete({ where: { id: entryId } });
   revalidatePath(`/admin/sites/${siteId}`);
 }
@@ -136,14 +177,40 @@ export async function updateSupplyLabourEntriesAction(
 ) {
   if (!entries || entries.length === 0) return;
 
+  // 1. Check if any entry is locked/already billed
+  const existingEntries = await prisma.supplyLabourEntry.findMany({
+    where: { id: { in: entries.map((e) => e.id) } },
+    select: { id: true, runningBillId: true, challanNo: true },
+  });
+
+  const lockedEntry = existingEntries.find((e) => e.runningBillId);
+  if (lockedEntry) {
+    throw new Error(`LOCK ERROR: Challan "${lockedEntry.challanNo || lockedEntry.id}" is already locked and billed in an official RA Bill. It cannot be modified.`);
+  }
+
+  // 2. Validate negative & hours
+  for (const entry of entries) {
+    if (
+      (entry.fitterQty !== undefined && entry.fitterQty < 0) ||
+      (entry.helperQty !== undefined && entry.helperQty < 0) ||
+      (entry.fitterHours !== undefined && entry.fitterHours < 0) ||
+      (entry.helperHours !== undefined && entry.helperHours < 0)
+    ) {
+      throw new Error("INVALID VALUE ERROR: Quantities and hours cannot be negative.");
+    }
+    if ((entry.fitterHours && entry.fitterHours > 24) || (entry.helperHours && entry.helperHours > 24)) {
+      throw new Error("INVALID HOURS ERROR: Daily shift hours cannot exceed 24 hours per shift.");
+    }
+  }
+
   const updates = entries.map((entry) => {
     const dateVal = entry.date ? new Date(entry.date) : undefined;
     return prisma.supplyLabourEntry.update({
       where: { id: entry.id },
       data: {
         ...(dateVal ? { date: dateVal } : {}),
-        challanNo: entry.challanNo ?? "",
-        description: entry.description ?? "",
+        challanNo: entry.challanNo?.trim() ?? "",
+        description: entry.description?.trim() ?? "",
         fitterQty: entry.fitterQty ?? 0,
         fitterHours: entry.fitterHours ?? 0,
         fitterRate: entry.fitterRate ?? 1100,

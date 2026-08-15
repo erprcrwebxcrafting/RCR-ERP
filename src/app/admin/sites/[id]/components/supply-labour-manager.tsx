@@ -32,6 +32,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
   const [isSubmittingNew, setIsSubmittingNew] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [filterView, setFilterView] = useState<"all" | "current" | "previous">("all");
 
   const rawEntries = site.supplyLabourEntries || [];
@@ -137,10 +138,35 @@ export function SupplyLabourManager({ site }: { site: any }) {
   };
 
   const handleSaveAll = async () => {
+    setErrorMessage(null);
+    const unbilledOnly = rawEntries.filter((e: any) => !e.runningBillId);
+
+    // 1. Frontend validation: Duplicate challan numbers
+    const seenChallans = new Set<string>();
+    for (const e of unbilledOnly) {
+      const state = entriesState[e.id] || {};
+      const ch = (state.challanNo || "").trim().toLowerCase();
+      if (ch) {
+        if (seenChallans.has(ch)) {
+          setErrorMessage(`Duplicate Challan Error! Challan "${state.challanNo}" is entered more than once.`);
+          return;
+        }
+        seenChallans.add(ch);
+      }
+
+      if ((state.fitterQty && state.fitterQty < 0) || (state.helperQty && state.helperQty < 0)) {
+        setErrorMessage("Quantities cannot be negative.");
+        return;
+      }
+      if ((state.fitterHours && state.fitterHours > 24) || (state.helperHours && state.helperHours > 24)) {
+        setErrorMessage("Daily shift hours cannot exceed 24 hours per day.");
+        return;
+      }
+    }
+
     setIsSaving(true);
     setSaveMessage("Saving...");
     try {
-      const unbilledOnly = rawEntries.filter((e: any) => !e.runningBillId);
       const updates = unbilledOnly.map((e: any) => {
         const state = entriesState[e.id] || {};
         return {
@@ -161,7 +187,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
       await updateSupplyLabourEntriesAction(site.id, updates);
       setSaveMessage("Saved successfully!");
     } catch (e: any) {
-      alert("Failed to save supply entries: " + (e?.message || "Unknown error"));
+      setErrorMessage(e?.message || "Failed to save supply entries.");
     } finally {
       setIsSaving(false);
       setTimeout(() => setSaveMessage(null), 3000);
@@ -366,14 +392,33 @@ export function SupplyLabourManager({ site }: { site: any }) {
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {errorMessage && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 rounded-md text-xs font-bold flex items-center justify-between">
+              <span>⚠️ {errorMessage}</span>
+              <button type="button" onClick={() => setErrorMessage(null)} className="text-muted-foreground hover:text-foreground">✕</button>
+            </div>
+          )}
+
           {/* Add Supply Entry Form */}
           {isAdding && (
             <form
               action={async (formData) => {
+                setErrorMessage(null);
+                const inputChallan = (formData.get("challanNo") as string || "").trim().toLowerCase();
+                if (inputChallan) {
+                  const exists = rawEntries.some((e: any) => (e.challanNo || "").trim().toLowerCase() === inputChallan);
+                  if (exists) {
+                    setErrorMessage(`Duplicate Challan Error! Challan "${formData.get("challanNo")}" already exists for this site.`);
+                    return;
+                  }
+                }
+
                 setIsSubmittingNew(true);
                 try {
                   await addSupplyLabourEntryAction(site.id, formData);
                   setIsAdding(false);
+                } catch (err: any) {
+                  setErrorMessage(err?.message || "Failed to log supply entry.");
                 } finally {
                   setIsSubmittingNew(false);
                 }

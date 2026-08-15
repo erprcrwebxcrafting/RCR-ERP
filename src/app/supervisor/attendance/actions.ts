@@ -11,6 +11,12 @@ export async function saveAttendance(siteId: string, formData: FormData) {
   const date = new Date(dateStr); 
   const buildingId = (formData.get("buildingId") as string) || null;
 
+  // 1. Future date validation
+  const today = new Date();
+  if (new Date(date).setHours(0, 0, 0, 0) > today.setHours(0, 0, 0, 0)) {
+    throw new Error("Attendance date cannot be in the future.");
+  }
+
   const labourIds = formData.getAll("labourId[]") as string[];
 
   const existingRecords = await prisma.attendance.findMany({
@@ -35,7 +41,9 @@ export async function saveAttendance(siteId: string, formData: FormData) {
     const hajariInput = formData.get(`hajari__${labourId}`) as string;
     if (hajariInput === null) continue;
     
-    const hajari = parseFloat(hajariInput) || 0;
+    let hajari = parseFloat(hajariInput) || 0;
+    if (hajari < 0) hajari = 0;
+    if (hajari > 2.5) hajari = 2.5; // Cap at max 2.5 shifts per day
     const status = hajari > 0 ? "PRESENT" : "ABSENT";
     const remarks = formData.get(`remarks__${labourId}`) as string;
 
