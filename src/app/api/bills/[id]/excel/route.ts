@@ -20,7 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             payments: { orderBy: { date: "asc" } },
           },
         },
-        lines: true,
+        lines: { orderBy: { order: "asc" } },
         supplyLabourEntries: true,
       },
     });

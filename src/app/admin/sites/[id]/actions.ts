@@ -8,7 +8,15 @@ export async function addBuildingAction(siteId: string, formData: FormData) {
   const approxArea = parseFloat((formData.get("approxArea") as string) || "0");
   const contractRate = parseFloat((formData.get("contractRate") as string) || "0");
   if (!name) return;
-  await prisma.building.create({ data: { siteId, name, approxArea, contractRate } });
+
+  const lastBldg = await prisma.building.findFirst({
+    where: { siteId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  const nextOrder = (lastBldg?.order ?? -1) + 1;
+
+  await prisma.building.create({ data: { siteId, name, approxArea, contractRate, order: nextOrder } });
   revalidatePath(`/admin/sites/${siteId}`);
 }
 
@@ -27,7 +35,15 @@ export async function addWorkItemAction(siteId: string, formData: FormData) {
   const unit = (formData.get("unit") as string) || "Sft";
   const rate = parseFloat((formData.get("rate") as string) || "0");
   if (!name) return;
-  await prisma.workItem.create({ data: { siteId, name, unit, rate } });
+
+  const lastItem = await prisma.workItem.findFirst({
+    where: { siteId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  const nextOrder = (lastItem?.order ?? -1) + 1;
+
+  await prisma.workItem.create({ data: { siteId, name, unit, rate, order: nextOrder } });
   revalidatePath(`/admin/sites/${siteId}`);
 }
 
@@ -36,7 +52,15 @@ export async function addLabourCategoryAction(siteId: string, formData: FormData
   const dailyWage = parseFloat((formData.get("dailyWage") as string) || "0");
   const overtimeRate = parseFloat((formData.get("overtimeRate") as string) || "0");
   if (!name) return;
-  await prisma.labourCategory.create({ data: { siteId, name, dailyWage, overtimeRate } });
+
+  const lastCat = await prisma.labourCategory.findFirst({
+    where: { siteId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  const nextOrder = (lastCat?.order ?? -1) + 1;
+
+  await prisma.labourCategory.create({ data: { siteId, name, dailyWage, overtimeRate, order: nextOrder } });
   revalidatePath(`/admin/sites/${siteId}`);
 }
 

@@ -11,8 +11,15 @@ export async function addTowerWorkItemAction(siteId: string, buildingId: string,
   const partAmount = parseFloat((formData.get("partAmount") as string) || "0");
   if (!name) return;
 
+  const lastItem = await prisma.workItem.findFirst({
+    where: { buildingId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  const nextOrder = (lastItem?.order ?? -1) + 1;
+
   await prisma.workItem.create({
-    data: { siteId, buildingId, name, unit, rate, buWork, partAmount },
+    data: { siteId, buildingId, name, unit, rate, buWork, partAmount, order: nextOrder },
   });
 
   revalidatePath(`/admin/sites/${siteId}`);

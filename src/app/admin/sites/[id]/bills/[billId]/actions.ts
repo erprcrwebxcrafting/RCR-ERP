@@ -13,9 +13,9 @@ export async function sendBillEmailAction(billId: string): Promise<void> {
     where: { id: billId },
     include: {
       site: {
-        include: { client: true, buildings: true, payments: { orderBy: { date: "asc" } } },
+        include: { client: true, buildings: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] }, payments: { orderBy: { date: "asc" } } },
       },
-      lines: { include: { building: true, workItem: true, labourCategory: true } },
+      lines: { orderBy: { order: "asc" }, include: { building: true, workItem: true, labourCategory: true } },
       supplyLabourEntries: { orderBy: { date: "asc" } },
     },
   });

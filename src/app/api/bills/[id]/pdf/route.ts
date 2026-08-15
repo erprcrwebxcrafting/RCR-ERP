@@ -28,6 +28,7 @@ export async function GET(
           },
         },
         lines: {
+          orderBy: { order: "asc" },
           include: { building: true, workItem: true },
         },
         supplyLabourEntries: {

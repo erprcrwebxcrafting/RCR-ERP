@@ -11,13 +11,14 @@ export default async function DedicatedBillDetailPage({ params }: { params: Prom
       site: {
         include: { 
           client: true,
-          buildings: true,
+          buildings: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
           payments: { orderBy: { date: "asc" } },
-          bills: { orderBy: { createdAt: "asc" }, include: { lines: true } },
+          bills: { orderBy: { createdAt: "asc" }, include: { lines: { orderBy: { order: "asc" } } } },
           supplyLabourEntries: { orderBy: { date: "asc" } },
         }
       },
       lines: { 
+        orderBy: { order: "asc" },
         include: { building: true, workItem: true, labourCategory: true } 
       },
       supplyLabourEntries: {
