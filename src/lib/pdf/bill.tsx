@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   metaValue: {
     marginBottom: 4,
   },
-  table: { width: "100%", borderTopWidth: 1, borderLeftWidth: 1, borderColor: "#e5e7eb" },
+  table: { width: "100%", borderTopWidth: 1, borderLeftWidth: 1, borderColor: "#9ca3af" },
   tr: {
     flexDirection: "row",
     borderBottomWidth: 1,
@@ -81,8 +81,8 @@ const styles = StyleSheet.create({
     minHeight: 24,
     alignItems: "center",
   },
-  th: { padding: 6, fontFamily: "Helvetica-Bold", backgroundColor: "#f9fafb", color: "#111827", fontSize: 8, borderRightWidth: 1, borderColor: "#e5e7eb" },
-  td: { padding: 6, fontSize: 8, borderRightWidth: 1, borderColor: "#e5e7eb" },
+  th: { padding: 6, fontFamily: "Helvetica-Bold", backgroundColor: "#f9fafb", color: "#111827", fontSize: 8, borderRightWidth: 1, borderColor: "#9ca3af" },
+  td: { padding: 6, fontSize: 8, borderRightWidth: 1, borderColor: "#9ca3af" },
   trTotal: {
     backgroundColor: "#f3f4f6",
     fontFamily: "Helvetica-Bold",
@@ -177,7 +177,7 @@ function PageFooter({ signStr, settings }: { signStr: string | null, settings?: 
       </View>
       <View style={{ width: 120, alignItems: "center" }}>
         <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 8, color: "#111827" }}>FOR {settings?.companyName?.toUpperCase() || "RCR ENTERPRISES"}</Text>
-        {signStr ? <Image src={signStr} style={{ width: 80, height: 40, marginVertical: 4 }} /> : <View style={{ height: 40, marginVertical: 4 }} />}
+        {signStr ? <Image src={signStr} style={{ width: 80, height: 40, marginVertical: 4, objectFit: 'contain' }} /> : <View style={{ height: 40, marginVertical: 4 }} />}
         <Text style={{ fontSize: 7, color: "#374151", fontFamily: "Helvetica-Bold" }}>AUTHORISED SIGNATORY</Text>
       </View>
     </View>
@@ -267,7 +267,15 @@ function TaxInvoice({ data, logoStr, signStr }: any) {
         <Text style={{ marginBottom: 2 }}>IFSC CODE: ICIC0000884</Text>
         <Text>BANK NAME: ICICI BANK LTD.</Text>
       </View>
-
+      <View style={{ marginTop: 10, padding: 8, backgroundColor: "#f9fafb", borderRadius: 4, borderWidth: 1, borderColor: "#cbd5e1" }} fixed>
+        <Text style={{ fontSize: 7, color: "#6b7280", fontFamily: "Helvetica-Bold", marginBottom: 2 }}>* Abbreviations / Legend:</Text>
+        <Text style={{ fontSize: 7, color: "#6b7280" }}>
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Ret.</Text> = Retention Amount |{" "}
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>A/C Credited</Text> = Account Credited |{" "}
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Mode & Ref</Text> = Payment Mode & UTR/Reference No. |{" "}
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Bal+GST</Text> = Final Balance + GST
+        </Text>
+      </View>
       <PageFooter signStr={signStr} settings={data.settings} />
     </Page>
   );
@@ -394,7 +402,15 @@ function AbstractSummary({ data, logoStr, signStr }: any) {
           </Text>
         )}
       </View>
-
+      <View style={{ marginTop: 10, padding: 8, backgroundColor: "#f9fafb", borderRadius: 4, borderWidth: 1, borderColor: "#cbd5e1" }} fixed>
+        <Text style={{ fontSize: 7, color: "#6b7280", fontFamily: "Helvetica-Bold", marginBottom: 2 }}>* Abbreviations / Legend:</Text>
+        <Text style={{ fontSize: 7, color: "#6b7280" }}>
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Ret.</Text> = Retention Amount |{" "}
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>A/C Credited</Text> = Account Credited |{" "}
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Mode & Ref</Text> = Payment Mode & UTR/Reference No. |{" "}
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Bal+GST</Text> = Final Balance + GST
+        </Text>
+      </View>
       <PageFooter signStr={signStr} settings={data.settings} />
     </Page>
   );
@@ -416,8 +432,12 @@ function TowerPages({ data, logoStr, signStr }: any) {
       <Page size="A4" style={styles.page} key={tower.id}>
         <PageHeader title={`BUILDING - ${tower.name.toUpperCase()}`} site={site} bill={runningBill} logoStr={logoStr} settings={data.settings} />
         
-        <Text style={{ marginBottom: 10, fontFamily: "Helvetica-Bold", color: "#4f46e5", fontSize: 9 }}>
-          Approx BUA Area: {approxArea.toLocaleString()} Sft  @  Rs. {contractRate}/Sft  =  {formatINR(totalTowerVal)}
+        <Text style={{ marginBottom: 10, fontSize: 9, color: "#374151" }}>
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Approx BUA Area:</Text> <Text style={{ color: "#4f46e5", fontFamily: "Helvetica-Bold" }}>{approxArea.toLocaleString()} Sft</Text>
+          {"  "}@{"  "}
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Rs. {contractRate}/Sft</Text>
+          {"  "}={"  "}
+          <Text style={{ color: "#16a34a", fontFamily: "Helvetica-Bold" }}>{formatINR(totalTowerVal)}</Text>
         </Text>
         
         <View style={styles.table}>
@@ -487,8 +507,16 @@ function TowerPages({ data, logoStr, signStr }: any) {
             <Text style={[styles.td, { width: "12%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#ef4444" }]}>{formatINR(totalTowerVal - tCumTotal)}</Text>
           </View>
         </View>
-        
-        <PageFooter signStr={signStr} settings={data.settings} />
+      <View style={{ marginTop: 10, padding: 8, backgroundColor: "#f9fafb", borderRadius: 4, borderWidth: 1, borderColor: "#cbd5e1" }} fixed>
+        <Text style={{ fontSize: 7, color: "#6b7280", fontFamily: "Helvetica-Bold", marginBottom: 2 }}>* Abbreviations / Legend:</Text>
+        <Text style={{ fontSize: 7, color: "#6b7280" }}>
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Ret.</Text> = Retention Amount |{" "}
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>A/C Credited</Text> = Account Credited |{" "}
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Mode & Ref</Text> = Payment Mode & UTR/Reference No. |{" "}
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Bal+GST</Text> = Final Balance + GST
+        </Text>
+      </View>
+      <PageFooter signStr={signStr} settings={data.settings} />
       </Page>
     );
   });
@@ -671,6 +699,15 @@ function LedgerPage({ data, logoStr, signStr }: any) {
             </View>
           );
         })}
+      </View>
+      <View style={{ marginTop: 10, padding: 8, backgroundColor: "#f9fafb", borderRadius: 4, borderWidth: 1, borderColor: "#cbd5e1" }} fixed>
+        <Text style={{ fontSize: 7, color: "#6b7280", fontFamily: "Helvetica-Bold", marginBottom: 2 }}>* Abbreviations / Legend:</Text>
+        <Text style={{ fontSize: 7, color: "#6b7280" }}>
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Ret.</Text> = Retention Amount |{" "}
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>A/C Credited</Text> = Account Credited |{" "}
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Mode & Ref</Text> = Payment Mode & UTR/Reference No. |{" "}
+          <Text style={{ fontFamily: "Helvetica-Bold" }}>Bal+GST</Text> = Final Balance + GST
+        </Text>
       </View>
       <PageFooter signStr={signStr} settings={data.settings} />
     </Page>

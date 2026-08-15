@@ -298,16 +298,17 @@ export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any,
                   <TR>
                     <TH className="py-2.5 font-bold w-12 text-center">SR.</TH>
                     <TH className="py-2.5 font-bold w-24">DATE</TH>
-                    <TH className="py-2.5 font-bold w-48">RA BILLS / REMARKS</TH>
-                    <TH className="py-2.5 font-bold text-right w-24">BILL AMOUNT</TH>
-                    <TH className="py-2.5 font-bold text-right w-24">RETENTION</TH>
-                    <TH className="py-2.5 font-bold text-right w-24">AMOUNT</TH>
-                    <TH className="py-2.5 font-bold text-right w-32">A/C & UTR</TH>
+                    <TH className="py-2.5 font-bold w-48">PARTICULARS</TH>
+                    <TH className="py-2.5 font-bold text-right w-24">BILL GROSS</TH>
+                    <TH className="py-2.5 font-bold text-right w-20">RET.</TH>
+                    <TH className="py-2.5 font-bold text-right w-24">NET BILL</TH>
+                    <TH className="py-2.5 font-bold text-left w-32">MODE & REF</TH>
+                    <TH className="py-2.5 font-bold text-right w-24">A/C CREDITED</TH>
                     <TH className="py-2.5 font-bold text-right w-20">1% TDS</TH>
                     <TH className="py-2.5 font-bold text-right w-24">ADVANCE</TH>
                     <TH className="py-2.5 font-bold text-right w-24">BALANCE</TH>
-                    <TH className="py-2.5 font-bold text-right w-24">GST AMOUNT</TH>
-                    <TH className="py-2.5 font-bold text-right w-24">BALANCE+GST</TH>
+                    <TH className="py-2.5 font-bold text-right w-20">GST</TH>
+                    <TH className="py-2.5 font-bold text-right w-24">BAL+GST</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -322,6 +323,7 @@ export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any,
                             <TD className="font-mono text-right text-blue-600">{formatINR(row.grossAmount)}</TD>
                             <TD className="font-mono text-right text-orange-600">{formatINR(row.retentionAmt)}</TD>
                             <TD className="font-mono text-right">{formatINR(row.netBilledAmt)}</TD>
+                            <TD></TD>
                             <TD className="font-mono text-right text-emerald-600">{formatINR(row.paymentRecd)}</TD>
                             <TD className="font-mono text-right text-indigo-600">{formatINR(row.tdsAmt)}</TD>
                             <TD className="font-mono text-right text-emerald-600">{formatINR(row.cumAdvanceTotal)}</TD>
@@ -350,18 +352,15 @@ export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any,
                         <TD className="font-mono text-right text-orange-500">{isBill && row.retentionAmt > 0 ? `-${formatINR(row.retentionAmt)}` : ""}</TD>
                         <TD className="font-mono text-right font-medium">{isBill ? formatINR(row.netBilledAmt) : ""}</TD>
                         
-                        <TD className="text-right text-xs">
-                          {!isBill && (
-                            <>
-                              <div className="font-semibold">{row.accountCredited}</div>
-                              {row.utr && <div className="text-[10px] text-muted-foreground">UTR: {row.utr}</div>}
-                            </>
-                          )}
+                        <TD className="text-left text-[11px] text-muted-foreground">
+                          {!isBill ? [row.rawObj?.mode, row.utr].filter(Boolean).join(" | ") : ""}
                         </TD>
+
+                        <TD className="font-mono text-right font-bold text-emerald-600">{!isBill ? formatINR(row.paymentRecd) : ""}</TD>
 
                         <TD className="font-mono text-right text-orange-500">{isBill && row.tdsAmt > 0 ? `-${formatINR(row.tdsAmt)}` : ""}</TD>
                         
-                        <TD className="font-mono text-right font-medium text-emerald-600">{!isBill ? formatINR(row.paymentRecd) : ""}</TD>
+                        <TD className="font-mono text-right font-medium text-emerald-600">{formatINR(row.cumAdvanceTotal)}</TD>
                         
                         <TD className={`font-mono text-right font-bold ${row.runningBal > 0 ? "text-rose-500" : "text-emerald-500"}`}>{formatINR(row.runningBal)}</TD>
                         
