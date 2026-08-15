@@ -3,19 +3,21 @@ import { Document, Page, Text, View, StyleSheet, renderToBuffer, Image, Font } f
 import fs from "fs";
 import path from "path";
 
+Font.registerHyphenationCallback((word) => [word]);
+
 const styles = StyleSheet.create({
   page: {
     padding: 30,
     fontFamily: "Helvetica",
     fontSize: 9,
-    color: "#374151",
+    color: "#111827",
     paddingBottom: 120,
   },
   landscapePage: {
     padding: 30,
     fontFamily: "Helvetica",
     fontSize: 8,
-    color: "#374151",
+    color: "#111827",
     paddingBottom: 120,
   },
   headerBanner: {
@@ -77,12 +79,11 @@ const styles = StyleSheet.create({
   tr: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: "#9ca3af",
     minHeight: 24,
-    alignItems: "center",
   },
-  th: { padding: 6, fontFamily: "Helvetica-Bold", backgroundColor: "#f9fafb", color: "#111827", fontSize: 8, borderRightWidth: 1, borderColor: "#9ca3af" },
-  td: { padding: 6, fontSize: 8, borderRightWidth: 1, borderColor: "#9ca3af" },
+  th: { padding: 6, fontFamily: "Helvetica-Bold", backgroundColor: "#f9fafb", color: "#111827", fontSize: 8, borderRightWidth: 1, borderColor: "#9ca3af", justifyContent: "center" },
+  td: { padding: 6, fontSize: 8, borderRightWidth: 1, borderColor: "#9ca3af", justifyContent: "center" },
   trTotal: {
     backgroundColor: "#f3f4f6",
     fontFamily: "Helvetica-Bold",
@@ -127,6 +128,10 @@ function formatINR(num: number) {
   return "Rs. " + (num || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function formatNum(num: number) {
+  return (num || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function PageHeader({ title, site, bill, logoStr, settings }: { title: string, site: any, bill: any, logoStr: string | null, settings?: any }) {
   const billDate = bill?.billDate ? new Date(bill.billDate).toLocaleDateString("en-IN") : new Date().toLocaleDateString("en-IN");
   return (
@@ -168,17 +173,40 @@ function PageHeader({ title, site, bill, logoStr, settings }: { title: string, s
   );
 }
 
-function PageFooter({ signStr, settings }: { signStr: string | null, settings?: any }) {
+function PageFooter({ signStr, settings, hideSeal }: { signStr: string | null, settings?: any, hideSeal?: boolean }) {
   return (
-    <View fixed style={styles.footerContainer}>
-      <View style={{ flex: 1, paddingRight: 20 }}>
-        <Text style={{ color: "#4b5563", fontSize: 8 }}>{settings?.address || "Office No- 04, Raipada, Nr. Anand Gaushalla, Chandansar Road, Virar (E) - 401305"}</Text>
-        <Text style={{ color: "#4b5563", fontSize: 8, marginTop: 4 }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+    <>
+      {!hideSeal && (
+        <View fixed style={{ position: "absolute", bottom: 60, right: 30, width: 120, alignItems: "center" }}>
+          <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 8, color: "#111827" }}>FOR {settings?.companyName?.toUpperCase() || "RCR ENTERPRISES"}</Text>
+          {signStr ? <Image src={signStr} style={{ width: 80, height: 40, marginVertical: 4, objectFit: 'contain' }} /> : <View style={{ height: 40, marginVertical: 4 }} />}
+          <Text style={{ fontSize: 7, color: "#374151", fontFamily: "Helvetica-Bold" }}>AUTHORISED SIGNATORY</Text>
+        </View>
+      )}
+
+      <View fixed style={{ position: "absolute", bottom: 15, left: 30, right: 30, height: 25, backgroundColor: "#4f46e5", borderRadius: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 15 }}>
+        <Text style={{ color: "#ffffff", fontSize: 7 }}>{settings?.address || "Office No- 04, Raipada, Nr. Anand Gaushalla, Chandansar Road, Virar (E) - 401305"}</Text>
+        <Text style={{ color: "#ffffff", fontSize: 7, fontFamily: "Helvetica-Bold" }} render={({ pageNumber, totalPages }) => `PAGE ${pageNumber} OF ${totalPages}`} />
       </View>
-      <View style={{ width: 120, alignItems: "center" }}>
-        <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 8, color: "#111827" }}>FOR {settings?.companyName?.toUpperCase() || "RCR ENTERPRISES"}</Text>
-        {signStr ? <Image src={signStr} style={{ width: 80, height: 40, marginVertical: 4, objectFit: 'contain' }} /> : <View style={{ height: 40, marginVertical: 4 }} />}
-        <Text style={{ fontSize: 7, color: "#374151", fontFamily: "Helvetica-Bold" }}>AUTHORISED SIGNATORY</Text>
+    </>
+  );
+}
+
+function LegendFooter() {
+  return (
+    <View style={{ marginTop: 15, padding: 8, backgroundColor: "#f8fafc", borderRadius: 4, borderLeftWidth: 3, borderLeftColor: "#4f46e5", marginBottom: 5 }} wrap={false}>
+      <Text style={{ fontSize: 7, color: "#475569", fontFamily: "Helvetica-Bold", marginBottom: 3 }}>* ABBREVIATIONS & LEGEND</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>Prv / Prev</Text> = Previous</Text>
+        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>Cur / Curr</Text> = Current</Text>
+        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>Cum</Text> = Cumulative</Text>
+        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>Amt</Text> = Amount</Text>
+        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>W.O.</Text> = Work Order</Text>
+        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>Ret.</Text> = Retention</Text>
+        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>Bal</Text> = Balance</Text>
+        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>A/C Credited</Text> = Account Credited</Text>
+        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>F. Qty</Text> = Fitter Qty</Text>
+        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>H. Qty</Text> = Helper Qty</Text>
       </View>
     </View>
   );
@@ -260,23 +288,23 @@ function TaxInvoice({ data, logoStr, signStr }: any) {
         </View>
       </View>
 
-      <View style={{ marginTop: 30, padding: 15, borderWidth: 1, borderColor: "#4f46e5", borderRadius: 4, backgroundColor: "#f3f4f6", width: "60%" }}>
-        <Text style={{ fontFamily: "Helvetica-Bold", color: "#4f46e5", marginBottom: 8, fontSize: 10 }}>BANK DETAILS FOR PAYMENT (NEFT / RTGS)</Text>
-        <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 4 }}>ACCOUNT NAME: RCR ENTERPRISES</Text>
-        <Text style={{ marginBottom: 2 }}>ACCOUNT NO: 088405500559</Text>
-        <Text style={{ marginBottom: 2 }}>IFSC CODE: ICIC0000884</Text>
-        <Text>BANK NAME: ICICI BANK LTD.</Text>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 20 }}>
+        <View style={{ padding: 15, borderWidth: 1, borderColor: "#4f46e5", borderRadius: 4, backgroundColor: "#f3f4f6", width: "60%" }}>
+          <Text style={{ fontFamily: "Helvetica-Bold", color: "#4f46e5", marginBottom: 8, fontSize: 10 }}>BANK DETAILS FOR PAYMENT (NEFT / RTGS)</Text>
+          <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 4 }}>ACCOUNT NAME: RCR ENTERPRISES</Text>
+          <Text style={{ marginBottom: 2 }}>ACCOUNT NO: 088405500559</Text>
+          <Text style={{ marginBottom: 2 }}>IFSC CODE: ICIC0000884</Text>
+          <Text>BANK NAME: ICICI BANK LTD.</Text>
+        </View>
+
+        <View style={{ width: 120, alignItems: "center" }}>
+          <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 8, color: "#111827" }}>FOR {data.settings?.companyName?.toUpperCase() || "RCR ENTERPRISES"}</Text>
+          {signStr ? <Image src={signStr} style={{ width: 80, height: 40, marginVertical: 4, objectFit: 'contain' }} /> : <View style={{ height: 40, marginVertical: 4 }} />}
+          <Text style={{ fontSize: 7, color: "#374151", fontFamily: "Helvetica-Bold" }}>AUTHORISED SIGNATORY</Text>
+        </View>
       </View>
-      <View style={{ marginTop: 10, padding: 8, backgroundColor: "#f9fafb", borderRadius: 4, borderWidth: 1, borderColor: "#cbd5e1" }} fixed>
-        <Text style={{ fontSize: 7, color: "#6b7280", fontFamily: "Helvetica-Bold", marginBottom: 2 }}>* Abbreviations / Legend:</Text>
-        <Text style={{ fontSize: 7, color: "#6b7280" }}>
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>Ret.</Text> = Retention Amount |{" "}
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>A/C Credited</Text> = Account Credited |{" "}
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>Mode & Ref</Text> = Payment Mode & UTR/Reference No. |{" "}
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>Bal+GST</Text> = Final Balance + GST
-        </Text>
-      </View>
-      <PageFooter signStr={signStr} settings={data.settings} />
+      <LegendFooter />
+      <PageFooter signStr={signStr} settings={data.settings} hideSeal={true} />
     </Page>
   );
 }
@@ -309,7 +337,7 @@ function AbstractSummary({ data, logoStr, signStr }: any) {
           <Text style={[styles.th, { width: "12%", textAlign: "right" }]}>W.O. Area</Text>
           <Text style={[styles.th, { width: "12%", textAlign: "right" }]}>Rate</Text>
           <Text style={[styles.th, { width: "12%", textAlign: "right" }]}>Prev. Amt</Text>
-          <Text style={[styles.th, { width: "12%", textAlign: "right" }]}>This Bill</Text>
+          <Text style={[styles.th, { width: "12%", textAlign: "right", backgroundColor: "#e0e7ff" }]}>This Bill</Text>
           <Text style={[styles.th, { width: "12%", textAlign: "right" }]}>Cum. Amt</Text>
         </View>
 
@@ -333,7 +361,7 @@ function AbstractSummary({ data, logoStr, signStr }: any) {
               <Text style={[styles.td, { width: "12%", textAlign: "right" }]}>{approxArea > 0 ? approxArea.toLocaleString() : "—"}</Text>
               <Text style={[styles.td, { width: "12%", textAlign: "right" }]}>{contractRate > 0 ? `Rs.${contractRate}` : "—"}</Text>
               <Text style={[styles.td, { width: "12%", textAlign: "right" }]}>{formatINR(prevA)}</Text>
-              <Text style={[styles.td, { width: "12%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#4f46e5" }]}>{formatINR(currA)}</Text>
+              <Text style={[styles.td, { width: "12%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#3730a3", backgroundColor: "#eef2ff" }]}>{formatINR(currA)}</Text>
               <Text style={[styles.td, { width: "12%", textAlign: "right", fontFamily: "Helvetica-Bold" }]}>{formatINR(cumA)}</Text>
             </View>
           );
@@ -346,7 +374,7 @@ function AbstractSummary({ data, logoStr, signStr }: any) {
           <Text style={[styles.td, { width: "12%", textAlign: "right" }]}>—</Text>
           <Text style={[styles.td, { width: "12%", textAlign: "right" }]}>—</Text>
           <Text style={[styles.td, { width: "12%", textAlign: "right" }]}>{formatINR(prevSupplyTotal)}</Text>
-          <Text style={[styles.td, { width: "12%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#4f46e5" }]}>{formatINR(supplyTotal)}</Text>
+          <Text style={[styles.td, { width: "12%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#3730a3", backgroundColor: "#eef2ff" }]}>{formatINR(supplyTotal)}</Text>
           <Text style={[styles.td, { width: "12%", textAlign: "right", fontFamily: "Helvetica-Bold" }]}>{formatINR(prevSupplyTotal + supplyTotal)}</Text>
         </View>
       </View>
@@ -402,15 +430,7 @@ function AbstractSummary({ data, logoStr, signStr }: any) {
           </Text>
         )}
       </View>
-      <View style={{ marginTop: 10, padding: 8, backgroundColor: "#f9fafb", borderRadius: 4, borderWidth: 1, borderColor: "#cbd5e1" }} fixed>
-        <Text style={{ fontSize: 7, color: "#6b7280", fontFamily: "Helvetica-Bold", marginBottom: 2 }}>* Abbreviations / Legend:</Text>
-        <Text style={{ fontSize: 7, color: "#6b7280" }}>
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>Ret.</Text> = Retention Amount |{" "}
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>A/C Credited</Text> = Account Credited |{" "}
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>Mode & Ref</Text> = Payment Mode & UTR/Reference No. |{" "}
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>Bal+GST</Text> = Final Balance + GST
-        </Text>
-      </View>
+      <LegendFooter />
       <PageFooter signStr={signStr} settings={data.settings} />
     </Page>
   );
@@ -442,16 +462,15 @@ function TowerPages({ data, logoStr, signStr }: any) {
         
         <View style={styles.table}>
           <View style={styles.tr} fixed>
-            <Text style={[styles.th, { width: "5%" }]}>Sr.</Text>
-            <Text style={[styles.th, { width: "23%" }]}>Particulars</Text>
-            <Text style={[styles.th, { width: "7%", textAlign: "center" }]}>Unit</Text>
-            <Text style={[styles.th, { width: "12%", textAlign: "right" }]}>Item Amt</Text>
-            <Text style={[styles.th, { width: "7%", textAlign: "center" }]}>Prv %</Text>
-            <Text style={[styles.th, { width: "7%", textAlign: "center" }]}>Cur %</Text>
-            <Text style={[styles.th, { width: "7%", textAlign: "center" }]}>Cum %</Text>
-            <Text style={[styles.th, { width: "10%", textAlign: "right" }]}>Prev Amt</Text>
-            <Text style={[styles.th, { width: "12%", textAlign: "right" }]}>This Bill</Text>
-            <Text style={[styles.th, { width: "10%", textAlign: "right" }]}>Cum Amt</Text>
+            <Text style={[styles.th, { width: "4%" }]}>Sr.</Text>
+            <Text style={[styles.th, { width: "22%" }]}>Particulars</Text>
+            <Text style={[styles.th, { width: "14%", textAlign: "right" }]}>Item Amt(Rs)</Text>
+            <Text style={[styles.th, { width: "6%", textAlign: "center" }]}>Prv %</Text>
+            <Text style={[styles.th, { width: "6%", textAlign: "center", backgroundColor: "#e0e7ff" }]}>Cur %</Text>
+            <Text style={[styles.th, { width: "6%", textAlign: "center" }]}>Cum %</Text>
+            <Text style={[styles.th, { width: "14%", textAlign: "right" }]}>Prev Amt(Rs)</Text>
+            <Text style={[styles.th, { width: "14%", textAlign: "right", backgroundColor: "#e0e7ff" }]}>This Bill(Rs)</Text>
+            <Text style={[styles.th, { width: "14%", textAlign: "right" }]}>Cum Amt(Rs)</Text>
           </View>
           
           {items.map((item: any, i: number) => {
@@ -473,49 +492,40 @@ function TowerPages({ data, logoStr, signStr }: any) {
 
             return (
               <View style={styles.tr} key={item.id} wrap={false}>
-                <Text style={[styles.td, { width: "5%" }]}>{i + 1}</Text>
-                <Text style={[styles.td, { width: "23%" }]}>{item.name}</Text>
-                <Text style={[styles.td, { width: "7%", textAlign: "center" }]}>{item.unit || "%"}</Text>
-                <Text style={[styles.td, { width: "12%", textAlign: "right" }]}>{formatINR(item.partAmount)}</Text>
-                <Text style={[styles.td, { width: "7%", textAlign: "center" }]}>{prevQ}%</Text>
-                <Text style={[styles.td, { width: "7%", textAlign: "center", color: "#4f46e5", fontFamily: "Helvetica-Bold" }]}>{currQ}%</Text>
-                <Text style={[styles.td, { width: "7%", textAlign: "center", fontFamily: "Helvetica-Bold" }]}>{cumQ}%</Text>
-                <Text style={[styles.td, { width: "10%", textAlign: "right" }]}>{formatINR(prevA)}</Text>
-                <Text style={[styles.td, { width: "12%", textAlign: "right", color: "#4f46e5", fontFamily: "Helvetica-Bold" }]}>{formatINR(currA)}</Text>
-                <Text style={[styles.td, { width: "10%", textAlign: "right", fontFamily: "Helvetica-Bold" }]}>{formatINR(cumA)}</Text>
+                <Text style={[styles.td, { width: "4%" }]}>{i + 1}</Text>
+                <Text style={[styles.td, { width: "22%" }]}>{item.name}</Text>
+                <Text style={[styles.td, { width: "14%", textAlign: "right" }]}>{formatNum(item.partAmount)}</Text>
+                <Text style={[styles.td, { width: "6%", textAlign: "center" }]}>{prevQ}%</Text>
+                <Text style={[styles.td, { width: "6%", textAlign: "center", color: "#3730a3", fontFamily: "Helvetica-Bold", backgroundColor: "#eef2ff" }]}>{currQ}%</Text>
+                <Text style={[styles.td, { width: "6%", textAlign: "center", fontFamily: "Helvetica-Bold" }]}>{cumQ}%</Text>
+                <Text style={[styles.td, { width: "14%", textAlign: "right" }]}>{formatNum(prevA)}</Text>
+                <Text style={[styles.td, { width: "14%", textAlign: "right", color: "#3730a3", fontFamily: "Helvetica-Bold", backgroundColor: "#eef2ff" }]}>{formatNum(currA)}</Text>
+                <Text style={[styles.td, { width: "14%", textAlign: "right", fontFamily: "Helvetica-Bold" }]}>{formatNum(cumA)}</Text>
               </View>
             );
           })}
           
           {/* Footer Total */}
           <View style={[styles.tr, styles.trTotal]} wrap={false}>
-            <Text style={[styles.td, { width: "28%", textAlign: "right" }]}>TOTAL AMOUNT</Text>
-            <Text style={[styles.td, { width: "12%", textAlign: "right" }]}>{formatINR(tPartAmt)}</Text>
-            <Text style={[styles.td, { width: "7%", textAlign: "center" }]}>{tPrevQ}%</Text>
-            <Text style={[styles.td, { width: "7%", textAlign: "center", color: "#4f46e5" }]}>{tCurrQ}%</Text>
-            <Text style={[styles.td, { width: "7%", textAlign: "center" }]}>{tCumQ}%</Text>
-            <Text style={[styles.td, { width: "10%", textAlign: "right" }]}>{formatINR(tPrevTotal)}</Text>
-            <Text style={[styles.td, { width: "12%", textAlign: "right", color: "#4f46e5" }]}>{formatINR(tCurrTotal)}</Text>
-            <Text style={[styles.td, { width: "10%", textAlign: "right" }]}>{formatINR(tCumTotal)}</Text>
+            <Text style={[styles.td, { width: "26%", textAlign: "right" }]}>TOTAL AMOUNT</Text>
+            <Text style={[styles.td, { width: "14%", textAlign: "right" }]}>{formatNum(tPartAmt)}</Text>
+            <Text style={[styles.td, { width: "6%", textAlign: "center" }]}>{tPrevQ}%</Text>
+            <Text style={[styles.td, { width: "6%", textAlign: "center", color: "#3730a3", fontFamily: "Helvetica-Bold", backgroundColor: "#eef2ff" }]}>{tCurrQ}%</Text>
+            <Text style={[styles.td, { width: "6%", textAlign: "center" }]}>{tCumQ}%</Text>
+            <Text style={[styles.td, { width: "14%", textAlign: "right" }]}>{formatNum(tPrevTotal)}</Text>
+            <Text style={[styles.td, { width: "14%", textAlign: "right", color: "#3730a3", fontFamily: "Helvetica-Bold", backgroundColor: "#eef2ff" }]}>{formatNum(tCurrTotal)}</Text>
+            <Text style={[styles.td, { width: "14%", textAlign: "right" }]}>{formatNum(tCumTotal)}</Text>
           </View>
           <View style={styles.tr} wrap={false}>
-            <Text style={[styles.td, { width: "88%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#6b7280" }]}>GROSS CONTRACT AMOUNT FOR {tower.name.toUpperCase()}</Text>
-            <Text style={[styles.td, { width: "12%", textAlign: "right", fontFamily: "Helvetica-Bold" }]}>{formatINR(totalTowerVal)}</Text>
+            <Text style={[styles.td, { width: "86%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#6b7280" }]}>GROSS CONTRACT AMOUNT FOR {tower.name.toUpperCase()}</Text>
+            <Text style={[styles.td, { width: "14%", textAlign: "right", fontFamily: "Helvetica-Bold" }]}>{formatINR(totalTowerVal)}</Text>
           </View>
           <View style={[styles.tr, { borderBottomWidth: 0 }]} wrap={false}>
-            <Text style={[styles.td, { width: "88%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#ef4444" }]}>BALANCE AMOUNT TO BE BILLED FOR {tower.name.toUpperCase()}</Text>
-            <Text style={[styles.td, { width: "12%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#ef4444" }]}>{formatINR(totalTowerVal - tCumTotal)}</Text>
+            <Text style={[styles.td, { width: "86%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#ef4444" }]}>BALANCE AMOUNT TO BE BILLED FOR {tower.name.toUpperCase()}</Text>
+            <Text style={[styles.td, { width: "14%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#ef4444" }]}>{formatINR(totalTowerVal - tCumTotal)}</Text>
           </View>
         </View>
-      <View style={{ marginTop: 10, padding: 8, backgroundColor: "#f9fafb", borderRadius: 4, borderWidth: 1, borderColor: "#cbd5e1" }} fixed>
-        <Text style={{ fontSize: 7, color: "#6b7280", fontFamily: "Helvetica-Bold", marginBottom: 2 }}>* Abbreviations / Legend:</Text>
-        <Text style={{ fontSize: 7, color: "#6b7280" }}>
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>Ret.</Text> = Retention Amount |{" "}
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>A/C Credited</Text> = Account Credited |{" "}
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>Mode & Ref</Text> = Payment Mode & UTR/Reference No. |{" "}
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>Bal+GST</Text> = Final Balance + GST
-        </Text>
-      </View>
+      <LegendFooter />
       <PageFooter signStr={signStr} settings={data.settings} />
       </Page>
     );
@@ -590,7 +600,7 @@ function SupplyPage({ data, logoStr, signStr }: any) {
           </View>
         );
       })()}
-
+      <LegendFooter />
       <PageFooter signStr={signStr} settings={data.settings} />
     </Page>
   );
@@ -646,6 +656,8 @@ function LedgerPage({ data, logoStr, signStr }: any) {
   let runCumRecd = 0;
   let runCumTds = 0;
   let runCumGst = 0;
+  let totGross = 0;
+  let totRet = 0;
 
   return (
     <Page size="A4" orientation="landscape" style={styles.landscapePage}>
@@ -655,12 +667,11 @@ function LedgerPage({ data, logoStr, signStr }: any) {
         <View style={styles.tr} fixed>
           <Text style={[styles.th, { width: "3%" }]}>Sr.</Text>
           <Text style={[styles.th, { width: "8%" }]}>Date</Text>
-          <Text style={[styles.th, { width: "14%" }]}>Particulars</Text>
+          <Text style={[styles.th, { width: "18%" }]}>Particulars</Text>
           <Text style={[styles.th, { width: "8%", textAlign: "right" }]}>Bill Gross</Text>
           <Text style={[styles.th, { width: "6%", textAlign: "right" }]}>Ret.</Text>
           <Text style={[styles.th, { width: "8%", textAlign: "right" }]}>Net Bill</Text>
-          <Text style={[styles.th, { width: "10%", textAlign: "left" }]}>Mode & Ref</Text>
-          <Text style={[styles.th, { width: "8%", textAlign: "right" }]}>A/c Credited</Text>
+          <Text style={[styles.th, { width: "14%", textAlign: "right" }]}>A/c Credited</Text>
           <Text style={[styles.th, { width: "5%", textAlign: "right" }]}>1% TDS</Text>
           <Text style={[styles.th, { width: "8%", textAlign: "right" }]}>Advance</Text>
           <Text style={[styles.th, { width: "8%", textAlign: "right" }]}>Balance</Text>
@@ -673,6 +684,8 @@ function LedgerPage({ data, logoStr, signStr }: any) {
             runCumNet += item.netBilledAmt;
             runCumTds += item.tdsAmt;
             runCumGst += item.gstAmt;
+            totGross += item.grossAmount;
+            totRet += item.retentionAmt;
           } else {
             runCumRecd += item.paymentRecd;
           }
@@ -685,12 +698,14 @@ function LedgerPage({ data, logoStr, signStr }: any) {
             <View style={styles.tr} key={idx} wrap={false}>
               <Text style={[styles.td, { width: "3%" }]}>{idx + 1}</Text>
               <Text style={[styles.td, { width: "8%" }]}>{item.date.toLocaleDateString("en-IN")}</Text>
-              <Text style={[styles.td, { width: "14%", fontFamily: "Helvetica-Bold" }]}>{item.refName.slice(0, 24)}</Text>
+              <Text style={[styles.td, { width: "18%", fontFamily: "Helvetica-Bold" }]}>{item.refName.slice(0, 30)}</Text>
               <Text style={[styles.td, { width: "8%", textAlign: "right", color: "#4b5563" }]}>{item.type === "BILL" ? formatINR(item.grossAmount) : "-"}</Text>
               <Text style={[styles.td, { width: "6%", textAlign: "right", color: "#ef4444" }]}>{item.type === "BILL" ? formatINR(item.retentionAmt) : "-"}</Text>
               <Text style={[styles.td, { width: "8%", textAlign: "right" }]}>{item.type === "BILL" ? formatINR(item.netBilledAmt) : "-"}</Text>
-              <Text style={[styles.td, { width: "10%", textAlign: "left", color: "#6b7280", fontSize: 7 }]}>{item.type === "PAYMENT" ? [item.paymentMode, item.paymentRef].filter(Boolean).join(" | ").slice(0, 35) : "-"}</Text>
-              <Text style={[styles.td, { width: "8%", textAlign: "right", color: "#16a34a", fontFamily: "Helvetica-Bold" }]}>{item.type === "PAYMENT" ? formatINR(item.paymentRecd) : "-"}</Text>
+              <View style={[styles.td, { width: "14%", alignItems: "flex-end", justifyContent: "center" }]}>
+                <Text style={{ color: "#16a34a", fontFamily: "Helvetica-Bold" }}>{item.type === "PAYMENT" ? formatINR(item.paymentRecd) : "-"}</Text>
+                {item.type === "PAYMENT" && <Text style={{ color: "#6b7280", fontSize: 6, marginTop: 2 }}>{[item.paymentMode, item.paymentRef].filter(Boolean).join(" | ").slice(0, 35)}</Text>}
+              </View>
               <Text style={[styles.td, { width: "5%", textAlign: "right" }]}>{item.type === "BILL" ? formatINR(item.tdsAmt) : "-"}</Text>
               <Text style={[styles.td, { width: "8%", textAlign: "right", color: "#16a34a" }]}>{formatINR(cumAdv)}</Text>
               <Text style={[styles.td, { width: "8%", textAlign: "right", fontFamily: "Helvetica-Bold", color: runBal > 0 ? "#dc2626" : "#16a34a" }]}>{formatINR(runBal)}</Text>
@@ -699,16 +714,20 @@ function LedgerPage({ data, logoStr, signStr }: any) {
             </View>
           );
         })}
+        <View style={[styles.tr, styles.trTotal, { borderBottomWidth: 0 }]} wrap={false}>
+          <Text style={[styles.td, { width: "29%", textAlign: "right" }]}>TOTALS</Text>
+          <Text style={[styles.td, { width: "8%", textAlign: "right" }]}>{formatINR(totGross)}</Text>
+          <Text style={[styles.td, { width: "6%", textAlign: "right", color: "#ef4444" }]}>{formatINR(totRet)}</Text>
+          <Text style={[styles.td, { width: "8%", textAlign: "right" }]}>{formatINR(runCumNet)}</Text>
+          <Text style={[styles.td, { width: "14%", textAlign: "right", color: "#16a34a", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumRecd)}</Text>
+          <Text style={[styles.td, { width: "5%", textAlign: "right" }]}>{formatINR(runCumTds)}</Text>
+          <Text style={[styles.td, { width: "8%", textAlign: "right", color: "#16a34a" }]}>{formatINR(runCumRecd + runCumTds)}</Text>
+          <Text style={[styles.td, { width: "8%", textAlign: "right" }]}></Text>
+          <Text style={[styles.td, { width: "6%", textAlign: "right", color: "#4b5563" }]}>{formatINR(runCumGst)}</Text>
+          <Text style={[styles.td, { width: "8%", textAlign: "right" }]}></Text>
+        </View>
       </View>
-      <View style={{ marginTop: 10, padding: 8, backgroundColor: "#f9fafb", borderRadius: 4, borderWidth: 1, borderColor: "#cbd5e1" }} fixed>
-        <Text style={{ fontSize: 7, color: "#6b7280", fontFamily: "Helvetica-Bold", marginBottom: 2 }}>* Abbreviations / Legend:</Text>
-        <Text style={{ fontSize: 7, color: "#6b7280" }}>
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>Ret.</Text> = Retention Amount |{" "}
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>A/C Credited</Text> = Account Credited |{" "}
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>Mode & Ref</Text> = Payment Mode & UTR/Reference No. |{" "}
-          <Text style={{ fontFamily: "Helvetica-Bold" }}>Bal+GST</Text> = Final Balance + GST
-        </Text>
-      </View>
+      <LegendFooter />
       <PageFooter signStr={signStr} settings={data.settings} />
     </Page>
   );

@@ -5,23 +5,21 @@ import { updateGlobalSettings } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+
 import { CardContent } from "@/components/ui/card";
 import { Building2, MapPin, Mail, Phone, Globe } from "lucide-react";
 
 export function SettingsForm({ settings }: { settings: any }) {
   const [isPending, startTransition] = useTransition();
-  const { toast } = useToast();
-
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       const res = await updateGlobalSettings(formData);
       if (res.error) {
-        toast({ title: "Error", description: res.error, variant: "destructive" });
+        alert(`Error: ${res.error}`);
       } else {
-        toast({ title: "Success", description: "Settings updated successfully." });
+        alert("Success: Settings updated successfully.");
       }
     });
   };
