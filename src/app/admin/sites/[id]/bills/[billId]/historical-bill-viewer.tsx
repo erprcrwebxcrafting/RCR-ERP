@@ -78,33 +78,61 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
           const currA = l?.currentAmount ?? 0;
           const cumA = l?.cumulativeAmount ?? (prevA + currA);
 
+          const unit = item.unit || l?.unit || "%";
+          const rate = l?.rate || item.rate || 0;
+          let partAmt = item.partAmount || l?.workItem?.partAmount || 0;
+          if (!partAmt) {
+            if (unit === "%") {
+               partAmt = 100 * rate;
+            } else if (l?.woQty && rate) {
+               partAmt = l.woQty * rate;
+            } else {
+               partAmt = rate;
+            }
+          }
+
           return {
             id: item.id,
             name: item.name || l?.description || "Work Item",
-            unit: item.unit || l?.unit || "%",
+            unit,
             previousAmt: prevA,
             currentAmt: currA,
             cumulativeAmt: cumA,
             previousQty: prevQ,
             currentQty: currQ,
             cumulativeQty: cumQ,
-            rate: l?.rate || item.rate || 0,
-            partAmount: item.partAmount || (l?.woQty && l?.rate ? l.woQty * l.rate : item.rate || 0),
+            rate,
+            partAmount: partAmt,
           };
         })
-      : bLines.map((l: any) => ({
+      : bLines.map((l: any) => {
+          const unit = l.unit || "%";
+          const rate = l.rate || 0;
+          let partAmt = l.workItem?.partAmount || 0;
+          if (!partAmt) {
+            if (unit === "%") {
+               partAmt = 100 * rate;
+            } else if (l.woQty && rate) {
+               partAmt = l.woQty * rate;
+            } else {
+               partAmt = rate;
+            }
+          }
+
+          return {
           id: l.workItemId || l.id,
           name: l.workItem?.name || l.description?.replace(`${b.name} - `, "") || l.description || "Work Item",
-          unit: l.unit || "%",
+          unit,
           previousAmt: l.previousAmount || 0,
           currentAmt: l.currentAmount || 0,
           cumulativeAmt: l.cumulativeAmount || ((l.previousAmount || 0) + (l.currentAmount || 0)),
           previousQty: l.previousQty || 0,
           currentQty: l.currentQty || 0,
           cumulativeQty: l.cumulativeQty || ((l.previousQty || 0) + (l.currentQty || 0)),
-          rate: l.rate || 0,
-          partAmount: (l.woQty && l.rate) ? l.woQty * l.rate : 0,
-        }));
+          rate,
+          partAmount: partAmt,
+        };
+      });
 
     return {
       ...b,
@@ -386,6 +414,7 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
             const totalVal = approxArea * contractRate;
 
             const items = b.workItems || [];
+            let totPartAmt = 0;
             let totPrevQ = 0;
             let totCurrQ = 0;
             let totCumQ = 0;
@@ -401,6 +430,7 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
               const currA = item.currentAmt || 0;
               const cumA = item.cumulativeAmt || (prevA + currA);
 
+              totPartAmt += item.partAmount || 0;
               totPrevQ += prevQ;
               totCurrQ += currQ;
               totCumQ += cumQ;
@@ -461,7 +491,8 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                     })}
 
                     <TR className="bg-muted/80 font-bold border-t-2 text-xs">
-                      <TD colSpan={4} className="text-right uppercase tracking-wider">TOTAL {b.name.toUpperCase()} AMOUNT</TD>
+                      <TD colSpan={3} className="text-right uppercase tracking-wider">TOTAL {b.name.toUpperCase()} AMOUNT</TD>
+                      <TD className="text-right font-mono text-muted-foreground">{formatINR(totPartAmt)}</TD>
                       <TD className="text-center font-mono">{totPrevQ}%</TD>
                       <TD className="text-center font-mono text-emerald-500">{totCurrQ}%</TD>
                       <TD className="text-center font-mono font-bold">{totCumQ}%</TD>
@@ -551,8 +582,6 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                       })
                     )}
 
-                    {entries.length > 0 && (
-                      <>
                         <TR className="bg-muted/40 font-bold border-t border-b">
                           <TD colSpan={3} className="text-right uppercase tracking-wider text-xs">Total Hours</TD>
                           <TD colSpan={2}></TD>
@@ -585,8 +614,6 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                           <TD className="text-center font-mono text-purple-600 font-bold">{formatINR(helperAmt)}</TD>
                           <TD className="font-mono text-emerald-600 dark:text-emerald-400 text-right text-base font-black">{formatINR(totalSupplyWork)}</TD>
                         </TR>
-                      </>
-                    )}
                   </TBody>
                 </Table>
               </div>

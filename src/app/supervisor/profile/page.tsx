@@ -9,7 +9,7 @@ export default async function ProfilePage() {
   const userId = (user as any)?.id as string;
   
   // Optionally fetch assigned sites to show on profile
-  let assignedSites = [];
+  let assignedSites: any[] = [];
   if (userId) {
     assignedSites = await prisma.siteSupervisor.findMany({
       where: { supervisorId: userId },

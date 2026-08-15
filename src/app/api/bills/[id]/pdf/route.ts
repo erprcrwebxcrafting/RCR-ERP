@@ -57,33 +57,59 @@ export async function GET(
               const currA = l?.currentAmount ?? 0;
               const cumA = l?.cumulativeAmount ?? (prevA + currA);
 
-              return {
-                id: item.id,
-                name: item.name || l?.description || "Work Item",
-                unit: item.unit || l?.unit || "%",
-                previousAmt: prevA,
-                currentAmt: currA,
-                cumulativeAmt: cumA,
-                previousQty: prevQ,
-                currentQty: currQ,
-                cumulativeQty: cumQ,
-                rate: l?.rate || item.rate || 0,
-                partAmount: item.partAmount || (l?.woQty && l?.rate ? l.woQty * l.rate : item.rate || 0),
-              };
-            })
-          : bLines.map((l: any) => ({
+            let partAmt = item.partAmount || l?.workItem?.partAmount || 0;
+            const unit = item.unit || l?.unit || "%";
+            const rate = l?.rate || item.rate || 0;
+            if (!partAmt) {
+              if (unit === "%") {
+                 partAmt = 100 * rate;
+              } else if (l?.woQty && rate) {
+                 partAmt = l.woQty * rate;
+              } else {
+                 partAmt = rate;
+              }
+            }
+            return {
+              id: item.id,
+              name: item.name || l?.description || "Work Item",
+              unit,
+              previousAmt: prevA,
+              currentAmt: currA,
+              cumulativeAmt: cumA,
+              previousQty: prevQ,
+              currentQty: currQ,
+              cumulativeQty: cumQ,
+              rate,
+              partAmount: partAmt,
+            };
+          })
+        : bLines.map((l: any) => {
+            let partAmt = l.workItem?.partAmount || 0;
+            const unit = l.workItem?.unit || l.unit || "%";
+            const rate = l.rate || 0;
+            if (!partAmt) {
+              if (unit === "%") {
+                 partAmt = 100 * rate;
+              } else if (l.woQty && rate) {
+                 partAmt = l.woQty * rate;
+              } else {
+                 partAmt = rate;
+              }
+            }
+            return {
               id: l.workItemId || l.id,
               name: l.workItem?.name || l.description?.replace(`${b.name} - `, "") || l.description || "Work Item",
-              unit: l.workItem?.unit || l.unit || "%",
+              unit,
               previousAmt: l.previousAmount || 0,
               currentAmt: l.currentAmount || 0,
               cumulativeAmt: l.cumulativeAmount || ((l.previousAmount || 0) + (l.currentAmount || 0)),
               previousQty: l.previousQty || 0,
               currentQty: l.currentQty || 0,
               cumulativeQty: l.cumulativeQty || ((l.previousQty || 0) + (l.currentQty || 0)),
-              rate: l.rate || 0,
-              partAmount: (l.woQty && l.rate) ? l.woQty * l.rate : 0,
-            })),
+              rate,
+              partAmount: partAmt,
+            };
+          }),
       };
     });
 

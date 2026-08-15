@@ -191,7 +191,7 @@ export async function generateRunningBillWorkbook(data: RunningBillData): Promis
   for (const b of data.buildingSheets) {
     const wsName = b.buildingName.slice(0, 31);
     const ws = wb.addWorksheet(wsName);
-    ws.columns = Array(9).fill({ width: 14 });
+    ws.columns = Array(10).fill({ width: 14 });
     ws.getColumn(2).width = 34;
     let row = 2;
     ws.getCell(`B${row}`).value = data.clientName; ws.getCell(`B${row}`).font = { bold: true }; row++;
@@ -207,18 +207,18 @@ export async function generateRunningBillWorkbook(data: RunningBillData): Promis
     ws.getCell(`I${row}`).value = b.approxArea * b.rate;
     row++;
 
-    ws.getRow(row).values = ["Sr.", "Particulars", "Part", "Work done", "", "", "Amount", "", ""];
+    ws.getRow(row).values = ["Sr.", "Particulars", "Part", "Price", "Work done", "", "", "Amount", "", ""];
     ws.getRow(row).font = { bold: true }; row++;
-    ws.getRow(row).values = ["No.", "of item", "", "", "", "", "", "", ""]; row++;
-    ws.getRow(row).values = ["", data.workName.replace(/\.$/, ""), "", "Previous", "This Bill", "Cumulative", "Previous", "This Bill", "Cumulative"];
+    ws.getRow(row).values = ["No.", "of item", "", "(Rate)", "", "", "", "", "", ""]; row++;
+    ws.getRow(row).values = ["", data.workName.replace(/\.$/, ""), "", "", "Previous", "This Bill", "Cumulative", "Previous", "This Bill", "Cumulative"];
     ws.getRow(row).font = { bold: true }; row++;
-    ws.getRow(row).values = ["", "Work", "", "Quantity", "Quantity", "Quantity", "Amount", "Amount", "Amount"];
+    ws.getRow(row).values = ["", "Work", "", "", "Quantity", "Quantity", "Quantity", "Amount", "Amount", "Amount"];
     ws.getRow(row).font = { bold: true }; row++;
 
     let tPrevQ = 0, tCurQ = 0, tCumQ = 0, tPrevA = 0, tCurA = 0, tCumA = 0;
     b.lines.forEach((l, i) => {
       ws.getRow(row).values = [
-        i + 1, l.description, l.woQty ?? "",
+        i + 1, l.description, l.woQty ?? "", l.rate,
         l.previousQty, l.currentQty, l.cumulativeQty,
         l.previousAmount, l.currentAmount, l.cumulativeAmount,
       ];
@@ -226,7 +226,7 @@ export async function generateRunningBillWorkbook(data: RunningBillData): Promis
       tPrevA += l.previousAmount; tCurA += l.currentAmount; tCumA += l.cumulativeAmount;
       row++;
     });
-    ws.getRow(row).values = ["", "TOTAL AMOUNT", b.approxArea, tPrevQ, tCurQ, tCumQ, tPrevA, tCurA, tCumA];
+    ws.getRow(row).values = ["", "TOTAL AMOUNT", b.approxArea, "", tPrevQ, tCurQ, tCumQ, tPrevA, tCurA, tCumA];
     ws.getRow(row).font = { bold: true };
   }
 
