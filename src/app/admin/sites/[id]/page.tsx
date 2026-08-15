@@ -26,7 +26,6 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
         quotations: { orderBy: { createdAt: "desc" } },
         payments: { orderBy: { date: "desc" } },
         labourEntries: { orderBy: { createdAt: "desc" } },
-        documents: { orderBy: { createdAt: "desc" } },
       },
     }),
     prisma.user.findMany({ where: { role: "SUPERVISOR" }, orderBy: { name: "asc" } }),

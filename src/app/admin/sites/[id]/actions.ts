@@ -2,38 +2,6 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import cloudinary from "@/lib/cloudinary";
-
-export async function uploadDocumentAction(siteId: string, formData: FormData) {
-  const file = formData.get("file") as File;
-  const name = formData.get("name") as string;
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
-  const result: any = await new Promise((resolve, reject) => {
-    cloudinary.uploader.upload_stream({ folder: "documents" }, (error, result) => {
-      if (error) reject(error);
-      resolve(result);
-    }).end(buffer);
-  });
-
-  await prisma.document.create({
-    data: { siteId, name, url: result.secure_url, publicId: result.public_id },
-  });
-  revalidatePath(`/admin/sites/${siteId}`);
-}
-export async function deleteDocumentAction(siteId: string, documentId: string, publicId: string) {
-  const session = await auth();
-  if (!session || (session.user as any).role !== "ADMIN") return;
-
-  try {
-    await cloudinary.uploader.destroy(publicId);
-  } catch (e) {
-    console.error("Cloudinary destroy failed:", e);
-  }
-  await prisma.document.delete({ where: { id: documentId } });
-  revalidatePath(`/admin/sites/${siteId}`);
-}
 
 export async function addBuildingAction(siteId: string, formData: FormData) {
   const name = formData.get("name") as string;

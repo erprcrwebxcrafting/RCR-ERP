@@ -28,7 +28,6 @@ model User {
 
   // Supervisor-only: sites assigned to this user
   assignedSites SiteSupervisor[]
-  auditLogs     AuditLog[]
   labours       Labour[]
   supervisorPayments SupervisorPayment[] @relation("SupervisorPayments")
   supervisorTransfers SupervisorTransferHistory[]
@@ -80,22 +79,11 @@ model Site {
   payments          Payment[]
   labourEntries     LabourEntry[]
   supplyLabourEntries SupplyLabourEntry[]
-  documents         Document[]
   labours           Labour[]
   labourTransfersFrom LabourTransferHistory[] @relation("LabourTransferFromSite")
   labourTransfersTo   LabourTransferHistory[] @relation("LabourTransferToSite")
   supervisorTransfersFrom SupervisorTransferHistory[] @relation("SupervisorTransferFromSite")
   supervisorTransfersTo   SupervisorTransferHistory[] @relation("SupervisorTransferToSite")
-}
-
-model Document {
-  id          String   @id @default(cuid())
-  siteId      String
-  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  name        String   // e.g. "Work Order.pdf", "Site Photo.jpg"
-  url         String   // Cloudinary URL
-  publicId    String   // Cloudinary public ID for deletion
-  createdAt   DateTime @default(now())
 }
 
 // Many-to-many: a supervisor can be assigned to multiple sites, a site can have multiple supervisors
@@ -354,17 +342,6 @@ model Payment {
   reference       String?  // links loosely to a RunningBill billNo
   remarks         String?
   createdAt       DateTime @default(now())
-}
-
-model AuditLog {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  action    String   // e.g. "SITE_CREATED", "BILL_GENERATED"
-  entity    String
-  entityId  String
-  metaJson  String?
-  createdAt DateTime @default(now())
 }
 
 model LabourTransferHistory {

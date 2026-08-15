@@ -10,15 +10,14 @@ import { formatINR, formatDate } from "@/lib/utils";
 import Link from "next/link";
 import {
   addLabourCategoryAction, addLabourerAction, assignSupervisorAction,
-  unassignSupervisorAction, calculateLabourPaymentAction, approveLabourEntryAction,
-  uploadDocumentAction, deleteDocumentAction
+  unassignSupervisorAction, calculateLabourPaymentAction, approveLabourEntryAction
 } from "./actions";
 import { TowerWorkManager } from "./components/tower-work-manager";
 import { SupplyLabourManager } from "./components/supply-labour-manager";
 import { RABillViewer } from "./components/ra-bill-viewer";
 import { SiteBalanceSheet } from "./components/site-balance-sheet";
 import { 
-  Building2, Hammer, Users, Banknote, UserCheck, Receipt, FileText, Upload, 
+  Building2, Hammer, Users, Banknote, UserCheck, Receipt, FileText, 
   MapPin, Percent, FileCheck, CircleDollarSign, CalendarDays, Contact2, Trash2, HardHat
 } from "lucide-react";
 

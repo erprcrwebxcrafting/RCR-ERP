@@ -22,13 +22,11 @@ export async function seedFreshDatabase() {
   try { await prisma.supplyLabourEntry.deleteMany({}); } catch (e) {}
   try { await prisma.runningBill.deleteMany({}); } catch (e) {}
   try { await prisma.payment.deleteMany({}); } catch (e) {}
-  try { await prisma.document.deleteMany({}); } catch (e) {}
   try { await prisma.quotation.deleteMany({}); } catch (e) {}
   try { await prisma.workItem.deleteMany({}); } catch (e) {}
   try { await prisma.building.deleteMany({}); } catch (e) {}
   try { await prisma.site.deleteMany({}); } catch (e) {}
   try { await prisma.client.deleteMany({}); } catch (e) {}
-  try { await prisma.auditLog.deleteMany({}); } catch (e) {}
   try { await prisma.globalSettings.deleteMany({}); } catch (e) {}
   try { await prisma.user.deleteMany({}); } catch (e) {}
 
