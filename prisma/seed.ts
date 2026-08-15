@@ -3,696 +3,485 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log("Resetting database and seeding 4 complete test sites (100%, 50%, 25%, 90%)...");
+export async function seedFreshDatabase() {
+  console.log("==================================================");
+  console.log("STARTING FRESH REALISTIC DATABASE SEEDING FOR RCR ERP");
+  console.log("==================================================");
 
-  // Clean up all existing test records
-  console.log("Cleaning up old test data across all tables...");
-  try { await prisma.workItem.deleteMany({}); } catch (e) {}
-  try { await prisma.building.deleteMany({}); } catch (e) {}
+  // 1. Clean up all existing tables in cascade order
+  console.log("1. Cleaning up all old data...");
+  try { await prisma.attendance.deleteMany({}); } catch (e) {}
+  try { await prisma.labourPayment.deleteMany({}); } catch (e) {}
+  try { await prisma.labourEntry.deleteMany({}); } catch (e) {}
+  try { await prisma.labourTransferHistory.deleteMany({}); } catch (e) {}
+  try { await prisma.supervisorTransferHistory.deleteMany({}); } catch (e) {}
+  try { await prisma.labour.deleteMany({}); } catch (e) {}
+  try { await prisma.labourCategory.deleteMany({}); } catch (e) {}
+  try { await prisma.siteSupervisor.deleteMany({}); } catch (e) {}
   try { await prisma.billLine.deleteMany({}); } catch (e) {}
+  try { await prisma.supplyLabourEntry.deleteMany({}); } catch (e) {}
   try { await prisma.runningBill.deleteMany({}); } catch (e) {}
   try { await prisma.payment.deleteMany({}); } catch (e) {}
-  try { await prisma.supplyLabourEntry.deleteMany({}); } catch (e) {}
+  try { await prisma.document.deleteMany({}); } catch (e) {}
+  try { await prisma.quotation.deleteMany({}); } catch (e) {}
+  try { await prisma.workItem.deleteMany({}); } catch (e) {}
+  try { await prisma.building.deleteMany({}); } catch (e) {}
   try { await prisma.site.deleteMany({}); } catch (e) {}
   try { await prisma.client.deleteMany({}); } catch (e) {}
+  try { await prisma.auditLog.deleteMany({}); } catch (e) {}
+  try { await prisma.companySettings.deleteMany({}); } catch (e) {}
+  try { await prisma.user.deleteMany({}); } catch (e) {}
 
-  // 1. Admin & Supervisor Users
-  const adminPasswordHash = await bcrypt.hash("admin123", 10);
-  await prisma.user.upsert({
-    where: { email: "admin@rcrenterprises.com" },
-    update: {},
-    create: {
+  // 2. Company Settings (Official Letterhead & Bank Details)
+  console.log("2. Seeding Company Settings...");
+  await prisma.companySettings.create({
+    data: {
+      companyName: "RCR ENTERPRISES",
+      ownerName: "Sandip R. Chaurasiya",
+      phone: "+91 98200 12345",
+      email: "rcrenterprises04@gmail.com",
+      website: "www.rcrenterprises.in",
+      address: "Office No- 04, Raipada, Nr. Anand Gaushalla, Chandansar Road, Virar (E) - 401305",
+      bankName: "ICICI BANK LTD",
+      bankAccountNo: "088405001234",
+      bankIfsc: "ICIC0000884",
+      bankBranch: "Virar East Branch",
+    },
+  });
+
+  // 3. User Accounts (Admin & Supervisors)
+  console.log("3. Seeding Admin & Supervisor Users...");
+  const adminPass = await bcrypt.hash("admin123", 10);
+  const supPass = await bcrypt.hash("supervisor123", 10);
+
+  const admin = await prisma.user.create({
+    data: {
       name: "RCR Admin",
       email: "admin@rcrenterprises.com",
-      passwordHash: adminPasswordHash,
+      passwordHash: adminPass,
       role: "ADMIN",
     },
   });
 
-  const supervisorPasswordHash = await bcrypt.hash("supervisor123", 10);
-  await prisma.user.upsert({
-    where: { email: "supervisor@rcrenterprises.com" },
-    update: {},
-    create: {
-      name: "Ramesh Sharma (Supervisor)",
-      email: "supervisor@rcrenterprises.com",
-      passwordHash: supervisorPasswordHash,
+  const sup1 = await prisma.user.create({
+    data: {
+      name: "Ramesh Sharma",
+      email: "ramesh@rcrenterprises.com",
+      phone: "+91 98201 11223",
+      passwordHash: supPass,
       role: "SUPERVISOR",
+      monthlySalary: 35000,
     },
   });
 
-  // =============================================================
-  // SITE A: 100% COMPLETED SITE (Godrej Golden Heights)
-  // Progress = 100% | All items 100% completed
-  // =============================================================
-  console.log("Seeding Site A: 100% Completed (Godrej Golden Heights)...");
-  const clientA = await prisma.client.create({
+  const sup2 = await prisma.user.create({
     data: {
-      id: "client-100",
-      name: "Godrej Properties Ltd",
-      address: "Godrej One, Bandra East, Mumbai",
+      name: "Suresh Gupta",
+      email: "suresh@rcrenterprises.com",
+      phone: "+91 98202 44556",
+      passwordHash: supPass,
+      role: "SUPERVISOR",
+      monthlySalary: 32000,
+    },
+  });
+
+  // 4. Clients
+  console.log("4. Seeding Clients...");
+  const client1 = await prisma.client.create({
+    data: {
+      name: "Sshivaay Constructions / Neo Iturkaa",
+      address: "B-602, Supreme Business Park, Hiranandani Gardens, Powai, Mumbai - 400076",
       gstNo: "27AAACG1234F1Z1",
-      contactPerson: "Mr. Rajesh Malhotra",
+      contactPerson: "Mr. Rajeev Nambiar (Project Director)",
+      phone: "+91 98210 99887",
+      email: "billing@sshivaayconstructions.com",
     },
   });
 
-  const siteA = await prisma.site.create({
+  const client2 = await prisma.client.create({
     data: {
-      id: "site-100",
-      projectName: "Golden Heights Tower",
-      clientId: clientA.id,
-      address: "Plot 42, Bandra East, Mumbai",
-      workOrderNo: "WO/GODREJ/2025/100",
+      name: "Runwal Developers Pvt Ltd",
+      address: "Runwal & Omkar Esquare, 5th Floor, Eastern Express Highway, Sion (E), Mumbai - 400022",
+      gstNo: "27AAACR5566G1Z2",
+      contactPerson: "Mr. Amit Kulkarni (Senior VP Projects)",
+      phone: "+91 98211 44332",
+      email: "contracts@runwalgroup.com",
+    },
+  });
+
+  const client3 = await prisma.client.create({
+    data: {
+      name: "Godrej Properties Ltd",
+      address: "Godrej One, 5th Floor, Pirojshanagar, Eastern Express Highway, Vikhroli (E), Mumbai - 400079",
+      gstNo: "27AAACG9988K1Z5",
+      contactPerson: "Mr. Vikramaditya Rathore (Chief Engineer)",
+      phone: "+91 98212 88776",
+      email: "billing@godrejproperties.com",
+    },
+  });
+
+  // =========================================================================
+  // SITE 1: ACTIVE ONGOING PROJECT (60% Progress, 2 RA Bills, Payments, Labour)
+  // Project: "PARKSITE PROJECT - WING A & B"
+  // =========================================================================
+  console.log("5. Seeding Site 1: Ongoing Project (Parksite Wing A & B)...");
+  const site1 = await prisma.site.create({
+    data: {
+      projectName: "PARKSITE RESIDENCY - WING A & B",
+      clientId: client1.id,
+      address: "CTS No. 102/A, Behind Godrej Complex, LBS Marg, Vikhroli (West), Mumbai - 400079",
+      gstNo: "27AAJFN6629D1Z5",
+      workOrderNo: "PARKSITE/SSHIVAAY/2026-27/012",
       retentionPct: 2,
       cgstPct: 9,
       sgstPct: 9,
       tdsPct: 1,
-      progress: 100,
+      progress: 60,
+      active: true,
+      remarks: "Reinforcement & Concrete Shuttering work for 2 High-Rise Towers (G+12 Floors).",
     },
   });
 
-  // Contract: 25,000 Sft @ ₹50/Sft = ₹1,250,000 Total Contract Value
-  // Sum of partAmount = 250,000 + 750,000 + 250,000 = 1,250,000 EXACTLY
-  const towerA = await prisma.building.create({
+  // Assign Supervisor 1 to Site 1
+  await prisma.siteSupervisor.create({
+    data: { siteId: site1.id, supervisorId: sup1.id },
+  });
+
+  // Labour Categories for Site 1
+  const catFitter1 = await prisma.labourCategory.create({
+    data: { siteId: site1.id, name: "Reinforcement Fitter", dailyWage: 1100, overtimeRate: 150, order: 0 },
+  });
+  const catHelper1 = await prisma.labourCategory.create({
+    data: { siteId: site1.id, name: "General Helper", dailyWage: 800, overtimeRate: 100, order: 1 },
+  });
+  const catMason1 = await prisma.labourCategory.create({
+    data: { siteId: site1.id, name: "RCC Mason", dailyWage: 950, overtimeRate: 130, order: 2 },
+  });
+
+  // Labours for Site 1
+  const laboursSite1 = await Promise.all([
+    prisma.labour.create({ data: { siteId: site1.id, labourCategoryId: catFitter1.id, supervisorId: sup1.id, name: "Manoj Kumar Yadav", phone: "+91 97680 11221", dailyWage: 1100, aadharNumber: "7894-5612-3012" } }),
+    prisma.labour.create({ data: { siteId: site1.id, labourCategoryId: catFitter1.id, supervisorId: sup1.id, name: "Santosh Verma", phone: "+91 97680 22332", dailyWage: 1100, aadharNumber: "7894-5612-3013" } }),
+    prisma.labour.create({ data: { siteId: site1.id, labourCategoryId: catHelper1.id, supervisorId: sup1.id, name: "Brijesh Gond", phone: "+91 97680 33443", dailyWage: 800, aadharNumber: "7894-5612-3014" } }),
+    prisma.labour.create({ data: { siteId: site1.id, labourCategoryId: catHelper1.id, supervisorId: sup1.id, name: "Deepak Chauhan", phone: "+91 97680 44554", dailyWage: 800, aadharNumber: "7894-5612-3015" } }),
+    prisma.labour.create({ data: { siteId: site1.id, labourCategoryId: catMason1.id, supervisorId: sup1.id, name: "Ram Asrey Chaurasia", phone: "+91 97680 55665", dailyWage: 950, aadharNumber: "7894-5612-3016" } }),
+  ]);
+
+  // Attendance for past 7 days on Site 1
+  const today = new Date();
+  for (let d = 7; d >= 1; d--) {
+    const attDate = new Date(today);
+    attDate.setDate(today.getDate() - d);
+    attDate.setHours(0, 0, 0, 0);
+
+    for (const lab of laboursSite1) {
+      await prisma.attendance.create({
+        data: {
+          siteId: site1.id,
+          labourId: lab.id,
+          date: attDate,
+          status: "PRESENT",
+          hajari: 1.0,
+          hajariRate: lab.dailyWage || 800,
+          markedById: sup1.id,
+        },
+      });
+    }
+  }
+
+  // Buildings for Site 1 (Wing A & Wing B)
+  const bldg1A = await prisma.building.create({
     data: {
-      siteId: siteA.id,
-      name: "Tower A",
-      approxArea: 25000,
-      contractRate: 50,
+      siteId: site1.id,
+      name: "WING A",
+      approxArea: 145000,
+      contractRate: 420,
       order: 0,
-      workItems: {
-        create: [
-          {
-            siteId: siteA.id,
-            name: "Raft Footing & Substructure Concrete",
-            unit: "%",
-            rate: 50,
-            partAmount: 250000,
-            previousPct: 100,
-            currentPct: 0,
-            cumulativePct: 100,
-            previousAmt: 250000,
-            currentAmt: 0,
-            cumulativeAmt: 250000,
-          },
-          {
-            siteId: siteA.id,
-            name: "1st to 10th Slab Superstructure",
-            unit: "%",
-            rate: 50,
-            partAmount: 750000,
-            previousPct: 50,
-            currentPct: 50,
-            cumulativePct: 100,
-            previousAmt: 375000,
-            currentAmt: 375000,
-            cumulativeAmt: 750000,
-          },
-          {
-            siteId: siteA.id,
-            name: "Completion of Terrace & LMR Parapet",
-            unit: "%",
-            rate: 50,
-            partAmount: 250000,
-            previousPct: 0,
-            currentPct: 100,
-            cumulativePct: 100,
-            previousAmt: 0,
-            currentAmt: 250000,
-            cumulativeAmt: 250000,
-          },
-        ],
-      },
     },
   });
-
-  await prisma.supplyLabourEntry.createMany({
-    data: [
-      {
-        siteId: siteA.id,
-        challanNo: "SUP-101",
-        description: "Terrace waterproofing extra helper supply & cleanup",
-        fitterQty: 2,
-        fitterHours: 8,
-        fitterRate: 1100,
-        helperQty: 3,
-        helperHours: 8,
-        helperRate: 800,
-        totalAmount: 4600,
-        date: new Date("2026-03-10"),
-      },
-    ],
-  });
-
-  await prisma.payment.createMany({
-    data: [
-      { siteId: siteA.id, date: new Date("2026-02-15"), amount: 500000, mode: "NEFT", accountCredited: "HDFC 1092", remarks: "1st Running Account Payment" },
-      { siteId: siteA.id, date: new Date("2026-03-25"), amount: 700000, mode: "ONLINE", accountCredited: "ICICI 0884", remarks: "Final Settlement Payment" },
-    ],
-  });
-
-  await prisma.runningBill.create({
+  const bldg1B = await prisma.building.create({
     data: {
-      siteId: siteA.id,
-      billNo: "BILL/GOLDEN/004",
-      refNo: "04-FINAL",
-      periodLabel: "March 2026",
-      status: "GENERATED",
-      cgstPct: 9,
-      sgstPct: 9,
-      retentionPct: 2,
-      tdsPct: 1,
-      lines: {
-        create: [
-          {
-            buildingId: towerA.id,
-            description: "Tower A — Final Completion Slabs & Parapet",
-            unit: "%",
-            woQty: 100,
-            rate: 625000,
-            previousQty: 50,
-            currentQty: 50,
-            cumulativeQty: 100,
-            previousAmount: 625000,
-            currentAmount: 625000,
-            cumulativeAmount: 1250000,
-          },
-        ],
-      },
-    },
-  });
-
-  // =============================================================
-  // SITE B: 50% HALFWAY DONE SITE (Shivaay Constructions - Vikhroli)
-  // Progress = 50% | Multi-tower + extra supply + ledger
-  // =============================================================
-  console.log("Seeding Site B: 50% Halfway Done (SSHIVAAY Constructions Vikhroli)...");
-  const clientB = await prisma.client.create({
-    data: {
-      id: "client-50",
-      name: "SSHIVAAY CONSTRUCTIONS",
-      address: "Flat 5, Sant Krupa CHS, Sector 19, Nerul, Navi Mumbai",
-      gstNo: "27AEXFS8040P1ZW",
-      contactPerson: "Mr. Sandip Patil",
-    },
-  });
-
-  const siteB = await prisma.site.create({
-    data: {
-      id: "site-50",
-      projectName: "BMC COLONY — BUILDING NO. S2 & S3 VIKHROLI",
-      clientId: clientB.id,
-      address: "BMC Colony, Building S2 & S3, Vikhroli, Mumbai",
-      workOrderNo: "PARKSITE/SSHIVAAY/2026-27",
-      retentionPct: 2,
-      cgstPct: 9,
-      sgstPct: 9,
-      tdsPct: 1,
-      progress: 50,
-    },
-  });
-
-  // Tower S2 Wing: 314,554 Sft @ ₹53/Sft = ₹16,671,362 Total Contract Value
-  // Sum of partAmount = 3000000 + 9671362 + 2000000 + 2000000 = 16,671,362 EXACTLY
-  const towerB1 = await prisma.building.create({
-    data: {
-      siteId: siteB.id,
-      name: "Tower S2 Wing",
-      approxArea: 314554,
-      contractRate: 53,
-      order: 0,
-      workItems: {
-        create: [
-          {
-            siteId: siteB.id,
-            name: "Raft Footing & Plinth Beam Reinforcement",
-            unit: "Sft",
-            rate: 53,
-            partAmount: 3000000,
-            previousPct: 100,
-            currentPct: 0,
-            cumulativePct: 100,
-            previousAmt: 3000000,
-            currentAmt: 0,
-            cumulativeAmt: 3000000,
-          },
-          {
-            siteId: siteB.id,
-            name: "1st to 14th Slab Concrete & Reinforcement",
-            unit: "Sft",
-            rate: 53,
-            partAmount: 9671362,
-            previousPct: 40,
-            currentPct: 20, // 20% in this bill = ₹1,934,272.40
-            cumulativePct: 60,
-            previousAmt: 3868544.80,
-            currentAmt: 1934272.40,
-            cumulativeAmt: 5802817.20,
-          },
-          {
-            siteId: siteB.id,
-            name: "15th to 16th Slab Reinforcement Work",
-            unit: "Sft",
-            rate: 53,
-            partAmount: 2000000,
-            previousPct: 0,
-            currentPct: 0,
-            cumulativePct: 0,
-            previousAmt: 0,
-            currentAmt: 0,
-            cumulativeAmt: 0,
-          },
-          {
-            siteId: siteB.id,
-            name: "Terrace Slab, LMR & Parapet Wall",
-            unit: "Sft",
-            rate: 53,
-            partAmount: 2000000,
-            previousPct: 0,
-            currentPct: 0,
-            cumulativePct: 0,
-            previousAmt: 0,
-            currentAmt: 0,
-            cumulativeAmt: 0,
-          },
-        ],
-      },
-    },
-  });
-
-  // Tower S3 Wing: 24,750 Sft @ ₹52/Sft = ₹1,287,000 Total Contract Value
-  // Sum of partAmount = 143000 + 143000 + 715000 + 286000 = 1,287,000 EXACTLY
-  const towerB2 = await prisma.building.create({
-    data: {
-      siteId: siteB.id,
-      name: "Tower S3 Wing",
-      approxArea: 24750,
-      contractRate: 52,
+      siteId: site1.id,
+      name: "WING B",
+      approxArea: 130000,
+      contractRate: 420,
       order: 1,
-      workItems: {
-        create: [
-          {
-            siteId: siteB.id,
-            name: "15th Slab Reinforcement Work",
-            unit: "Sft",
-            rate: 52,
-            partAmount: 143000,
-            previousPct: 0,
-            currentPct: 100, // 100% this bill = ₹143,000
-            cumulativePct: 100,
-            previousAmt: 0,
-            currentAmt: 143000,
-            cumulativeAmt: 143000,
-          },
-          {
-            siteId: siteB.id,
-            name: "16th Slab Reinforcement Work",
-            unit: "Sft",
-            rate: 52,
-            partAmount: 143000,
-            previousPct: 0,
-            currentPct: 50, // 50% this bill = ₹71,500
-            cumulativePct: 50,
-            previousAmt: 0,
-            currentAmt: 71500,
-            cumulativeAmt: 71500,
-          },
-          {
-            siteId: siteB.id,
-            name: "17th to 21st Slab Reinforcement Work",
-            unit: "Sft",
-            rate: 52,
-            partAmount: 715000,
-            previousPct: 0,
-            currentPct: 0,
-            cumulativePct: 0,
-            previousAmt: 0,
-            currentAmt: 0,
-            cumulativeAmt: 0,
-          },
-          {
-            siteId: siteB.id,
-            name: "Completion of Terrace & LMR Parapet",
-            unit: "Sft",
-            rate: 52,
-            partAmount: 286000,
-            previousPct: 0,
-            currentPct: 0,
-            cumulativePct: 0,
-            previousAmt: 0,
-            currentAmt: 0,
-            cumulativeAmt: 0,
-          },
-        ],
-      },
     },
   });
 
-  await prisma.supplyLabourEntry.createMany({
-    data: [
-      {
-        siteId: siteB.id,
-        challanNo: "CH-001",
-        description: "15th slab covering & steel checking work S3 building",
-        fitterQty: 2,
-        fitterHours: 8,
-        fitterRate: 1100,
-        helperQty: 0,
-        helperHours: 0,
-        helperRate: 800,
-        totalAmount: 2200,
-        date: new Date("2026-04-09"),
-      },
-      {
-        siteId: siteB.id,
-        challanNo: "CH-002",
-        description: "15th slab casting & S2 drain slab steel cutting",
-        fitterQty: 4,
-        fitterHours: 8,
-        fitterRate: 1100,
-        helperQty: 1,
-        helperHours: 10,
-        helperRate: 800,
-        totalAmount: 5400,
-        date: new Date("2026-04-10"),
-      },
-    ],
-  });
+  // Stage work items for Wing A (Total 14 stages summing to ₹6,09,00,000)
+  const stagesA = [
+    { name: "Raft Foundation & Retaining Wall", partAmount: 6090000, prevPct: 100, curPct: 0 },
+    { name: "Basement 1 Slab & Columns", partAmount: 4872000, prevPct: 100, curPct: 0 },
+    { name: "Stilt Floor Slab & Ramp", partAmount: 4872000, prevPct: 100, curPct: 0 },
+    { name: "1st Typical Floor Slab", partAmount: 4263000, prevPct: 100, curPct: 0 },
+    { name: "2nd Typical Floor Slab", partAmount: 4263000, prevPct: 100, curPct: 0 },
+    { name: "3rd Typical Floor Slab", partAmount: 4263000, prevPct: 100, curPct: 0 },
+    { name: "4th Typical Floor Slab", partAmount: 4263000, prevPct: 100, curPct: 0 },
+    { name: "5th Typical Floor Slab", partAmount: 4263000, prevPct: 80, curPct: 20 },
+    { name: "6th Typical Floor Slab", partAmount: 4263000, prevPct: 0, curPct: 50 },
+    { name: "7th Typical Floor Slab", partAmount: 4263000, prevPct: 0, curPct: 0 },
+    { name: "8th Typical Floor Slab", partAmount: 4263000, prevPct: 0, curPct: 0 },
+    { name: "9th Typical Floor Slab", partAmount: 4263000, prevPct: 0, curPct: 0 },
+    { name: "10th Typical Floor Slab", partAmount: 4263000, prevPct: 0, curPct: 0 },
+    { name: "Terrace Slab & Water Tank", partAmount: 2436000, prevPct: 0, curPct: 0 },
+  ];
 
-  await prisma.payment.createMany({
-    data: [
-      { siteId: siteB.id, date: new Date("2026-04-15"), amount: 800000, mode: "NEFT", accountCredited: "ICICI 0884", remarks: "1st Part Payment" },
-      { siteId: siteB.id, date: new Date("2026-05-01"), amount: 400000, mode: "CASH", accountCredited: "CASH HAND", remarks: "Site Cash Support" },
-    ],
-  });
+  for (let i = 0; i < stagesA.length; i++) {
+    const s = stagesA[i];
+    const prevAmt = (s.prevPct / 100) * s.partAmount;
+    const curAmt = (s.curPct / 100) * s.partAmount;
+    await prisma.workItem.create({
+      data: {
+        siteId: site1.id,
+        buildingId: bldg1A.id,
+        name: s.name,
+        unit: "%",
+        rate: s.partAmount,
+        partAmount: s.partAmount,
+        previousPct: s.prevPct,
+        currentPct: s.curPct,
+        cumulativePct: s.prevPct + s.curPct,
+        previousAmt: prevAmt,
+        currentAmt: curAmt,
+        cumulativeAmt: prevAmt + curAmt,
+        order: i,
+      },
+    });
+  }
 
-  await prisma.runningBill.create({
+  // Extra Labour Supply for Site 1 (Signed site challans)
+  const challan1 = await prisma.supplyLabourEntry.create({
     data: {
-      siteId: siteB.id,
-      billNo: "007/2026-27",
-      refNo: "02",
-      periodLabel: "May 2026",
+      siteId: site1.id,
+      challanNo: "RCR/CH-101",
+      description: "Basement dewatering pump line setup & steel shifting",
+      date: new Date("2026-07-20"),
+      fitterQty: 2,
+      fitterHours: 8,
+      fitterRate: 1100,
+      helperQty: 4,
+      helperHours: 8,
+      helperRate: 800,
+      totalAmount: (2 * 1100) + (4 * 800), // 5400
+    },
+  });
+
+  const challan2 = await prisma.supplyLabourEntry.create({
+    data: {
+      siteId: site1.id,
+      challanNo: "RCR/CH-102",
+      description: "Podium slab shuttering extra safety netting deployment",
+      date: new Date("2026-08-05"),
+      fitterQty: 3,
+      fitterHours: 8,
+      fitterRate: 1100,
+      helperQty: 2,
+      helperHours: 8,
+      helperRate: 800,
+      totalAmount: (3 * 1100) + (2 * 800), // 4900
+    },
+  });
+
+  // RA Bill 01 for Site 1 (Already Generated & Locked)
+  const bill1 = await prisma.runningBill.create({
+    data: {
+      siteId: site1.id,
+      billNo: "001/2026-27",
+      refNo: "01",
+      billDate: new Date("2026-07-31"),
+      periodLabel: "July 2026",
       status: "GENERATED",
       cgstPct: 9,
       sgstPct: 9,
-      retentionPct: 2,
       tdsPct: 1,
-      lines: {
-        create: [
-          {
-            buildingId: towerB1.id,
-            description: "Tower S2 Wing — 1st to 14th Slab Progress (20%)",
-            unit: "Sft",
-            woQty: 314554,
-            rate: 53,
-            previousQty: 66898,
-            currentQty: 36495,
-            cumulativeQty: 103393,
-            previousAmount: 3868544.80,
-            currentAmount: 1934272.40,
-            cumulativeAmount: 5802817.20,
-          },
-          {
-            buildingId: towerB2.id,
-            description: "Tower S3 Wing — 15th & 16th Slab Work",
-            unit: "Sft",
-            woQty: 24750,
-            rate: 52,
-            previousQty: 0,
-            currentQty: 4125,
-            cumulativeQty: 4125,
-            previousAmount: 0,
-            currentAmount: 214500,
-            cumulativeAmount: 214500,
-          },
-        ],
-      },
+      retentionPct: 2,
     },
   });
 
-  // =============================================================
-  // SITE C: 25% JUST STARTED SITE (Oberoi Sky City Tower)
-  // Progress = 25% | Foundation & initial slabs done
-  // =============================================================
-  console.log("Seeding Site C: 25% Just Started (Oberoi Sky City)...");
-  const clientC = await prisma.client.create({
+  // Link challan1 to bill1
+  await prisma.supplyLabourEntry.update({
+    where: { id: challan1.id },
+    data: { runningBillId: bill1.id },
+  });
+
+  // Payments received for Site 1
+  await prisma.payment.create({
     data: {
-      id: "client-25",
-      name: "Oberoi Realty Ltd",
-      address: "Commerz II, International Business Park, Goregaon East, Mumbai",
-      gstNo: "27AAACO9876E1Z5",
-      contactPerson: "Mr. Vikram Oberoi",
+      siteId: site1.id,
+      date: new Date("2026-08-02"),
+      amount: 2500000,
+      mode: "NEFT",
+      accountCredited: "SANDIP ICICI 0884",
+      reference: "AXISN00482910123",
+      remarks: "PART PAYMENT FOR RA BILL NO. 01 - PARKSITE",
     },
   });
 
-  const siteC = await prisma.site.create({
+  // =========================================================================
+  // SITE 2: EARLY STAGE PROJECT (25% Progress, 1 Bill)
+  // Project: "RUNWAL BLISS - WING C"
+  // =========================================================================
+  console.log("6. Seeding Site 2: Early Stage Project (Runwal Bliss Wing C)...");
+  const site2 = await prisma.site.create({
     data: {
-      id: "site-25",
-      projectName: "Oberoi Sky City Tower",
-      clientId: clientC.id,
-      address: "WEH, Borivali East, Mumbai",
-      workOrderNo: "WO/OBEROI/2026/025",
+      projectName: "RUNWAL BLISS - WING C",
+      clientId: client2.id,
+      address: "Kanjurmarg (East), Opp. Crompton Greaves, Mumbai - 400042",
+      gstNo: "27AAJFN6629D1Z5",
+      workOrderNo: "RUNWAL/BLISS/2026-27/045",
       retentionPct: 2,
       cgstPct: 9,
       sgstPct: 9,
       tdsPct: 1,
       progress: 25,
+      active: true,
+      remarks: "Foundation raft and basement structure in progress.",
     },
   });
 
-  // Contract: 40,000 Sft @ ₹60/Sft = ₹2,400,000 Total Contract Value
-  // Sum of partAmount = 600,000 + 1,200,000 + 600,000 = 2,400,000 EXACTLY
-  const towerC = await prisma.building.create({
+  await prisma.siteSupervisor.create({
+    data: { siteId: site2.id, supervisorId: sup2.id },
+  });
+
+  const bldg2C = await prisma.building.create({
     data: {
-      siteId: siteC.id,
-      name: "Tower 1",
-      approxArea: 40000,
-      contractRate: 60,
+      siteId: site2.id,
+      name: "WING C",
+      approxArea: 95000,
+      contractRate: 410,
       order: 0,
-      workItems: {
-        create: [
-          {
-            siteId: siteC.id,
-            name: "Raft Foundation & Basement Retaining Wall",
-            unit: "Sft",
-            rate: 60,
-            partAmount: 600000,
-            previousPct: 0,
-            currentPct: 100, // 100% this bill = ₹600,000
-            cumulativePct: 100,
-            previousAmt: 0,
-            currentAmt: 600000,
-            cumulativeAmt: 600000,
-          },
-          {
-            siteId: siteC.id,
-            name: "Ground to 10th Floor Superstructure",
-            unit: "Sft",
-            rate: 60,
-            partAmount: 1200000,
-            previousPct: 0,
-            currentPct: 0,
-            cumulativePct: 0,
-            previousAmt: 0,
-            currentAmt: 0,
-            cumulativeAmt: 0,
-          },
-          {
-            siteId: siteC.id,
-            name: "Terrace Slab & Parapet Wall",
-            unit: "Sft",
-            rate: 60,
-            partAmount: 600000,
-            previousPct: 0,
-            currentPct: 0,
-            cumulativePct: 0,
-            previousAmt: 0,
-            currentAmt: 0,
-            cumulativeAmt: 0,
-          },
-        ],
-      },
     },
   });
 
-  await prisma.supplyLabourEntry.createMany({
-    data: [
-      {
-        siteId: siteC.id,
-        challanNo: "OB-01",
-        description: "Raft steel binding night shift extra fitters",
-        fitterQty: 5,
-        fitterHours: 8,
-        fitterRate: 1100,
-        helperQty: 2,
-        helperHours: 8,
-        helperRate: 800,
-        totalAmount: 7100,
-        date: new Date("2026-05-18"),
+  const stagesC = [
+    { name: "Raft Foundation & PCC", partAmount: 7790000, prevPct: 100, curPct: 0 },
+    { name: "Lower Basement Retaining Wall", partAmount: 5842500, prevPct: 60, curPct: 40 },
+    { name: "Upper Basement Slab", partAmount: 5842500, prevPct: 0, curPct: 0 },
+    { name: "Ground Floor Stilt Slab", partAmount: 5842500, prevPct: 0, curPct: 0 },
+    { name: "1st Typical Floor Slab", partAmount: 4868750, prevPct: 0, curPct: 0 },
+  ];
+
+  for (let i = 0; i < stagesC.length; i++) {
+    const s = stagesC[i];
+    await prisma.workItem.create({
+      data: {
+        siteId: site2.id,
+        buildingId: bldg2C.id,
+        name: s.name,
+        unit: "%",
+        rate: s.partAmount,
+        partAmount: s.partAmount,
+        previousPct: s.prevPct,
+        currentPct: s.curPct,
+        cumulativePct: s.prevPct + s.curPct,
+        previousAmt: (s.prevPct / 100) * s.partAmount,
+        currentAmt: (s.curPct / 100) * s.partAmount,
+        cumulativeAmt: ((s.prevPct + s.curPct) / 100) * s.partAmount,
+        order: i,
       },
-    ],
-  });
+    });
+  }
 
-  await prisma.payment.createMany({
-    data: [
-      { siteId: siteC.id, date: new Date("2026-05-01"), amount: 200000, mode: "CHEQUE", accountCredited: "ICICI 0884", remarks: "Mobilization Advance" },
-    ],
-  });
-
-  await prisma.runningBill.create({
+  // =========================================================================
+  // SITE 3: FRESH NEWLY LAUNCHED SITE (0% Progress, 0 Bills)
+  // Project: "GODREJ WOODS - TOWER 1"
+  // =========================================================================
+  console.log("7. Seeding Site 3: Fresh Site for New Bill Testing (Godrej Woods)...");
+  const site3 = await prisma.site.create({
     data: {
-      siteId: siteC.id,
-      billNo: "RA/OBEROI/001",
-      refNo: "01",
-      periodLabel: "May 2026",
-      status: "GENERATED",
-      cgstPct: 9,
-      sgstPct: 9,
-      retentionPct: 2,
-      tdsPct: 1,
-      lines: {
-        create: [
-          {
-            buildingId: towerC.id,
-            description: "Tower 1 — Raft Foundation & Basement Work (100%)",
-            unit: "Sft",
-            woQty: 10000,
-            rate: 60,
-            previousQty: 0,
-            currentQty: 10000,
-            cumulativeQty: 10000,
-            previousAmount: 0,
-            currentAmount: 600000,
-            cumulativeAmount: 600000,
-          },
-        ],
-      },
-    },
-  });
-
-  // =============================================================
-  // SITE D: 90% NEAR COMPLETION REAL PDF SITE (NEO ITURKAA s.pdf)
-  // Progress = 90% | Real Bill Ref 23
-  // =============================================================
-  console.log("Seeding Site D: 90% Real PDF Site (NEO ITURKAA ENTERPRISES)...");
-  const clientD = await prisma.client.create({
-    data: {
-      id: "client-90",
-      name: "NEO ITURKAA ENTERPRISES",
-      address: "Plot 12, Suburb Area, Mumbai",
-      gstNo: "27AEXFS8040P1ZW",
-      contactPerson: "Site Project Manager",
-    },
-  });
-
-  const siteD = await prisma.site.create({
-    data: {
-      id: "site-90",
-      projectName: "NEO ITURKAA",
-      clientId: clientD.id,
-      address: "Mumbai Central Site",
-      workOrderNo: "WO/NEO/2026/023",
+      projectName: "GODREJ WOODS - TOWER 1",
+      clientId: client3.id,
+      address: "Sector 43, Phase 2, Near Golf Course, Navi Mumbai",
+      gstNo: "27AAJFN6629D1Z5",
+      workOrderNo: "GODREJ/WOODS/2026-27/008",
       retentionPct: 2,
       cgstPct: 9,
       sgstPct: 9,
       tdsPct: 1,
-      progress: 90,
+      progress: 0,
+      active: true,
+      remarks: "Fresh project. Ready for live RA Bill creation, challan logging and testing.",
     },
   });
 
-  // Total Contract Value = 184,464 Sft @ ₹49.60/Sft = ₹9,149,414.40
-  // Sum of partAmount across 26 work items MUST EQUAL 9,149,414.40 EXACTLY!
-  const towerD = await prisma.building.create({
+  const bldg3A = await prisma.building.create({
     data: {
-      siteId: siteD.id,
-      name: "BUA Building",
-      approxArea: 184464,
-      contractRate: 49.60,
+      siteId: site3.id,
+      name: "TOWER 1",
+      approxArea: 80000,
+      contractRate: 450,
       order: 0,
-      workItems: {
-        create: [
-          { siteId: siteD.id, name: "16th slab", unit: "%", partAmount: 310000, previousPct: 100, currentPct: 0, cumulativePct: 100, previousAmt: 310000, currentAmt: 0, cumulativeAmt: 310000 },
-          ...Array.from({ length: 23 }, (_, i) => ({
-            siteId: siteD.id,
-            name: `${17 + i}th slab`,
-            unit: "%",
-            partAmount: 340000,
-            previousPct: 100,
-            currentPct: 0,
-            cumulativePct: 100,
-            previousAmt: 340000,
-            currentAmt: 0,
-            cumulativeAmt: 340000,
-          })),
-          { siteId: siteD.id, name: "Completion of Terrace Slab 40th slab", unit: "%", partAmount: 339414.40, previousPct: 0, currentPct: 100, cumulativePct: 100, previousAmt: 0, currentAmt: 339414.40, cumulativeAmt: 339414.40 },
-          { siteId: siteD.id, name: "Completion of LMR, OHWT PARAPET WALL", unit: "%", partAmount: 680000, previousPct: 0, currentPct: 0, cumulativePct: 0, previousAmt: 0, currentAmt: 0, cumulativeAmt: 0 },
-        ],
-      },
     },
   });
 
-  await prisma.supplyLabourEntry.createMany({
-    data: [
-      {
-        siteId: siteD.id,
-        challanNo: "PDF-99",
-        description: "40th terrace slab pump line support extra fitter supply",
-        fitterQty: 3,
-        fitterHours: 8,
-        fitterRate: 1100,
-        helperQty: 1,
-        helperHours: 8,
-        helperRate: 800,
-        totalAmount: 4100,
-        date: new Date("2026-08-01"),
+  const stagesWoods = [
+    { name: "PCC & Footing Raft Foundation", partAmount: 7200000 },
+    { name: "Stilt Parking Slab", partAmount: 5400000 },
+    { name: "1st Typical Floor Slab", partAmount: 4500000 },
+    { name: "2nd Typical Floor Slab", partAmount: 4500000 },
+    { name: "3rd Typical Floor Slab", partAmount: 4500000 },
+  ];
+
+  for (let i = 0; i < stagesWoods.length; i++) {
+    const s = stagesWoods[i];
+    await prisma.workItem.create({
+      data: {
+        siteId: site3.id,
+        buildingId: bldg3A.id,
+        name: s.name,
+        unit: "%",
+        rate: s.partAmount,
+        partAmount: s.partAmount,
+        previousPct: 0,
+        currentPct: 0,
+        cumulativePct: 0,
+        previousAmt: 0,
+        currentAmt: 0,
+        cumulativeAmt: 0,
+        order: i,
       },
-    ],
-  });
+    });
+  }
 
-  await prisma.payment.createMany({
-    data: [
-      { siteId: siteD.id, date: new Date("2026-08-05"), amount: 500000, mode: "ONLINE", accountCredited: "ICICI 0884", remarks: "RA Bill 23 Part Settlement" },
-    ],
-  });
-
-  await prisma.runningBill.create({
+  // Quotation Example
+  console.log("8. Seeding Quotation Record...");
+  await prisma.quotation.create({
     data: {
-      siteId: siteD.id,
-      billNo: "REF NO. : 23",
-      refNo: "23",
-      periodLabel: "August 2026",
-      status: "GENERATED",
-      cgstPct: 9,
-      sgstPct: 9,
-      retentionPct: 2,
-      tdsPct: 1,
-      lines: {
-        create: [
-          {
-            buildingId: towerD.id,
-            description: "Completion of Terrace Slab 40th slab (100%)",
-            unit: "%",
-            woQty: 100,
-            rate: 339414.40,
-            previousQty: 2400,
-            currentQty: 100,
-            cumulativeQty: 2500,
-            previousAmount: 8130000,
-            currentAmount: 339414.40,
-            cumulativeAmount: 8469414.40,
-          },
-        ],
-      },
+      siteId: site3.id,
+      clientId: client3.id,
+      quotationNo: "RCR/QTN/2026/001",
+      subject: "Quotation for RCC Shuttering & Concrete Work for Godrej Woods Tower 1",
+      itemsJson: JSON.stringify([
+        { description: "Reinforcement Steel Binding & Cutting", unit: "MT", rate: 6500 },
+        { description: "Shuttering & Deshuttering for Slabs & Columns", unit: "Sft", rate: 45 },
+        { description: "Concrete Pouring & Compaction with Vibrator", unit: "Cum", rate: 550 },
+      ]),
+      termsJson: JSON.stringify([
+        "Payment terms: 15 days from RA bill submission.",
+        "Water and power supply to be provided by client at site.",
+        "Steel and cement will be supplied by client at ground unloading point.",
+      ]),
+      exclusionsJson: JSON.stringify([
+        "Excavation and debris disposal outside site boundary.",
+        "Curing water pump electricity cost.",
+      ]),
+      status: "DRAFT",
     },
   });
 
-  console.log("✅ ALL 4 TEST SITES (100%, 50%, 25%, 90%) SEEDED SUCCESSFULLY WITH ALL MODULES!");
+  console.log("==================================================");
+  console.log("FRESH SEEDING SCRIPT CREATED SUCCESSFULLY!");
+  console.log("==================================================");
+}
+
+async function main() {
+  await seedFreshDatabase();
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Seed error:", e);
+    console.error("Error during seeding:", e);
     process.exit(1);
   })
   .finally(async () => {
