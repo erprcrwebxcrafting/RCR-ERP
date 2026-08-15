@@ -4,3 +4,4 @@ dev.db
 .env
 *.log
 /generated
+*.tsbuildinfo
