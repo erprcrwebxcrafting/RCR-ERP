@@ -29,23 +29,21 @@ export async function seedFreshDatabase() {
   try { await prisma.site.deleteMany({}); } catch (e) {}
   try { await prisma.client.deleteMany({}); } catch (e) {}
   try { await prisma.auditLog.deleteMany({}); } catch (e) {}
-  try { await prisma.companySettings.deleteMany({}); } catch (e) {}
+  try { await prisma.globalSettings.deleteMany({}); } catch (e) {}
   try { await prisma.user.deleteMany({}); } catch (e) {}
 
-  // 2. Company Settings (Official Letterhead & Bank Details)
-  console.log("2. Seeding Company Settings...");
-  await prisma.companySettings.create({
-    data: {
+  // 2. Company Settings (Official Letterhead & Settings)
+  console.log("2. Seeding Global Settings...");
+  await prisma.globalSettings.upsert({
+    where: { id: "global" },
+    update: {},
+    create: {
+      id: "global",
       companyName: "RCR ENTERPRISES",
-      ownerName: "Sandip R. Chaurasiya",
       phone: "+91 98200 12345",
       email: "rcrenterprises04@gmail.com",
       website: "www.rcrenterprises.in",
       address: "Office No- 04, Raipada, Nr. Anand Gaushalla, Chandansar Road, Virar (E) - 401305",
-      bankName: "ICICI BANK LTD",
-      bankAccountNo: "088405001234",
-      bankIfsc: "ICIC0000884",
-      bankBranch: "Virar East Branch",
     },
   });
 
