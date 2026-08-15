@@ -47,15 +47,34 @@ export async function seedFreshDatabase() {
     },
   });
 
-  // 3. User Accounts (Admin & Supervisors)
-  console.log("3. Seeding Admin & Supervisor Users...");
-  const adminPass = await bcrypt.hash("admin123", 10);
-  const supPass = await bcrypt.hash("supervisor123", 10);
+  // 3. User Accounts (Admin & Supervisors strictly from .env - Zero hardcoded fallback)
+  console.log("3. Seeding Admin & Supervisor Users from .env...");
+
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const sup1Email = process.env.SUPERVISOR_1_EMAIL;
+  const sup1Password = process.env.SUPERVISOR_1_PASSWORD;
+  const sup2Email = process.env.SUPERVISOR_2_EMAIL;
+  const sup2Password = process.env.SUPERVISOR_2_PASSWORD;
+
+  if (!adminEmail || !adminPassword) {
+    throw new Error("CRITICAL ERROR: ADMIN_EMAIL and ADMIN_PASSWORD must be defined in .env");
+  }
+  if (!sup1Email || !sup1Password) {
+    throw new Error("CRITICAL ERROR: SUPERVISOR_1_EMAIL and SUPERVISOR_1_PASSWORD must be defined in .env");
+  }
+  if (!sup2Email || !sup2Password) {
+    throw new Error("CRITICAL ERROR: SUPERVISOR_2_EMAIL and SUPERVISOR_2_PASSWORD must be defined in .env");
+  }
+
+  const adminPass = await bcrypt.hash(adminPassword, 10);
+  const sup1Pass = await bcrypt.hash(sup1Password, 10);
+  const sup2Pass = await bcrypt.hash(sup2Password, 10);
 
   const admin = await prisma.user.create({
     data: {
       name: "RCR Admin",
-      email: "admin@rcrenterprises.com",
+      email: adminEmail,
       passwordHash: adminPass,
       role: "ADMIN",
     },
@@ -64,9 +83,9 @@ export async function seedFreshDatabase() {
   const sup1 = await prisma.user.create({
     data: {
       name: "Ramesh Sharma",
-      email: "ramesh@rcrenterprises.com",
+      email: sup1Email,
       phone: "+91 98201 11223",
-      passwordHash: supPass,
+      passwordHash: sup1Pass,
       role: "SUPERVISOR",
       monthlySalary: 35000,
     },
@@ -75,9 +94,9 @@ export async function seedFreshDatabase() {
   const sup2 = await prisma.user.create({
     data: {
       name: "Suresh Gupta",
-      email: "suresh@rcrenterprises.com",
+      email: sup2Email,
       phone: "+91 98202 44556",
-      passwordHash: supPass,
+      passwordHash: sup2Pass,
       role: "SUPERVISOR",
       monthlySalary: 32000,
     },
