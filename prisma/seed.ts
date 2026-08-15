@@ -411,11 +411,21 @@ export async function seedFreshDatabase() {
   });
 
   const stagesC = [
-    { name: "Raft Foundation & PCC", partAmount: 7790000, prevPct: 100, curPct: 0 },
-    { name: "Lower Basement Retaining Wall", partAmount: 5842500, prevPct: 60, curPct: 40 },
-    { name: "Upper Basement Slab", partAmount: 5842500, prevPct: 0, curPct: 0 },
-    { name: "Ground Floor Stilt Slab", partAmount: 5842500, prevPct: 0, curPct: 0 },
-    { name: "1st Typical Floor Slab", partAmount: 4868750, prevPct: 0, curPct: 0 },
+    { name: "Raft Foundation & Retaining Wall", partAmount: 3895000, prevPct: 100, curPct: 0 },
+    { name: "Lower Basement Retaining Wall & Slab", partAmount: 3116000, prevPct: 100, curPct: 0 },
+    { name: "Upper Basement Slab & Columns", partAmount: 3116000, prevPct: 60, curPct: 40 },
+    { name: "Ground Floor Stilt Slab & Ramp", partAmount: 3116000, prevPct: 0, curPct: 0 },
+    { name: "1st Typical Floor Slab", partAmount: 2726500, prevPct: 0, curPct: 0 },
+    { name: "2nd Typical Floor Slab", partAmount: 2726500, prevPct: 0, curPct: 0 },
+    { name: "3rd Typical Floor Slab", partAmount: 2726500, prevPct: 0, curPct: 0 },
+    { name: "4th Typical Floor Slab", partAmount: 2726500, prevPct: 0, curPct: 0 },
+    { name: "5th Typical Floor Slab", partAmount: 2726500, prevPct: 0, curPct: 0 },
+    { name: "6th Typical Floor Slab", partAmount: 2726500, prevPct: 0, curPct: 0 },
+    { name: "7th Typical Floor Slab", partAmount: 2726500, prevPct: 0, curPct: 0 },
+    { name: "8th Typical Floor Slab", partAmount: 2726500, prevPct: 0, curPct: 0 },
+    { name: "9th Typical Floor Slab", partAmount: 2726500, prevPct: 0, curPct: 0 },
+    { name: "10th Typical Floor Slab", partAmount: 2726500, prevPct: 0, curPct: 0 },
+    { name: "Terrace Slab & Water Tank", partAmount: 1558000, prevPct: 0, curPct: 0 },
   ];
 
   for (let i = 0; i < stagesC.length; i++) {
@@ -472,11 +482,20 @@ export async function seedFreshDatabase() {
   });
 
   const stagesWoods = [
-    { name: "PCC & Footing Raft Foundation", partAmount: 7200000 },
-    { name: "Stilt Parking Slab", partAmount: 5400000 },
-    { name: "1st Typical Floor Slab", partAmount: 4500000 },
-    { name: "2nd Typical Floor Slab", partAmount: 4500000 },
-    { name: "3rd Typical Floor Slab", partAmount: 4500000 },
+    { name: "PCC & Footing Raft Foundation", partAmount: 3600000 },
+    { name: "Basement 1 Slab & Columns", partAmount: 2880000 },
+    { name: "Ground Stilt Parking Slab", partAmount: 2880000 },
+    { name: "1st Typical Floor Slab", partAmount: 2520000 },
+    { name: "2nd Typical Floor Slab", partAmount: 2520000 },
+    { name: "3rd Typical Floor Slab", partAmount: 2520000 },
+    { name: "4th Typical Floor Slab", partAmount: 2520000 },
+    { name: "5th Typical Floor Slab", partAmount: 2520000 },
+    { name: "6th Typical Floor Slab", partAmount: 2520000 },
+    { name: "7th Typical Floor Slab", partAmount: 2520000 },
+    { name: "8th Typical Floor Slab", partAmount: 2520000 },
+    { name: "9th Typical Floor Slab", partAmount: 2520000 },
+    { name: "10th Typical Floor Slab", partAmount: 2520000 },
+    { name: "Terrace Slab & Water Tank", partAmount: 1440000 },
   ];
 
   for (let i = 0; i < stagesWoods.length; i++) {
