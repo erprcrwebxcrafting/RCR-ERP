@@ -570,7 +570,7 @@ export async function seedFreshDatabase() {
     },
   });
 
-  // Quotation 3 for Site 3 (Godrej Woods - Sent/Negotiation)
+  // Quotation 3 for Site 3 (Godrej Woods - Accepted)
   await prisma.quotation.create({
     data: {
       siteId: site3.id,
@@ -591,7 +591,7 @@ export async function seedFreshDatabase() {
         "Excavation and debris disposal outside site boundary.",
         "Curing water pump electricity cost.",
       ]),
-      status: "SENT",
+      status: "ACCEPTED",
     },
   });
 
