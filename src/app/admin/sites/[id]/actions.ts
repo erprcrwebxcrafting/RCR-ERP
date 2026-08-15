@@ -98,11 +98,30 @@ export async function unassignSupervisorAction(siteId: string, supervisorId: str
 
 export async function recordPaymentAction(siteId: string, formData: FormData) {
   const amount = parseFloat((formData.get("amount") as string) || "0");
-  const mode = (formData.get("mode") as string) || "CASH";
-  const accountCredited = formData.get("accountCredited") as string;
-  const remarks = formData.get("remarks") as string;
-  if (!amount) return;
-  await prisma.payment.create({ data: { siteId, amount, mode, accountCredited, remarks } });
+  const dateStr = formData.get("date") as string;
+  const mode = (formData.get("mode") as string) || "NEFT";
+  const accountCredited = (formData.get("accountCredited") as string || "").trim() || null;
+  const reference = (formData.get("reference") as string || "").trim() || null;
+  const remarks = (formData.get("remarks") as string || "").trim() || null;
+
+  if (isNaN(amount) || amount <= 0) {
+    throw new Error("INVALID AMOUNT: Payment amount received must be greater than 0.");
+  }
+
+  const date = dateStr ? new Date(dateStr) : new Date();
+
+  await prisma.payment.create({
+    data: {
+      siteId,
+      date,
+      amount,
+      mode,
+      accountCredited,
+      reference,
+      remarks,
+    },
+  });
+
   revalidatePath(`/admin/sites/${siteId}`);
 }
 

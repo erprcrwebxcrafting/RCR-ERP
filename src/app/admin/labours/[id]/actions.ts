@@ -13,11 +13,16 @@ const paymentSchema = z.object({
 
 export async function savePayment(formData: FormData) {
   const parsed = paymentSchema.parse(Object.fromEntries(formData));
+  const amount = parseFloat(parsed.amount);
+
+  if (isNaN(amount) || amount <= 0) {
+    throw new Error("Payment/Advance amount must be greater than 0.");
+  }
   
   await (prisma as any).labourPayment.create({
     data: {
       labourId: parsed.labourId,
-      amount: parseFloat(parsed.amount),
+      amount,
       date: new Date(parsed.date),
       reason: parsed.reason || null,
       transactionId: parsed.transactionId || null,

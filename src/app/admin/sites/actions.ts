@@ -119,6 +119,15 @@ export async function updateSiteTaxSettingsAction(siteId: string, formData: Form
   const sgstPct = parseFloat((formData.get("sgstPct") as string) || "9");
   const tdsPct = parseFloat((formData.get("tdsPct") as string) || "1");
 
+  if (
+    retentionPct < 0 || retentionPct > 100 ||
+    cgstPct < 0 || cgstPct > 100 ||
+    sgstPct < 0 || sgstPct > 100 ||
+    tdsPct < 0 || tdsPct > 100
+  ) {
+    throw new Error("Tax and retention percentages must be valid percentages between 0% and 100%.");
+  }
+
   await prisma.site.update({
     where: { id: siteId },
     data: {
