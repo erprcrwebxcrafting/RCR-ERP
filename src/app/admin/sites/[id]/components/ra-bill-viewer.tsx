@@ -270,17 +270,6 @@ export function RABillViewer({ site }: { site: any }) {
                     );
                     return;
                   }
-
-                  if (latestBill.periodEnd && pEndStr) {
-                    const lastPeriodEnd = new Date(latestBill.periodEnd);
-                    const newPeriodEnd = new Date(pEndStr);
-                    if (newPeriodEnd.setHours(0, 0, 0, 0) <= lastPeriodEnd.setHours(0, 0, 0, 0)) {
-                      setFormError(
-                        `Chronology Error! Bill period end date (${formatDate(newPeriodEnd)}) must be after the previous bill's period end (${formatDate(lastPeriodEnd)}).`
-                      );
-                      return;
-                    }
-                  }
                 }
 
                 setIsSubmitting(true);

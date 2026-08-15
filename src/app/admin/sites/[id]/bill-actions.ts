@@ -176,7 +176,7 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
       },
       supplyLabourEntries: { orderBy: { date: "asc" } },
       bills: {
-        select: { id: true, billNo: true, billDate: true, periodStart: true, periodEnd: true, createdAt: true },
+        select: { id: true, billNo: true, billDate: true, createdAt: true },
         orderBy: { createdAt: "desc" },
       },
     },
@@ -217,15 +217,6 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
       throw new Error(
         `CHRONOLOGY ERROR: New bill date (${formatDate(billDate)}) cannot be earlier than the previous bill (${latestExistingBill.billNo}) date (${formatDate(lastDate)})! RA Bills must be created in chronological order.`
       );
-    }
-
-    if (latestExistingBill.periodEnd && periodEnd) {
-      const lastPeriodEnd = new Date(latestExistingBill.periodEnd);
-      if (new Date(periodEnd).setHours(0, 0, 0, 0) <= new Date(lastPeriodEnd).setHours(0, 0, 0, 0)) {
-        throw new Error(
-          `CHRONOLOGY ERROR: Bill period end date (${formatDate(periodEnd)}) cannot be on or before the previous bill's period end date (${formatDate(lastPeriodEnd)})!`
-        );
-      }
     }
   }
 
