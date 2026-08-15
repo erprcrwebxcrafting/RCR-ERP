@@ -159,7 +159,7 @@ export async function updateSupplyLabourEntriesAction(
   revalidatePath(`/admin/sites/${siteId}`);
 }
 
-import { formatInvoiceNo, formatRefNo } from "@/lib/utils";
+import { formatInvoiceNo, formatRefNo, formatDate } from "@/lib/utils";
 
 export async function generateRunningBillAction(siteId: string, formData: FormData) {
   const billDateStr = formData.get("billDate") as string;
@@ -175,7 +175,10 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
         orderBy: { createdAt: "asc" },
       },
       supplyLabourEntries: { orderBy: { date: "asc" } },
-      bills: { select: { billNo: true } },
+      bills: {
+        select: { id: true, billNo: true, billDate: true, periodStart: true, periodEnd: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
@@ -190,6 +193,7 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
   if (existingBill) {
     throw new Error(`DUPLICATE BILL ERROR: Bill No. "${billNo}" already exists for this site! Please use a unique bill number.`);
   }
+
   const periodStartStr = formData.get("periodStart") as string;
   const periodEndStr = formData.get("periodEnd") as string;
 
@@ -199,6 +203,30 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
   // 2. VALIDATION: Date range Start <= End
   if (periodStart && periodEnd && periodStart > periodEnd) {
     throw new Error("DATE RANGE ERROR: Bill Period Start Date cannot be after End Date.");
+  }
+
+  // 3. VALIDATION: Chronological Order Check (New bill cannot be earlier than previous bills)
+  const sortedBills = [...(site.bills || [])].sort(
+    (a: any, b: any) => new Date(b.billDate || b.createdAt).getTime() - new Date(a.billDate || a.createdAt).getTime()
+  );
+  const latestExistingBill = sortedBills[0];
+
+  if (latestExistingBill) {
+    const lastDate = new Date(latestExistingBill.billDate || latestExistingBill.createdAt);
+    if (new Date(billDate).setHours(0, 0, 0, 0) < new Date(lastDate).setHours(0, 0, 0, 0)) {
+      throw new Error(
+        `CHRONOLOGY ERROR: New bill date (${formatDate(billDate)}) cannot be earlier than the previous bill (${latestExistingBill.billNo}) date (${formatDate(lastDate)})! RA Bills must be created in chronological order.`
+      );
+    }
+
+    if (latestExistingBill.periodEnd && periodEnd) {
+      const lastPeriodEnd = new Date(latestExistingBill.periodEnd);
+      if (new Date(periodEnd).setHours(0, 0, 0, 0) <= new Date(lastPeriodEnd).setHours(0, 0, 0, 0)) {
+        throw new Error(
+          `CHRONOLOGY ERROR: Bill period end date (${formatDate(periodEnd)}) cannot be on or before the previous bill's period end date (${formatDate(lastPeriodEnd)})!`
+        );
+      }
+    }
   }
 
   // 3. VALIDATION: Check unbilled supply entries & work item progress

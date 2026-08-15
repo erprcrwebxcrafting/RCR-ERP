@@ -254,6 +254,35 @@ export function RABillViewer({ site }: { site: any }) {
                   return;
                 }
 
+                // Frontend validation 3: Chronological Order Check
+                const billDateInput = formData.get("billDate") as string;
+                const sortedExistingBills = [...(site.bills || [])].sort(
+                  (a: any, b: any) => new Date(b.billDate || b.createdAt).getTime() - new Date(a.billDate || a.createdAt).getTime()
+                );
+                const latestBill = sortedExistingBills[0];
+
+                if (latestBill && billDateInput) {
+                  const lastBillDate = new Date(latestBill.billDate || latestBill.createdAt);
+                  const newBillDate = new Date(billDateInput);
+                  if (newBillDate.setHours(0, 0, 0, 0) < lastBillDate.setHours(0, 0, 0, 0)) {
+                    setFormError(
+                      `Chronology Error! New bill date (${formatDate(newBillDate)}) cannot be earlier than the previous bill (${latestBill.billNo}) date (${formatDate(lastBillDate)}). Bills must be generated in chronological sequence.`
+                    );
+                    return;
+                  }
+
+                  if (latestBill.periodEnd && pEndStr) {
+                    const lastPeriodEnd = new Date(latestBill.periodEnd);
+                    const newPeriodEnd = new Date(pEndStr);
+                    if (newPeriodEnd.setHours(0, 0, 0, 0) <= lastPeriodEnd.setHours(0, 0, 0, 0)) {
+                      setFormError(
+                        `Chronology Error! Bill period end date (${formatDate(newPeriodEnd)}) must be after the previous bill's period end (${formatDate(lastPeriodEnd)}).`
+                      );
+                      return;
+                    }
+                  }
+                }
+
                 setIsSubmitting(true);
                 try {
                   await generateRunningBillAction(site.id, formData);
