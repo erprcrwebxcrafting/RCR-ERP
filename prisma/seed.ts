@@ -361,6 +361,30 @@ export async function seedFreshDatabase() {
     data: { runningBillId: bill1.id },
   });
 
+  // Freeze BillLine snapshots for RA Bill 01 on Site 1
+  for (let i = 0; i < stagesA.length; i++) {
+    const s = stagesA[i];
+    const curAmt = (s.curPct / 100) * s.partAmount;
+    await prisma.billLine.create({
+      data: {
+        runningBillId: bill1.id,
+        buildingId: bldg1A.id,
+        description: `Wing A - ${s.name}`,
+        unit: "%",
+        woQty: 100,
+        rate: s.partAmount,
+        previousQty: s.prevPct,
+        currentQty: s.curPct,
+        cumulativeQty: s.prevPct + s.curPct,
+        previousAmount: (s.prevPct / 100) * s.partAmount,
+        currentAmount: curAmt,
+        cumulativeAmount: ((s.prevPct + s.curPct) / 100) * s.partAmount,
+        isSupplyLabour: false,
+        order: i,
+      },
+    });
+  }
+
   // Payments received for Site 1
   await prisma.payment.create({
     data: {
@@ -371,6 +395,28 @@ export async function seedFreshDatabase() {
       accountCredited: "SANDIP ICICI 0884",
       reference: "AXISN00482910123",
       remarks: "PART PAYMENT FOR RA BILL NO. 01 - PARKSITE",
+    },
+  });
+
+  // Worker Advance (LabourPayment) for Manoj Yadav
+  await prisma.labourPayment.create({
+    data: {
+      labourId: laboursSite1[0].id,
+      amount: 2000,
+      date: new Date("2026-08-05"),
+      reason: "Emergency medical advance for family",
+      transactionId: "CASH-REC-012",
+    },
+  });
+
+  // Supervisor Monthly Salary Payment (SupervisorPayment) for Ramesh Sharma
+  await prisma.supervisorPayment.create({
+    data: {
+      supervisorId: sup1.id,
+      amount: 35000,
+      date: new Date("2026-08-01"),
+      reason: "Monthly salary payment for July 2026",
+      transactionId: "IMPS789210948",
     },
   });
 
@@ -398,6 +444,15 @@ export async function seedFreshDatabase() {
 
   await prisma.siteSupervisor.create({
     data: { siteId: site2.id, supervisorId: sup2.id },
+  });
+
+  // Labour Categories for Site 2
+  await prisma.labourCategory.createMany({
+    data: [
+      { siteId: site2.id, name: "Reinforcement Fitter", dailyWage: 1100, overtimeRate: 150, order: 0 },
+      { siteId: site2.id, name: "General Helper", dailyWage: 800, overtimeRate: 100, order: 1 },
+      { siteId: site2.id, name: "RCC Mason", dailyWage: 950, overtimeRate: 130, order: 2 },
+    ],
   });
 
   const bldg2C = await prisma.building.create({
@@ -469,6 +524,20 @@ export async function seedFreshDatabase() {
       active: true,
       remarks: "Fresh project. Ready for live RA Bill creation, challan logging and testing.",
     },
+  });
+
+  // Assign Supervisor 1 to Site 3 as well
+  await prisma.siteSupervisor.create({
+    data: { siteId: site3.id, supervisorId: sup1.id },
+  });
+
+  // Labour Categories for Site 3
+  await prisma.labourCategory.createMany({
+    data: [
+      { siteId: site3.id, name: "Reinforcement Fitter", dailyWage: 1100, overtimeRate: 150, order: 0 },
+      { siteId: site3.id, name: "General Helper", dailyWage: 800, overtimeRate: 100, order: 1 },
+      { siteId: site3.id, name: "RCC Mason", dailyWage: 950, overtimeRate: 130, order: 2 },
+    ],
   });
 
   const bldg3A = await prisma.building.create({
