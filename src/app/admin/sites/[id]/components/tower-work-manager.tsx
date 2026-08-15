@@ -10,6 +10,7 @@ import { formatINR } from "@/lib/utils";
 import { addBuildingAction, updateBuildingHeaderAction } from "../actions";
 import { addTowerWorkItemAction, updateTowerWorkProgressAction, deleteTowerWorkItemAction } from "../bill-actions";
 import { Building2, Hammer, Plus, Save, Trash2, Layers, Edit2, CheckCircle2, Percent, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export function TowerWorkManager({ site }: { site: any }) {
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>(
@@ -173,9 +174,14 @@ export function TowerWorkManager({ site }: { site: any }) {
       });
 
       await updateTowerWorkProgressAction(site.id, itemsToUpdate);
+      toast.success("Progress saved successfully!", {
+        description: `Updated work items for ${selectedBuilding.name}.`,
+      });
       setSaveMessage("Saved successfully!");
     } catch (e: any) {
-      alert("Failed to save: " + (e?.message || "Unknown error"));
+      toast.error("Failed to save progress", {
+        description: e?.message || "An unexpected error occurred while saving.",
+      });
     } finally {
       setIsSaving(false);
       setTimeout(() => setSaveMessage(null), 3000);
@@ -388,10 +394,13 @@ export function TowerWorkManager({ site }: { site: any }) {
                   action={async (formData) => {
                     const newPartAmt = parseFloat((formData.get("partAmount") as string) || "0");
                     if (sumPartAmounts + newPartAmt > totalContractValue + 1) {
-                        alert(`❌ Cannot add item!\n\nAdding ₹${newPartAmt.toLocaleString('en-IN')} will exceed the Total Tower Contract Value.\nMaximum allowed: ₹${(totalContractValue - sumPartAmounts).toLocaleString('en-IN')}`);
-                        return;
+                      toast.warning("Contract Value Exceeded", {
+                        description: `Adding ₹${newPartAmt.toLocaleString('en-IN')} exceeds the remaining tower contract budget of ₹${(totalContractValue - sumPartAmounts).toLocaleString('en-IN')}.`,
+                      });
+                      return;
                     }
                     await addTowerWorkItemAction(site.id, selectedBuilding.id, formData);
+                    toast.success("Stage added successfully!");
                     setIsAddingItem(false);
                   }}
                   className="p-4 bg-muted/40 rounded-lg grid gap-3 md:grid-cols-3 items-end mb-4 border"

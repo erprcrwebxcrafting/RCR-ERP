@@ -7,6 +7,7 @@ import { ArrowRightLeft } from "lucide-react";
 import { transferLabourAction, transferSupervisorAction } from "../transfer-actions";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export function TransferResourcesModal({
   siteId,
@@ -59,10 +60,11 @@ export function TransferResourcesModal({
 
     setLoading(false);
     if (res.success) {
+      toast.success("Worker transferred successfully!");
       setOpen(false);
       router.refresh();
     } else {
-      alert("Transfer failed: " + res.error);
+      toast.error("Transfer failed", { description: res.error });
     }
   };
 
@@ -83,10 +85,11 @@ export function TransferResourcesModal({
 
     setLoading(false);
     if (res.success) {
+      toast.success("Supervisor and team transferred successfully!");
       setOpen(false);
       router.refresh();
     } else {
-      alert("Transfer failed: " + res.error);
+      toast.error("Transfer failed", { description: res.error });
     }
   };
 

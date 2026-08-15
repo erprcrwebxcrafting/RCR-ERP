@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 export function QuotationSendButtons({ quotationId, clientId, clientEmail, clientPhone }: { quotationId: string, clientId: string, clientEmail: string, clientPhone: string }) {
   const [loading, setLoading] = useState(false);
@@ -26,21 +27,22 @@ export function QuotationSendButtons({ quotationId, clientId, clientEmail, clien
 
   const handleSend = async (type: "EMAIL" | "WHATSAPP") => {
     setLoading(true);
+    const toastId = toast.loading(type === "EMAIL" ? "Sending quotation via email..." : "Opening WhatsApp dispatch...");
     try {
       const res = type === "EMAIL" 
         ? await updateContactAndSendEmailAction(quotationId, clientId, editEmail)
         : await updateContactAndSendWhatsAppAction(quotationId, clientId, editPhone);
 
       if (res?.error) {
-        alert(res.error);
+        toast.error("Failed to send quotation", { id: toastId, description: res.error });
       } else {
-        alert(type === "EMAIL" ? "Email sent successfully!" : "WhatsApp message sent successfully!");
+        toast.success(type === "EMAIL" ? "Quotation PDF emailed successfully!" : "WhatsApp dispatch prepared!", { id: toastId });
         setEmailModalOpen(false);
         setWhatsappModalOpen(false);
         router.refresh();
       }
-    } catch (e) {
-      alert("Failed to send. Please try again.");
+    } catch (e: any) {
+      toast.error("Failed to send", { id: toastId, description: e?.message || "Please try again." });
     } finally {
       setLoading(false);
     }

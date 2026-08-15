@@ -26,6 +26,7 @@ import {
   CheckCircle,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 export function SupplyLabourManager({ site }: { site: any }) {
   const [isAdding, setIsAdding] = useState(false);
@@ -148,18 +149,24 @@ export function SupplyLabourManager({ site }: { site: any }) {
       const ch = (state.challanNo || "").trim().toLowerCase();
       if (ch) {
         if (seenChallans.has(ch)) {
-          setErrorMessage(`Duplicate Challan Error! Challan "${state.challanNo}" is entered more than once.`);
+          const msg = `Duplicate Challan Error! Challan "${state.challanNo}" is entered more than once.`;
+          setErrorMessage(msg);
+          toast.warning("Duplicate Challan", { description: msg });
           return;
         }
         seenChallans.add(ch);
       }
 
       if ((state.fitterQty && state.fitterQty < 0) || (state.helperQty && state.helperQty < 0)) {
-        setErrorMessage("Quantities cannot be negative.");
+        const msg = "Quantities cannot be negative.";
+        setErrorMessage(msg);
+        toast.error("Invalid Quantity", { description: msg });
         return;
       }
       if ((state.fitterHours && state.fitterHours > 24) || (state.helperHours && state.helperHours > 24)) {
-        setErrorMessage("Daily shift hours cannot exceed 24 hours per day.");
+        const msg = "Daily shift hours cannot exceed 24 hours per day.";
+        setErrorMessage(msg);
+        toast.error("Invalid Shift Hours", { description: msg });
         return;
       }
     }
@@ -186,8 +193,11 @@ export function SupplyLabourManager({ site }: { site: any }) {
 
       await updateSupplyLabourEntriesAction(site.id, updates);
       setSaveMessage("Saved successfully!");
+      toast.success("Supply Labour entries updated successfully!");
     } catch (e: any) {
-      setErrorMessage(e?.message || "Failed to save supply entries.");
+      const msg = e?.message || "Failed to save supply entries.";
+      setErrorMessage(msg);
+      toast.error("Save Failed", { description: msg });
     } finally {
       setIsSaving(false);
       setTimeout(() => setSaveMessage(null), 3000);
@@ -408,7 +418,9 @@ export function SupplyLabourManager({ site }: { site: any }) {
                 if (inputChallan) {
                   const exists = rawEntries.some((e: any) => (e.challanNo || "").trim().toLowerCase() === inputChallan);
                   if (exists) {
-                    setErrorMessage(`Duplicate Challan Error! Challan "${formData.get("challanNo")}" already exists for this site.`);
+                    const msg = `Duplicate Challan Error! Challan "${formData.get("challanNo")}" already exists for this site.`;
+                    setErrorMessage(msg);
+                    toast.warning("Duplicate Challan", { description: msg });
                     return;
                   }
                 }
@@ -416,9 +428,12 @@ export function SupplyLabourManager({ site }: { site: any }) {
                 setIsSubmittingNew(true);
                 try {
                   await addSupplyLabourEntryAction(site.id, formData);
+                  toast.success("Extra Labour Supply Challan logged successfully!");
                   setIsAdding(false);
                 } catch (err: any) {
-                  setErrorMessage(err?.message || "Failed to log supply entry.");
+                  const msg = err?.message || "Failed to log supply entry.";
+                  setErrorMessage(msg);
+                  toast.error("Logging Failed", { description: msg });
                 } finally {
                   setIsSubmittingNew(false);
                 }

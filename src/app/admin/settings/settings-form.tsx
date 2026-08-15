@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 
 import { CardContent } from "@/components/ui/card";
 import { Building2, MapPin, Mail, Phone, Globe } from "lucide-react";
+import { toast } from "sonner";
 
 export function SettingsForm({ settings }: { settings: any }) {
   const [isPending, startTransition] = useTransition();
@@ -16,10 +17,12 @@ export function SettingsForm({ settings }: { settings: any }) {
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       const res = await updateGlobalSettings(formData);
-      if (res.error) {
-        alert(`Error: ${res.error}`);
+      if (res?.error) {
+        toast.error("Failed to update settings", { description: res.error });
       } else {
-        alert("Success: Settings updated successfully.");
+        toast.success("Settings updated successfully!", {
+          description: "Company details and letterhead profile updated.",
+        });
       }
     });
   };

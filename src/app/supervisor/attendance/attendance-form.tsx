@@ -5,10 +5,10 @@ import { saveAttendance } from "./actions";
 import { CheckCircle2, Lock, Edit, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
 
 export function AttendanceForm({ siteId, allLocked, hasExisting, headerControls, children }: { siteId: string, allLocked: boolean, hasExisting: boolean, headerControls: React.ReactNode, children: React.ReactNode }) {
   const [isPending, startTransition] = useTransition();
-  const [showToast, setShowToast] = useState(false);
   const [isEditing, setIsEditing] = useState(!hasExisting);
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -17,21 +17,22 @@ export function AttendanceForm({ siteId, allLocked, hasExisting, headerControls,
     
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
-      await saveAttendance(siteId, formData);
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
+      try {
+        await saveAttendance(siteId, formData);
+        toast.success("Attendance saved successfully!", {
+          description: "Worker hajari and daily shift records updated.",
+        });
+        setIsEditing(false);
+      } catch (err: any) {
+        toast.error("Failed to save attendance", {
+          description: err?.message || "Please check network connection and retry.",
+        });
+      }
     });
   };
 
   return (
     <>
-      {showToast && (
-        <div className="fixed bottom-6 right-6 z-[100] bg-emerald-500 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-8 fade-in duration-300 font-medium tracking-wide">
-          <CheckCircle2 className="h-6 w-6" />
-          <span className="font-bold text-lg">Attendance Saved!</span>
-        </div>
-      )}
-      
       <form onSubmit={handleSubmit} className="space-y-6 relative">
         {isPending && (
           <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-40 flex items-center justify-center rounded-2xl">
