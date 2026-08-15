@@ -88,40 +88,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#f3f4f6",
     fontFamily: "Helvetica-Bold",
   },
-  footerText: {
-    position: "absolute",
-    bottom: -100,
-    left: 0,
-    right: 0,
-    textAlign: "center",
-    color: "#4b5563",
-    fontSize: 8,
-    borderTopWidth: 1,
-    borderTopColor: "#cbd5e1",
-    paddingTop: 10,
-  },
-  pageNumber: {
-    position: "absolute",
-    bottom: -100,
-    right: 0,
-    fontSize: 8,
-    color: "#4b5563",
-    fontFamily: "Helvetica-Bold",
-  },
-  signBox: {
-    position: "absolute",
-    bottom: -80,
-    right: 0,
-    width: 120,
-    alignItems: "center",
-  },
-  signLabel: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 8,
-    color: "#111827",
-  },
-  signImage: { width: 80, height: 40, marginVertical: 4 },
-  footerContainer: { position: "absolute", bottom: 30, left: 30, right: 30, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", borderTopWidth: 1, borderTopColor: "#cbd5e1", paddingTop: 10 }
 });
 
 function formatINR(num: number) {
