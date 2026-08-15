@@ -126,6 +126,32 @@ export function TowerWorkManager({ site }: { site: any }) {
       }
     }
 
+    // Validation check for Sequential Progress (Item 2 cannot have progress if Item 1 has 0% progress)
+    const items = selectedBuilding.workItems || [];
+    for (let i = 0; i < items.length; i++) {
+      const state = progressState[items[i].id];
+      const curPct = state?.currentPct ?? (items[i].currentPct || 0);
+      const prevPct = state?.previousPct ?? (items[i].previousPct || 0);
+      const cumPct = prevPct + curPct;
+
+      if (cumPct > 0 || curPct > 0) {
+        for (let j = 0; j < i; j++) {
+          const priorState = progressState[items[j].id];
+          const priorCur = priorState?.currentPct ?? (items[j].currentPct || 0);
+          const priorPrev = priorState?.previousPct ?? (items[j].previousPct || 0);
+          const priorCum = priorPrev + priorCur;
+
+          if (priorCum <= 0) {
+            const warnMsg = `⚠️ SEQUENCE ERROR / WARNING:\n\nItem #${i + 1} ("${items[i].name}") has ${cumPct}% progress, but earlier stage Item #${j + 1} ("${items[j].name}") has 0% progress!\n\nIn construction sequencing, earlier stages cannot be skipped.\n\nDo you still wish to proceed?`;
+            if (!confirm(warnMsg)) {
+              return;
+            }
+            break;
+          }
+        }
+      }
+    }
+
     setIsSaving(true);
     setSaveMessage("Saving...");
     try {

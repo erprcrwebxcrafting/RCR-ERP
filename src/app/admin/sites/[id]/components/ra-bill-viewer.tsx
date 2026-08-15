@@ -272,6 +272,32 @@ export function RABillViewer({ site }: { site: any }) {
                   }
                 }
 
+                // Frontend validation 4: Check for sequential stage execution (Item 2 cannot be billed if Item 1 has 0% progress)
+                for (const b of site.buildings || []) {
+                  const items = b.workItems || [];
+                  for (let i = 0; i < items.length; i++) {
+                    const curPct = items[i].currentPct ?? 0;
+                    const curQty = items[i].currentQty ?? 0;
+                    const prevPct = items[i].previousPct ?? 0;
+                    const cumPct = prevPct + curPct;
+
+                    if (curPct > 0 || curQty > 0 || cumPct > 0) {
+                      for (let j = 0; j < i; j++) {
+                        const priorPrev = items[j].previousPct ?? 0;
+                        const priorCur = items[j].currentPct ?? 0;
+                        const priorCum = priorPrev + priorCur;
+
+                        if (priorCum <= 0) {
+                          setFormError(
+                            `Sequence Error in "${b.name}"! Item #${i + 1} ("${items[i].name}") has progress (${curPct > 0 ? curPct + "%" : cumPct + "%"}), but earlier stage Item #${j + 1} ("${items[j].name}") has 0% progress! Work items must be executed in order.`
+                          );
+                          return;
+                        }
+                      }
+                    }
+                  }
+                }
+
                 setIsSubmitting(true);
                 try {
                   await generateRunningBillAction(site.id, formData);
