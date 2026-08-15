@@ -6,7 +6,7 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatINR, formatDate } from "@/lib/utils";
+import { formatINR, formatDate, formatRefNo, formatInvoiceNo } from "@/lib/utils";
 import { generateRunningBillAction } from "../bill-actions";
 import { SiteBalanceSheet } from "./site-balance-sheet";
 import { HistoricalBillViewer } from "../bills/[billId]/historical-bill-viewer";
@@ -267,20 +267,28 @@ export function RABillViewer({ site }: { site: any }) {
                 }
               }}
             >
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Invoice / Bill No. *</label>
-                  <Input name="billNo" defaultValue={`007/${new Date().getFullYear()}-${(new Date().getFullYear()+1).toString().slice(2)}`} required />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Bill Date *</label>
-                  <Input name="billDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Ref No.</label>
-                  <Input name="refNo" defaultValue="01" />
-                </div>
-              </div>
+              {(() => {
+                const nextBillCount = (site.bills || []).length + 1;
+                const autoInvoiceNo = formatInvoiceNo(nextBillCount);
+                const autoRefNo = formatRefNo(nextBillCount);
+
+                return (
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground block mb-1">Invoice / Bill No. *</label>
+                      <Input name="billNo" defaultValue={autoInvoiceNo} required />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground block mb-1">Bill Date *</label>
+                      <Input name="billDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground block mb-1">Ref No.</label>
+                      <Input name="refNo" defaultValue={autoRefNo} />
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="grid gap-4 md:grid-cols-3 pt-2 border-t border-emerald-500/20">
                 <div>

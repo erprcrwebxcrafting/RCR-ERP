@@ -55,3 +55,22 @@ export function formatDate(d: Date | string) {
   const date = typeof d === "string" ? new Date(d) : d;
   return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
+
+export function getFinancialYear(d: Date = new Date()): string {
+  const date = typeof d === "string" ? new Date(d) : d;
+  const month = date.getMonth(); // 0 = Jan, 3 = April
+  const year = date.getFullYear();
+  const startYear = month >= 3 ? year : year - 1;
+  const endYearShort = (startYear + 1).toString().slice(2);
+  return `${startYear}-${endYearShort}`;
+}
+
+export function formatRefNo(num: number): string {
+  return (num || 1).toString().padStart(2, "0");
+}
+
+export function formatInvoiceNo(num: number, date: Date = new Date()): string {
+  const fy = getFinancialYear(date);
+  return `${(num || 1).toString().padStart(3, "0")}/${fy}`;
+}
+

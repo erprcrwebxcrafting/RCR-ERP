@@ -159,9 +159,11 @@ export async function updateSupplyLabourEntriesAction(
   revalidatePath(`/admin/sites/${siteId}`);
 }
 
+import { formatInvoiceNo, formatRefNo } from "@/lib/utils";
+
 export async function generateRunningBillAction(siteId: string, formData: FormData) {
-  const billNo = (formData.get("billNo") as string || `BILL-${Date.now()}`).trim();
-  const refNo = (formData.get("refNo") as string || "01").trim();
+  const billDateStr = formData.get("billDate") as string;
+  const billDate = billDateStr ? new Date(billDateStr) : new Date();
   const periodLabel = (formData.get("periodLabel") as string || new Date().toLocaleString("en-US", { month: "short", year: "numeric" })).trim();
 
   // Fetch all towers & supply entries for this site
@@ -179,14 +181,15 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
 
   if (!site) return;
 
+  const nextCount = (site.bills || []).length + 1;
+  const billNo = (formData.get("billNo") as string || formatInvoiceNo(nextCount, billDate)).trim();
+  const refNo = (formData.get("refNo") as string || formatRefNo(nextCount)).trim();
+
   // 1. VALIDATION: Check duplicate billNo for this site
   const existingBill = site.bills.find((b: any) => b.billNo.trim().toLowerCase() === billNo.toLowerCase());
   if (existingBill) {
     throw new Error(`DUPLICATE BILL ERROR: Bill No. "${billNo}" already exists for this site! Please use a unique bill number.`);
   }
-
-  const billDateStr = formData.get("billDate") as string;
-  const billDate = billDateStr ? new Date(billDateStr) : new Date();
   const periodStartStr = formData.get("periodStart") as string;
   const periodEndStr = formData.get("periodEnd") as string;
 

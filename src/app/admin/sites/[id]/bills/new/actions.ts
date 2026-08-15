@@ -1,6 +1,7 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { formatInvoiceNo, formatRefNo } from "@/lib/utils";
 
 export async function generateRunningBill(siteId: string, formData: FormData) {
   const site = await prisma.site.findUniqueOrThrow({
@@ -8,8 +9,10 @@ export async function generateRunningBill(siteId: string, formData: FormData) {
     include: { buildings: true, workItems: true, labourCategories: true },
   });
 
+  const count = await prisma.runningBill.count({ where: { siteId } });
   const periodLabel = (formData.get("periodLabel") as string) || "";
-  const refNo = (formData.get("refNo") as string) || "";
+  const refNo = (formData.get("refNo") as string || formatRefNo(count + 1)).trim();
+  const billNo = (formData.get("billNo") as string || formatInvoiceNo(count + 1)).trim();
 
   // find last bill for "previous" figures
   const lastBill = await prisma.runningBill.findFirst({
@@ -24,9 +27,6 @@ export async function generateRunningBill(siteId: string, formData: FormData) {
     );
     return { qty: line?.cumulativeQty ?? 0, amount: line?.cumulativeAmount ?? 0 };
   }
-
-  const count = await prisma.runningBill.count({ where: { siteId } });
-  const billNo = `${String(count + 1).padStart(3, "0")}/${new Date().getFullYear()}-${String((new Date().getFullYear() + 1) % 100).padStart(2, "0")}`;
 
   const lineCreates: any[] = [];
 

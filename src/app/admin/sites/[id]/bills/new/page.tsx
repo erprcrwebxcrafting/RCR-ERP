@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+import { formatInvoiceNo, formatRefNo } from "@/lib/utils";
+
 export default async function NewRunningBillPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const site = await prisma.site.findUnique({
@@ -18,6 +20,10 @@ export default async function NewRunningBillPage({ params }: { params: Promise<{
   });
   if (!site) notFound();
 
+  const count = await prisma.runningBill.count({ where: { siteId: site.id } });
+  const nextInvoiceNo = formatInvoiceNo(count + 1);
+  const nextRefNo = formatRefNo(count + 1);
+
   return (
     <div className="max-w-4xl space-y-6">
       <div>
@@ -27,14 +33,18 @@ export default async function NewRunningBillPage({ params }: { params: Promise<{
 
       <form action={generateRunningBill.bind(null, site.id)} className="space-y-6">
         <Card>
-          <CardContent className="grid gap-4 p-5 md:grid-cols-2">
+          <CardContent className="grid gap-4 p-5 md:grid-cols-3">
+            <div className="space-y-1">
+              <Label>Invoice / Bill No.</Label>
+              <Input name="billNo" defaultValue={nextInvoiceNo} required />
+            </div>
             <div className="space-y-1">
               <Label>Period Label</Label>
               <Input name="periodLabel" placeholder="e.g. May 2026" />
             </div>
             <div className="space-y-1">
               <Label>Ref No.</Label>
-              <Input name="refNo" placeholder="e.g. 01" />
+              <Input name="refNo" defaultValue={nextRefNo} />
             </div>
           </CardContent>
         </Card>
