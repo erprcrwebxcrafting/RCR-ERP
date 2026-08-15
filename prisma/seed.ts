@@ -265,6 +265,47 @@ export async function seedFreshDatabase() {
     });
   }
 
+  // Stage work items for Wing B (Total 14 stages summing to ₹5,46,00,000)
+  const stagesB = [
+    { name: "Raft Foundation & Retaining Wall", partAmount: 5460000, prevPct: 100, curPct: 0 },
+    { name: "Basement 1 Slab & Columns", partAmount: 4368000, prevPct: 100, curPct: 0 },
+    { name: "Stilt Floor Slab & Ramp", partAmount: 4368000, prevPct: 100, curPct: 0 },
+    { name: "1st Typical Floor Slab", partAmount: 3822000, prevPct: 100, curPct: 0 },
+    { name: "2nd Typical Floor Slab", partAmount: 3822000, prevPct: 100, curPct: 0 },
+    { name: "3rd Typical Floor Slab", partAmount: 3822000, prevPct: 100, curPct: 0 },
+    { name: "4th Typical Floor Slab", partAmount: 3822000, prevPct: 70, curPct: 30 },
+    { name: "5th Typical Floor Slab", partAmount: 3822000, prevPct: 0, curPct: 40 },
+    { name: "6th Typical Floor Slab", partAmount: 3822000, prevPct: 0, curPct: 0 },
+    { name: "7th Typical Floor Slab", partAmount: 3822000, prevPct: 0, curPct: 0 },
+    { name: "8th Typical Floor Slab", partAmount: 3822000, prevPct: 0, curPct: 0 },
+    { name: "9th Typical Floor Slab", partAmount: 3822000, prevPct: 0, curPct: 0 },
+    { name: "10th Typical Floor Slab", partAmount: 3822000, prevPct: 0, curPct: 0 },
+    { name: "Terrace Slab & Water Tank", partAmount: 2184000, prevPct: 0, curPct: 0 },
+  ];
+
+  for (let i = 0; i < stagesB.length; i++) {
+    const s = stagesB[i];
+    const prevAmt = (s.prevPct / 100) * s.partAmount;
+    const curAmt = (s.curPct / 100) * s.partAmount;
+    await prisma.workItem.create({
+      data: {
+        siteId: site1.id,
+        buildingId: bldg1B.id,
+        name: s.name,
+        unit: "%",
+        rate: s.partAmount,
+        partAmount: s.partAmount,
+        previousPct: s.prevPct,
+        currentPct: s.curPct,
+        cumulativePct: s.prevPct + s.curPct,
+        previousAmt: prevAmt,
+        currentAmt: curAmt,
+        cumulativeAmt: prevAmt + curAmt,
+        order: i,
+      },
+    });
+  }
+
   // Extra Labour Supply for Site 1 (Signed site challans)
   const challan1 = await prisma.supplyLabourEntry.create({
     data: {
@@ -459,14 +500,64 @@ export async function seedFreshDatabase() {
     });
   }
 
-  // Quotation Example
-  console.log("8. Seeding Quotation Record...");
+  // 8. Seeding Quotation Records for all 3 Projects
+  console.log("8. Seeding Quotation Records for all 3 Projects...");
+
+  // Quotation 1 for Site 1 (Parksite Residency - Accepted)
+  await prisma.quotation.create({
+    data: {
+      siteId: site1.id,
+      clientId: client1.id,
+      quotationNo: "RCR/QTN/2026/001",
+      subject: "Quotation for RCC Shuttering & Reinforcement Work - Parksite Residency Wing A & B",
+      itemsJson: JSON.stringify([
+        { description: "Reinforcement Steel Binding, Cutting & Fabrication", unit: "MT", rate: 6800 },
+        { description: "Aluminium & Wooden Shuttering for High-Rise Slabs & Retaining Walls", unit: "Sft", rate: 48 },
+        { description: "RMC Concrete Pouring, Pumping, Compaction & Finishing", unit: "Cum", rate: 580 },
+      ]),
+      termsJson: JSON.stringify([
+        "Payment within 15 days from RA bill submission.",
+        "Running account bills to be certified within 7 working days.",
+        "Electricity, water & crane access provided by developer.",
+      ]),
+      exclusionsJson: JSON.stringify([
+        "Excavation and external peripheral development.",
+        "Supply of raw steel and cement bags.",
+      ]),
+      status: "ACCEPTED",
+    },
+  });
+
+  // Quotation 2 for Site 2 (Runwal Bliss - Accepted)
+  await prisma.quotation.create({
+    data: {
+      siteId: site2.id,
+      clientId: client2.id,
+      quotationNo: "RCR/QTN/2026/002",
+      subject: "Quotation for Foundation Raft & Basement Shuttering Work - Runwal Bliss Wing C",
+      itemsJson: JSON.stringify([
+        { description: "Heavy Raft Foundation Rebar Binding", unit: "MT", rate: 6400 },
+        { description: "Basement Shuttering & Retaining Wall Scaffolding", unit: "Sft", rate: 44 },
+        { description: "M35 Grade Concrete Pouring with Boom Placer", unit: "Cum", rate: 540 },
+      ]),
+      termsJson: JSON.stringify([
+        "Payment within 21 days from RA bill submission.",
+        "Retention of 2% to be released 6 months after structural completion.",
+      ]),
+      exclusionsJson: JSON.stringify([
+        "Dewatering diesel pump cost.",
+      ]),
+      status: "ACCEPTED",
+    },
+  });
+
+  // Quotation 3 for Site 3 (Godrej Woods - Sent/Negotiation)
   await prisma.quotation.create({
     data: {
       siteId: site3.id,
       clientId: client3.id,
-      quotationNo: "RCR/QTN/2026/001",
-      subject: "Quotation for RCC Shuttering & Concrete Work for Godrej Woods Tower 1",
+      quotationNo: "RCR/QTN/2026/003",
+      subject: "Quotation for Comprehensive Structural RCC Work - Godrej Woods Tower 1",
       itemsJson: JSON.stringify([
         { description: "Reinforcement Steel Binding & Cutting", unit: "MT", rate: 6500 },
         { description: "Shuttering & Deshuttering for Slabs & Columns", unit: "Sft", rate: 45 },
@@ -481,7 +572,7 @@ export async function seedFreshDatabase() {
         "Excavation and debris disposal outside site boundary.",
         "Curing water pump electricity cost.",
       ]),
-      status: "DRAFT",
+      status: "SENT",
     },
   });
 
