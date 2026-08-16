@@ -9,6 +9,30 @@ import { AttendanceForm } from "./attendance-form";
 import { Lock, Building2, Calendar, MapPin, CheckCircle2, Save, Users, Clock, MessageSquare, Edit, ClipboardCheck } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
+const HAJARI_OPTIONS = [
+  { value: "0", label: "Absent (0 Hajari)" },
+  { value: "0.5", label: "0.5 Hajari (Half Day)" },
+  { value: "1", label: "1.0 Hajari (Full Day)" },
+  { value: "1.5", label: "1.5 Hajari (1.5 Shifts)" },
+  { value: "2", label: "2.0 Hajari (Double Shift)" },
+  { value: "2.5", label: "2.5 Hajari (2.5 Shifts)" },
+  { value: "3", label: "3.0 Hajari (Triple Shift)" },
+  { value: "3.5", label: "3.5 Hajari" },
+  { value: "4", label: "4.0 Hajari" },
+  { value: "4.5", label: "4.5 Hajari" },
+  { value: "5", label: "5.0 Hajari" },
+  { value: "5.5", label: "5.5 Hajari" },
+  { value: "6", label: "6.0 Hajari" },
+  { value: "6.5", label: "6.5 Hajari" },
+  { value: "7", label: "7.0 Hajari" },
+  { value: "7.5", label: "7.5 Hajari" },
+  { value: "8", label: "8.0 Hajari" },
+  { value: "8.5", label: "8.5 Hajari" },
+  { value: "9", label: "9.0 Hajari" },
+  { value: "9.5", label: "9.5 Hajari" },
+  { value: "10", label: "10.0 Hajari" },
+];
+
 export default async function AttendancePage({ searchParams }: { searchParams: Promise<{ siteId?: string; date?: string }> }) {
   const resolvedSearchParams = await searchParams;
   const session = await auth();
@@ -190,15 +214,13 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                               {isLocked ? (
                                 <>
                                   <input type="hidden" name={`hajari__${p.id}`} defaultValue={existing.hajari} />
-                                  <select className="h-11 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium text-sm cursor-not-allowed opacity-80" disabled defaultValue={existing.hajari}>
-                                    <option value="0">Absent</option>
-                                    {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n.toString()}>{n} Hajari</option>)}
+                                  <select className="h-11 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium text-sm cursor-not-allowed opacity-80" disabled defaultValue={existing.hajari?.toString()}>
+                                    {HAJARI_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                   </select>
                                 </>
                               ) : (
-                                <select name={`hajari__${p.id}`} className="h-11 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-bold text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all shadow-sm cursor-pointer hover:border-indigo-400" defaultValue={existing?.hajari?.toString() || "1"}>
-                                    <option value="0">Absent</option>
-                                    {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n.toString()}>{n} Hajari</option>)}
+                                <select name={`hajari__${p.id}`} className="h-11 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-bold text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all shadow-sm cursor-pointer hover:border-indigo-400" defaultValue={existing?.hajari !== undefined ? existing.hajari.toString() : "1"}>
+                                  {HAJARI_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                 </select>
                               )}
                             </td>

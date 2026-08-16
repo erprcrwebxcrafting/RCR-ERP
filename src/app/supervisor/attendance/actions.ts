@@ -43,7 +43,7 @@ export async function saveAttendance(siteId: string, formData: FormData) {
     
     let hajari = parseFloat(hajariInput) || 0;
     if (hajari < 0) hajari = 0;
-    if (hajari > 2.5) hajari = 2.5; // Cap at max 2.5 shifts per day
+    if (hajari > 10) hajari = 10; // Cap at max 10 shifts per day
     const status = hajari > 0 ? "PRESENT" : "ABSENT";
     const remarks = formData.get(`remarks__${labourId}`) as string;
 
