@@ -341,17 +341,40 @@ function LegendFooter({ items, isLandscape }: { items?: LegendItem[]; isLandscap
   );
 }
 
+function getBuildingWorkAmounts(b: any, runningBill?: any) {
+  const workItems = b.workItems || [];
+  let prevA = workItems.reduce((s: number, i: any) => s + ((i.previousAmt !== undefined && i.previousAmt !== null) ? Number(i.previousAmt) : (Number(i.previousQty || 0) * Number(i.rate || 0))), 0);
+  let currA = workItems.reduce((s: number, i: any) => s + ((i.currentAmt !== undefined && i.currentAmt !== null) ? Number(i.currentAmt) : (Number(i.currentQty || 0) * Number(i.rate || 0))), 0);
+
+  if (prevA === 0 && currA === 0) {
+    if (b.bLines && b.bLines.length > 0) {
+      prevA = b.bLines.reduce((s: number, l: any) => s + Number(l.previousAmount || 0), 0);
+      currA = b.bLines.reduce((s: number, l: any) => s + Number(l.currentAmount || 0), 0);
+    } else if (b.billLineTotal && b.billLineTotal > 0) {
+      currA = Number(b.billLineTotal);
+    } else if (runningBill?.lines && runningBill.lines.length > 0) {
+      const matched = runningBill.lines.filter((l: any) => l.buildingId === b.id);
+      prevA = matched.reduce((s: number, l: any) => s + Number(l.previousAmount || 0), 0);
+      currA = matched.reduce((s: number, l: any) => s + Number(l.currentAmount || 0), 0);
+    }
+  }
+
+  return { prevA, currA, cumA: prevA + currA };
+}
+
 function TaxInvoice({ data, logoStr, signStr }: any) {
   const { site, runningBill, towers, supplyEntries } = data;
   let taxableTowerWork = 0;
   for (const b of towers) {
-    const towerWorkAmt = (b.workItems || []).reduce((s: number, i: any) => {
-      return s + ((i.currentAmt !== undefined && i.currentAmt !== null) ? i.currentAmt : ((i.currentQty || 0) * (i.rate || 0)));
-    }, 0);
-    taxableTowerWork += towerWorkAmt;
+    const { currA } = getBuildingWorkAmounts(b, runningBill);
+    taxableTowerWork += currA;
   }
   
-  const currentSupplyEntries = (supplyEntries || []).filter((e: any) => e.runningBillId === runningBill?.id || (!runningBill && !e.runningBillId));
+  const currentSupplyEntries = (supplyEntries || []).filter((e: any) => 
+    e.runningBillId === runningBill?.id || 
+    (!runningBill && !e.runningBillId) || 
+    (!e.runningBillId && (!runningBill || (supplyEntries.filter((x: any) => x.runningBillId === runningBill?.id).length === 0)))
+  );
   const supplyTotal = currentSupplyEntries.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0);
   const currentTotal = taxableTowerWork + supplyTotal;
 
@@ -373,14 +396,12 @@ function TaxInvoice({ data, logoStr, signStr }: any) {
         </View>
 
         {towers.map((b: any, idx: number) => {
-          const towerWorkAmt = (b.workItems || []).reduce((s: number, i: any) => {
-            return s + ((i.currentAmt !== undefined && i.currentAmt !== null) ? i.currentAmt : ((i.currentQty || 0) * (i.rate || 0)));
-          }, 0);
+          const { currA } = getBuildingWorkAmounts(b, runningBill);
           return (
             <View style={styles.tr} key={b.id}>
               <Text style={[styles.td, { width: "10%" }]}>{idx + 1}</Text>
               <Text style={[styles.td, { width: "65%" }]}>{site?.projectName} - {b.name} Reinforcement & Civil Work Done</Text>
-              <Text style={[styles.td, { width: "25%", textAlign: "right" }]}>{formatINR(towerWorkAmt)}</Text>
+              <Text style={[styles.td, { width: "25%", textAlign: "right" }]}>{formatINR(currA)}</Text>
             </View>
           );
         })}
@@ -442,7 +463,11 @@ function AbstractSummary({ data, logoStr, signStr }: any) {
   let totCurrAmt = 0;
   let grossContractValue = 0;
   
-  const currentSupplyEntries = (supplyEntries || []).filter((e: any) => e.runningBillId === runningBill?.id || (!runningBill && !e.runningBillId));
+  const currentSupplyEntries = (supplyEntries || []).filter((e: any) => 
+    e.runningBillId === runningBill?.id || 
+    (!runningBill && !e.runningBillId) || 
+    (!e.runningBillId && (!runningBill || (supplyEntries.filter((x: any) => x.runningBillId === runningBill?.id).length === 0)))
+  );
   const previousSupplyEntries = (supplyEntries || []).filter((e: any) => e.runningBillId && e.runningBillId !== runningBill?.id);
   const supplyTotal = currentSupplyEntries.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0);
   const prevSupplyTotal = previousSupplyEntries.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0);
@@ -473,9 +498,7 @@ function AbstractSummary({ data, logoStr, signStr }: any) {
           const contractRate = b.contractRate || 0;
           grossContractValue += (approxArea * contractRate);
 
-          const prevA = (b.workItems || []).reduce((s: number, i: any) => s + ((i.previousAmt !== undefined && i.previousAmt !== null) ? i.previousAmt : ((i.previousQty || 0) * (i.rate || 0))), 0);
-          const currA = (b.workItems || []).reduce((s: number, i: any) => s + ((i.currentAmt !== undefined && i.currentAmt !== null) ? i.currentAmt : ((i.currentQty || 0) * (i.rate || 0))), 0);
-          const cumA = prevA + currA;
+          const { prevA, currA, cumA } = getBuildingWorkAmounts(b, runningBill);
 
           totPrevAmt += prevA;
           totCurrAmt += currA;

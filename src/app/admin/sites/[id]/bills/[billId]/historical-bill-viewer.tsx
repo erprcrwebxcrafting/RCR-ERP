@@ -78,17 +78,23 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
   // Reconstruct towers from frozen lines in this bill snapshot
   const mockBuildings = (site.buildings || []).map((b: any) => {
     const bLines = lines.filter((l: any) => l.buildingId === b.id);
+    const hasSpecificItemLines = bLines.some((l: any) => l.workItemId != null);
 
-    // If workItems exist on building catalogue
-    const items = (b.workItems && b.workItems.length > 0)
-      ? b.workItems.map((item: any) => {
-          const l = bLines.find((x: any) => x.workItemId === item.id);
-          const prevQ = l?.previousQty ?? 0;
-          const currQ = l?.currentQty ?? 0;
-          const cumQ = l?.cumulativeQty ?? (prevQ + currQ);
-          const prevA = l?.previousAmount ?? 0;
-          const currA = l?.currentAmount ?? 0;
-          const cumA = l?.cumulativeAmount ?? (prevA + currA);
+    let items: any[] = [];
+    if (b.workItems && b.workItems.length > 0) {
+      const anyMatched = b.workItems.some((item: any) => 
+        bLines.some((x: any) => (x.workItemId && x.workItemId === item.id) || (x.description && x.description.includes(item.name)))
+      );
+
+      if (anyMatched || bLines.length === 0) {
+        items = b.workItems.map((item: any) => {
+          const l = bLines.find((x: any) => (x.workItemId && x.workItemId === item.id) || (x.description && x.description.includes(item.name)));
+          const prevQ = l ? (l.previousQty ?? 0) : (hasSpecificItemLines ? 0 : (item.previousPct ?? item.previousQty ?? 0));
+          const currQ = l ? (l.currentQty ?? 0) : (hasSpecificItemLines ? 0 : (item.currentPct ?? item.currentQty ?? 0));
+          const cumQ = l ? (l.cumulativeQty ?? (prevQ + currQ)) : (hasSpecificItemLines ? 0 : (item.cumulativePct ?? item.cumulativeQty ?? (prevQ + currQ)));
+          const prevA = l ? (l.previousAmount ?? 0) : (hasSpecificItemLines ? 0 : (item.previousAmt ?? 0));
+          const currA = l ? (l.currentAmount ?? 0) : (hasSpecificItemLines ? 0 : (item.currentAmt ?? 0));
+          const cumA = l ? (l.cumulativeAmount ?? (prevA + currA)) : (hasSpecificItemLines ? 0 : (item.cumulativeAmt ?? (prevA + currA)));
 
           const unit = item.unit || l?.unit || "%";
           const rate = l?.rate || item.rate || 0;
@@ -116,8 +122,9 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
             rate,
             partAmount: partAmt,
           };
-        })
-      : bLines.map((l: any) => {
+        });
+      } else {
+        items = bLines.map((l: any) => {
           const unit = l.unit || "%";
           const rate = l.rate || 0;
           let partAmt = l.workItem?.partAmount || 0;
@@ -132,8 +139,38 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
           }
 
           return {
+            id: l.workItemId || l.id,
+            name: l.workItem?.name || l.description?.replace(`${b.name} - `, "") || l.description || "Work Done",
+            unit,
+            previousAmt: l.previousAmount || 0,
+            currentAmt: l.currentAmount || 0,
+            cumulativeAmt: l.cumulativeAmount || ((l.previousAmount || 0) + (l.currentAmount || 0)),
+            previousQty: l.previousQty || 0,
+            currentQty: l.currentQty || 0,
+            cumulativeQty: l.cumulativeQty || ((l.previousQty || 0) + (l.currentQty || 0)),
+            rate,
+            partAmount: partAmt,
+          };
+        });
+      }
+    } else {
+      items = bLines.map((l: any) => {
+        const unit = l.unit || "%";
+        const rate = l.rate || 0;
+        let partAmt = l.workItem?.partAmount || 0;
+        if (!partAmt) {
+          if (unit === "%") {
+             partAmt = 100 * rate;
+          } else if (l.woQty && rate) {
+             partAmt = l.woQty * rate;
+          } else {
+             partAmt = rate;
+          }
+        }
+
+        return {
           id: l.workItemId || l.id,
-          name: l.workItem?.name || l.description?.replace(`${b.name} - `, "") || l.description || "Work Item",
+          name: l.workItem?.name || l.description?.replace(`${b.name} - `, "") || l.description || "Work Done",
           unit,
           previousAmt: l.previousAmount || 0,
           currentAmt: l.currentAmount || 0,
@@ -145,10 +182,12 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
           partAmount: partAmt,
         };
       });
+    }
 
     return {
       ...b,
       workItems: items,
+      bLines,
     };
   });
 

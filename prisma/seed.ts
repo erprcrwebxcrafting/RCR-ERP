@@ -328,39 +328,18 @@ export async function seedFreshDatabase() {
     }),
   });
 
-  // Supply Labour Entries for Site 1
-  await prisma.supplyLabourEntry.createMany({
-    data: [
-      {
-        siteId: site1.id,
-        date: new Date("2026-05-10"),
-        challanNo: "CH-2026/045",
-        description: "Emergency reinforcement checking & column shuttering fixing for 6th slab",
-        fitterQty: 4,
-        fitterHours: 8,
-        fitterRate: 1100,
-        helperQty: 6,
-        helperHours: 8,
-        helperRate: 800,
-        totalAmount: 9200,
-      },
-      {
-        siteId: site1.id,
-        date: new Date("2026-05-18"),
-        challanNo: "CH-2026/058",
-        description: "Overtime concrete pour assisting & vibrator handling at 7th floor",
-        fitterQty: 2,
-        fitterHours: 12,
-        fitterRate: 1100,
-        helperQty: 4,
-        helperHours: 12,
-        helperRate: 800,
-        totalAmount: 8100,
-      },
-    ],
+  // Fetch created work items for Site 1 buildings
+  const workItemsA = await prisma.workItem.findMany({
+    where: { buildingId: bldg1A.id },
+    orderBy: { order: "asc" },
   });
 
-  // RA Bill 1 (Billed earlier)
+  const workItemsB = await prisma.workItem.findMany({
+    where: { buildingId: bldg1B.id },
+    orderBy: { order: "asc" },
+  });
+
+  // RA Bill 1
   const bill1 = await prisma.runningBill.create({
     data: {
       siteId: site1.id,
@@ -376,21 +355,80 @@ export async function seedFreshDatabase() {
     },
   });
 
-  await prisma.billLine.create({
-    data: {
+  // Create detailed snapshotted billLines for each workItem on Wing A
+  const billLinesData: any[] = [];
+  let lineOrder = 0;
+
+  for (const item of workItemsA) {
+    billLinesData.push({
       runningBillId: bill1.id,
       buildingId: bldg1A.id,
-      description: "Wing A (Residential Tower) - April RCC Work",
-      unit: "%",
-      rate: 3500000,
-      previousQty: 0,
-      currentQty: 100,
-      cumulativeQty: 100,
-      previousAmount: 0,
-      currentAmount: 3500000,
-      cumulativeAmount: 3500000,
-      order: 0,
-    },
+      workItemId: item.id,
+      description: `${bldg1A.name} - ${item.name}`,
+      unit: item.unit || "%",
+      rate: item.rate,
+      previousQty: item.previousPct || 0,
+      currentQty: item.currentPct || 0,
+      cumulativeQty: item.cumulativePct || ((item.previousPct || 0) + (item.currentPct || 0)),
+      previousAmount: item.previousAmt || 0,
+      currentAmount: item.currentAmt || 0,
+      cumulativeAmount: item.cumulativeAmt || ((item.previousAmt || 0) + (item.currentAmt || 0)),
+      order: lineOrder++,
+    });
+  }
+
+  for (const item of workItemsB) {
+    billLinesData.push({
+      runningBillId: bill1.id,
+      buildingId: bldg1B.id,
+      workItemId: item.id,
+      description: `${bldg1B.name} - ${item.name}`,
+      unit: item.unit || "%",
+      rate: item.rate,
+      previousQty: item.previousPct || 0,
+      currentQty: item.currentPct || 0,
+      cumulativeQty: item.cumulativePct || ((item.previousPct || 0) + (item.currentPct || 0)),
+      previousAmount: item.previousAmt || 0,
+      currentAmount: item.currentAmt || 0,
+      cumulativeAmount: item.cumulativeAmt || ((item.previousAmt || 0) + (item.currentAmt || 0)),
+      order: lineOrder++,
+    });
+  }
+
+  await prisma.billLine.createMany({ data: billLinesData });
+
+  // Supply Labour Entries for Site 1 (Linked to Bill 1)
+  await prisma.supplyLabourEntry.createMany({
+    data: [
+      {
+        siteId: site1.id,
+        runningBillId: bill1.id,
+        date: new Date("2026-04-10"),
+        challanNo: "CH-2026/045",
+        description: "Emergency reinforcement checking & column shuttering fixing for 6th slab",
+        fitterQty: 4,
+        fitterHours: 8,
+        fitterRate: 1100,
+        helperQty: 6,
+        helperHours: 8,
+        helperRate: 800,
+        totalAmount: 9200,
+      },
+      {
+        siteId: site1.id,
+        runningBillId: bill1.id,
+        date: new Date("2026-04-18"),
+        challanNo: "CH-2026/058",
+        description: "Overtime concrete pour assisting & vibrator handling at 7th floor",
+        fitterQty: 2,
+        fitterHours: 12,
+        fitterRate: 1100,
+        helperQty: 4,
+        helperHours: 12,
+        helperRate: 800,
+        totalAmount: 8100,
+      },
+    ],
   });
 
   // Client Payment for Bill 1
