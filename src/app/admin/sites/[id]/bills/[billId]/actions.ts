@@ -46,12 +46,17 @@ export async function sendBillEmailAction(billId: string): Promise<void> {
     };
   });
 
+  const globalSettings = await prisma.globalSettings.findUnique({
+    where: { id: "global" },
+  });
+
   const pdfBuffer = await generateBillPdfPackage({
     site,
     runningBill: bill,
     towers: reconstructedTowers,
     supplyEntries: supplyLabourEntries,
     payments: site.payments,
+    settings: globalSettings,
   });
 
   await sendEmailWithAttachment(

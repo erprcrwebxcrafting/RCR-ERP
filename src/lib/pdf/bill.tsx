@@ -58,22 +58,95 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   metaBox: {
-    backgroundColor: "#f3f4f6",
-    padding: 10,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderLeftWidth: 3.5,
+    borderLeftColor: "#4f46e5",
     borderRadius: 4,
-    marginBottom: 15,
+    padding: 8,
+    marginBottom: 12,
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  metaCol: {
-    flex: 1,
+  metaLeftCol: {
+    width: "58%",
+    paddingRight: 8,
   },
-  metaLabel: {
+  metaRightCol: {
+    width: "42%",
+    paddingLeft: 8,
+    borderLeftWidth: 1,
+    borderLeftColor: "#e2e8f0",
+    justifyContent: "space-between",
+  },
+  metaBadge: {
+    fontSize: 6.5,
     fontFamily: "Helvetica-Bold",
-    color: "#111827",
+    color: "#4f46e5",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
-  metaValue: {
-    marginBottom: 4,
+  metaClientName: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 9,
+    color: "#0f172a",
+    marginBottom: 2,
+  },
+  metaProjectName: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: "#334155",
+    marginBottom: 2,
+  },
+  metaAddress: {
+    fontSize: 7,
+    color: "#64748b",
+    lineHeight: 1.25,
+  },
+  metaGst: {
+    fontSize: 7,
+    fontFamily: "Helvetica-Bold",
+    color: "#475569",
+    marginTop: 2,
+  },
+  metaInvoiceBadgeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#eef2ff",
+    borderWidth: 0.5,
+    borderColor: "#c7d2fe",
+    borderRadius: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2.5,
+    marginBottom: 3,
+  },
+  metaInvoiceLabel: {
+    fontSize: 7,
+    color: "#4338ca",
+    fontFamily: "Helvetica-Bold",
+  },
+  metaInvoiceVal: {
+    fontSize: 8,
+    color: "#312e81",
+    fontFamily: "Helvetica-Bold",
+  },
+  metaDetailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 1.5,
+  },
+  metaDetailLabel: {
+    fontSize: 7,
+    color: "#64748b",
+    fontFamily: "Helvetica",
+  },
+  metaDetailVal: {
+    fontSize: 7,
+    color: "#1e293b",
+    fontFamily: "Helvetica-Bold",
   },
   table: { width: "100%", borderTopWidth: 1, borderLeftWidth: 1, borderColor: "#9ca3af" },
   tr: {
@@ -101,7 +174,7 @@ function formatNum(num: number) {
 function PageHeader({ title, site, bill, logoStr, settings }: { title: string, site: any, bill: any, logoStr: string | null, settings?: any }) {
   const billDate = bill?.billDate ? new Date(bill.billDate).toLocaleDateString("en-IN") : new Date().toLocaleDateString("en-IN");
   return (
-    <View style={{ marginBottom: 15 }} fixed>
+    <View style={{ marginBottom: 10 }} fixed>
       <View style={styles.headerBanner}>
         <View style={{ flexDirection: "row", alignItems: "center", width: "65%" }}>
           {logoStr && <Image src={logoStr} style={styles.logoContainer} />}
@@ -124,15 +197,40 @@ function PageHeader({ title, site, bill, logoStr, settings }: { title: string, s
       </View>
       
       <View style={styles.metaBox}>
-        <View style={styles.metaCol}>
-          <Text style={styles.metaLabel}>To: {site?.client?.name?.toUpperCase()}</Text>
-          <Text style={styles.metaValue}>Project: {site?.projectName}</Text>
-          <Text style={styles.metaValue}>{site?.address}</Text>
+        <View style={styles.metaLeftCol}>
+          <Text style={styles.metaBadge}>BILLED TO / CLIENT</Text>
+          <Text style={styles.metaClientName}>{site?.client?.name?.toUpperCase() || "CLIENT"}</Text>
+          <Text style={styles.metaProjectName}>Project: {site?.projectName || "—"}</Text>
+          {site?.address && <Text style={styles.metaAddress}>{site.address}</Text>}
+          {site?.gstNo && <Text style={styles.metaGst}>Client GSTIN: {site.gstNo}</Text>}
         </View>
-        <View style={[styles.metaCol, { alignItems: "flex-end" }]}>
-          <Text style={styles.metaLabel}>Invoice No: {bill?.billNo || "001"}</Text>
-          <Text style={styles.metaValue}>W.O. No: {site?.workOrderNo || "—"}</Text>
-          <Text style={styles.metaValue}>Ref No: {bill?.refNo || "01"}</Text>
+
+        <View style={styles.metaRightCol}>
+          <View style={styles.metaInvoiceBadgeRow}>
+            <Text style={styles.metaInvoiceLabel}>INVOICE NO:</Text>
+            <Text style={styles.metaInvoiceVal}>{bill?.billNo || "001"}</Text>
+          </View>
+          
+          <View style={styles.metaDetailRow}>
+            <Text style={styles.metaDetailLabel}>W.O. No:</Text>
+            <Text style={styles.metaDetailVal}>{site?.workOrderNo || "—"}</Text>
+          </View>
+          
+          <View style={styles.metaDetailRow}>
+            <Text style={styles.metaDetailLabel}>Ref No:</Text>
+            <Text style={styles.metaDetailVal}>{bill?.refNo || "01"}</Text>
+          </View>
+
+          <View style={styles.metaDetailRow}>
+            <Text style={styles.metaDetailLabel}>Bill Date:</Text>
+            <Text style={styles.metaDetailVal}>{billDate}</Text>
+          </View>
+          {bill?.periodLabel && (
+            <View style={styles.metaDetailRow}>
+              <Text style={styles.metaDetailLabel}>Period:</Text>
+              <Text style={styles.metaDetailVal}>{bill.periodLabel}</Text>
+            </View>
+          )}
         </View>
       </View>
     </View>
@@ -158,21 +256,19 @@ function PageFooter({ signStr, settings, hideSeal }: { signStr: string | null, s
   );
 }
 
-function LegendFooter() {
+type LegendItem = { short: string; full: string };
+
+function LegendFooter({ items }: { items?: LegendItem[] }) {
+  if (!items || items.length === 0) return null;
   return (
-    <View style={{ marginTop: 15, padding: 8, backgroundColor: "#f8fafc", borderRadius: 4, borderLeftWidth: 3, borderLeftColor: "#4f46e5", marginBottom: 5 }} wrap={false}>
-      <Text style={{ fontSize: 7, color: "#475569", fontFamily: "Helvetica-Bold", marginBottom: 3 }}>* ABBREVIATIONS & LEGEND</Text>
+    <View style={{ marginTop: 10, padding: 6, backgroundColor: "#f8fafc", borderRadius: 4, borderLeftWidth: 3, borderLeftColor: "#4f46e5", marginBottom: 4 }} wrap={false}>
+      <Text style={{ fontSize: 6.5, color: "#475569", fontFamily: "Helvetica-Bold", marginBottom: 2 }}>* ABBREVIATIONS & COLUMN LEGEND</Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>Prv / Prev</Text> = Previous</Text>
-        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>Cur / Curr</Text> = Current</Text>
-        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>Cum</Text> = Cumulative</Text>
-        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>Amt</Text> = Amount</Text>
-        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>W.O.</Text> = Work Order</Text>
-        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>Ret.</Text> = Retention</Text>
-        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>Bal</Text> = Balance</Text>
-        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>A/C Credited</Text> = Account Credited</Text>
-        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>F. Qty</Text> = Fitter Qty</Text>
-        <Text style={{ fontSize: 7, color: "#64748b", marginRight: 8, marginBottom: 2 }}><Text style={{ fontFamily: "Helvetica-Bold", color: "#475569" }}>H. Qty</Text> = Helper Qty</Text>
+        {items.map((item, idx) => (
+          <Text key={idx} style={{ fontSize: 6.5, color: "#64748b", marginRight: 8, marginBottom: 1.5 }}>
+            <Text style={{ fontFamily: "Helvetica-Bold", color: "#334155" }}>{item.short}</Text> = {item.full}
+          </Text>
+        ))}
       </View>
     </View>
   );
@@ -269,7 +365,6 @@ function TaxInvoice({ data, logoStr, signStr }: any) {
           <Text style={{ fontSize: 7, color: "#374151", fontFamily: "Helvetica-Bold" }}>AUTHORISED SIGNATORY</Text>
         </View>
       </View>
-      <LegendFooter />
       <PageFooter signStr={signStr} settings={data.settings} hideSeal={true} />
     </Page>
   );
@@ -396,7 +491,16 @@ function AbstractSummary({ data, logoStr, signStr }: any) {
           </Text>
         )}
       </View>
-      <LegendFooter />
+      <LegendFooter
+        items={[
+          { short: "W.O. Area", full: "Work Order Approx Area (Sft)" },
+          { short: "Prev. Amt", full: "Previous Billed Amount" },
+          { short: "This Bill", full: "Current Bill Amount" },
+          { short: "Cum. Amt", full: "Cumulative Total Amount" },
+          { short: "Ret.", full: "Retention Money" },
+          { short: "TDS", full: "Tax Deducted at Source" },
+        ]}
+      />
       <PageFooter signStr={signStr} settings={data.settings} />
     </Page>
   );
@@ -491,7 +595,16 @@ function TowerPages({ data, logoStr, signStr }: any) {
             <Text style={[styles.td, { width: "14%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#ef4444" }]}>{formatINR(totalTowerVal - tCumTotal)}</Text>
           </View>
         </View>
-      <LegendFooter />
+      <LegendFooter
+        items={[
+          { short: "BUA Area", full: "Built-Up Area" },
+          { short: "Sft", full: "Square Feet" },
+          { short: "Prv %", full: "Previous Completion %" },
+          { short: "Cur %", full: "Current Bill Progress %" },
+          { short: "Cum %", full: "Cumulative Percentage" },
+          { short: "Amt(Rs)", full: "Amount in Rupees" },
+        ]}
+      />
       <PageFooter signStr={signStr} settings={data.settings} />
       </Page>
     );
@@ -566,7 +679,15 @@ function SupplyPage({ data, logoStr, signStr }: any) {
           </View>
         );
       })()}
-      <LegendFooter />
+      <LegendFooter
+        items={[
+          { short: "F. Qty", full: "Fitter Count (Nos)" },
+          { short: "F. Hrs", full: "Fitter Shift Hours" },
+          { short: "Tot F.H", full: "Total Fitter Hours" },
+          { short: "H. Qty", full: "Helper Count (Nos)" },
+          { short: "Tot H.H", full: "Total Helper Hours" },
+        ]}
+      />
       <PageFooter signStr={signStr} settings={data.settings} />
     </Page>
   );
@@ -693,7 +814,15 @@ function LedgerPage({ data, logoStr, signStr }: any) {
           <Text style={[styles.td, { width: "8%", textAlign: "right" }]}></Text>
         </View>
       </View>
-      <LegendFooter />
+      <LegendFooter
+        items={[
+          { short: "Ret.", full: "Retention Money Deducted" },
+          { short: "A/C Credited", full: "Bank Account Credited" },
+          { short: "1% TDS", full: "Tax Deducted at Source" },
+          { short: "Bal", full: "Outstanding Invoice Balance" },
+          { short: "Bal+GST", full: "Outstanding Balance with 18% GST" },
+        ]}
+      />
       <PageFooter signStr={signStr} settings={data.settings} />
     </Page>
   );
@@ -747,12 +876,84 @@ export async function generateBillPdfPackage(data: {
 }
 
 export async function generateBillPdfs(bill: any): Promise<{ filename: string; buffer: Uint8Array }[]> {
+  const lines = bill.lines || [];
+  const site = bill.site;
+  const reconstructedTowers = (site?.buildings || []).map((b: any) => {
+    const bLines = lines.filter((l: any) => l.buildingId === b.id);
+    return {
+      ...b,
+      workItems: (b.workItems && b.workItems.length > 0)
+        ? b.workItems.map((item: any) => {
+            const l = bLines.find((x: any) => (x.workItemId && x.workItemId === item.id) || (x.description && x.description.includes(item.name)));
+            const prevQ = l?.previousQty ?? 0;
+            const currQ = l?.currentQty ?? 0;
+            const cumQ = l?.cumulativeQty ?? (prevQ + currQ);
+            const prevA = l?.previousAmount ?? 0;
+            const currA = l?.currentAmount ?? 0;
+            const cumA = l?.cumulativeAmount ?? (prevA + currA);
+
+            let partAmt = item.partAmount || l?.workItem?.partAmount || 0;
+            const unit = item.unit || l?.unit || "%";
+            const rate = l?.rate || item.rate || 0;
+            if (!partAmt) {
+              if (unit === "%") {
+                partAmt = 100 * rate;
+              } else if (l?.woQty && rate) {
+                partAmt = l.woQty * rate;
+              } else {
+                partAmt = rate;
+              }
+            }
+            return {
+              id: item.id,
+              name: item.name || l?.description || "Work Item",
+              unit,
+              previousAmt: prevA,
+              currentAmt: currA,
+              cumulativeAmt: cumA,
+              previousQty: prevQ,
+              currentQty: currQ,
+              cumulativeQty: cumQ,
+              rate,
+              partAmount: partAmt,
+            };
+          })
+        : bLines.map((l: any) => {
+            let partAmt = l.workItem?.partAmount || 0;
+            const unit = l.workItem?.unit || l.unit || "%";
+            const rate = l.rate || 0;
+            if (!partAmt) {
+              if (unit === "%") {
+                partAmt = 100 * rate;
+              } else if (l.woQty && rate) {
+                partAmt = l.woQty * rate;
+              } else {
+                partAmt = rate;
+              }
+            }
+            return {
+              id: l.workItemId || l.id,
+              name: l.workItem?.name || l.description?.replace(`${b.name} - `, "") || l.description || "Work Item",
+              unit,
+              previousAmt: l.previousAmount || 0,
+              currentAmt: l.currentAmount || 0,
+              cumulativeAmt: l.cumulativeAmount || ((l.previousAmount || 0) + (l.currentAmount || 0)),
+              previousQty: l.previousQty || 0,
+              currentQty: l.currentQty || 0,
+              cumulativeQty: l.cumulativeQty || ((l.previousQty || 0) + (l.currentQty || 0)),
+              rate,
+              partAmount: partAmt,
+            };
+          }),
+    };
+  });
+
   const pdfBytes = await generateBillPdfPackage({
     site: bill.site,
     runningBill: bill,
-    towers: bill.site.buildings || [],
-    supplyEntries: bill.site.supplyLabourEntries || [],
-    payments: bill.site.payments || [],
+    towers: reconstructedTowers,
+    supplyEntries: bill.supplyLabourEntries || bill.site?.supplyLabourEntries || [],
+    payments: bill.site?.payments || [],
   });
 
   return [

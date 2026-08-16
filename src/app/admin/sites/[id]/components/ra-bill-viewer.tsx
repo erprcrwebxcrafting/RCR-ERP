@@ -28,32 +28,47 @@ import {
 
 function BillHeaderBanner({ site, latestBill, sheetTitle }: { site: any; latestBill: any; sheetTitle?: string }) {
   return (
-    <div className="space-y-4 border-b pb-4">
-      <div className="flex items-center justify-between border-b pb-3">
+    <div className="space-y-3 border-b pb-4">
+      <div className="flex items-center justify-between border-b pb-2">
         <div>
-          <h2 className="text-base font-bold uppercase tracking-wider">{sheetTitle || "RA Bill Document"}</h2>
-          <p className="text-xs text-muted-foreground">RCR ENTERPRISES / SSHIVAAY CONSTRUCTIONS</p>
+          <h2 className="text-base font-bold uppercase tracking-wider text-foreground">{sheetTitle || "RA Bill Document"}</h2>
+          <p className="text-xs text-muted-foreground font-medium">RCR ENTERPRISES / SSHIVAAY CONSTRUCTIONS</p>
         </div>
         <div className="text-right font-mono text-xs">
-          <p><span className="text-muted-foreground">Invoice No:</span> <span className="font-bold">{latestBill?.billNo || "007/2026-27"}</span></p>
-          <p><span className="text-muted-foreground">Date:</span> {formatDate(latestBill?.billDate || new Date())}</p>
+          <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 px-2 py-0.5 font-bold">
+            Invoice: {latestBill?.billNo || "Draft"}
+          </Badge>
+          <p className="text-muted-foreground text-[11px] mt-1">Date: {formatDate(latestBill?.billDate || new Date())}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 text-xs gap-4 bg-muted/20 p-4 rounded-lg">
-        <div className="space-y-1">
-          <p className="font-semibold text-muted-foreground">To,</p>
+      <div className="grid md:grid-cols-2 text-xs gap-3 bg-gradient-to-br from-slate-50 to-indigo-50/30 dark:from-slate-900/50 dark:to-indigo-950/20 p-3.5 rounded-lg border border-indigo-500/20 shadow-xs">
+        <div className="space-y-1 pr-2">
+          <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">Billed To / Client</span>
           <p className="font-bold text-sm text-foreground">{site.client?.name || "Client Name"}</p>
-          <p className="text-muted-foreground">{site.address || "Client Office Address"}</p>
-          {site.gstNo && <p className="font-mono text-[11px] pt-1">GST No: {site.gstNo}</p>}
+          <p className="font-semibold text-xs text-slate-700 dark:text-slate-300">Project: <span className="text-indigo-600 dark:text-indigo-400">{site.projectName}</span></p>
+          {site.address && <p className="text-muted-foreground text-[11px] leading-tight">{site.address}</p>}
+          {site.gstNo && <p className="font-mono text-[10px] font-medium text-slate-600 dark:text-slate-400 pt-0.5">GSTIN: {site.gstNo}</p>}
         </div>
-        <div className="text-right space-y-1">
-          <p><span className="font-semibold text-muted-foreground">Ref No:</span> <span className="font-semibold">{latestBill?.refNo || "01"}</span></p>
-          <p><span className="font-semibold text-muted-foreground">W.O. No:</span> <span className="font-mono text-xs">{site.workOrderNo || "PARKSITE/SSHIVAAY/2026-27"}</span></p>
-        </div>
-        <div className="col-span-2 pt-2 border-t flex items-center justify-between text-xs font-semibold flex-wrap gap-2">
-          <p>Name of Work: <span className="font-normal text-muted-foreground">Reinforcement & Concrete Construction Work</span></p>
-          <p>Name of Project: <span className="font-bold text-indigo-500">{site.projectName}</span></p>
+        <div className="space-y-1.5 md:border-l md:pl-3.5 border-slate-200 dark:border-slate-800 flex flex-col justify-between">
+          <div className="flex items-center justify-between bg-white/60 dark:bg-slate-800/60 px-2 py-1 rounded border border-slate-200/80 dark:border-slate-700">
+            <span className="text-[11px] font-semibold text-muted-foreground">Invoice No:</span>
+            <span className="font-bold font-mono text-indigo-600 dark:text-indigo-400">{latestBill?.billNo || "001"}</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground">Work Order No:</span>
+            <span className="font-semibold font-mono text-foreground">{site.workOrderNo || "—"}</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground">Ref No:</span>
+            <span className="font-semibold text-foreground">{latestBill?.refNo || "01"}</span>
+          </div>
+          {latestBill?.periodLabel && (
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-muted-foreground">Bill Period:</span>
+              <span className="font-semibold text-foreground">{latestBill.periodLabel}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

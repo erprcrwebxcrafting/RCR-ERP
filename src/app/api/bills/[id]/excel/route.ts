@@ -38,7 +38,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         ...b,
         workItems: (b.workItems && b.workItems.length > 0)
           ? b.workItems.map((item: any) => {
-              const l = bLines.find((x: any) => x.workItemId === item.id);
+              const l = bLines.find((x: any) => (x.workItemId && x.workItemId === item.id) || (x.description && x.description.includes(item.name)));
               const prevQ = l?.previousQty ?? 0;
               const currQ = l?.currentQty ?? 0;
               const cumQ = l?.cumulativeQty ?? (prevQ + currQ);
