@@ -26,11 +26,21 @@ model User {
   updatedAt     DateTime  @updatedAt
   monthlySalary Float?    // Fixed payment set by admin for supervisors
 
+  // Supervisor personal details
+  address        String?
+  aadharNumber   String?
+  accountNumber  String?
+  bankName       String?
+  ifscCode       String?
+  bankBranch     String?
+  dateOfJoining  DateTime?
+
   // Supervisor-only: sites assigned to this user
   assignedSites SiteSupervisor[]
   labours       Labour[]
   supervisorPayments SupervisorPayment[] @relation("SupervisorPayments")
   supervisorTransfers SupervisorTransferHistory[]
+  supervisorAttendances SupervisorAttendance[] @relation("SupervisorAttendanceRecords")
 }
 
 model Client {
@@ -383,4 +393,20 @@ model GlobalSettings {
   website     String?
   address     String?
   updatedAt   DateTime @updatedAt
+}
+
+model SupervisorAttendance {
+  id             String   @id @default(cuid())
+  supervisorId   String
+  supervisor     User     @relation("SupervisorAttendanceRecords", fields: [supervisorId], references: [id], onDelete: Cascade)
+  date           DateTime
+  status         String   // PRESENT | ABSENT | HALF_DAY
+  dailyRate      Float    // Snapshot: monthlySalary / 30
+  earnedAmount   Float    // dailyRate for PRESENT, dailyRate/2 for HALF_DAY, 0 for ABSENT
+  remarks        String?
+  markedById     String?
+  createdAt      DateTime @default(now())
+
+  @@unique([supervisorId, date])
+  @@index([supervisorId, date])
 }

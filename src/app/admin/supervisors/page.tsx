@@ -11,20 +11,27 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
   const resolvedParams = await searchParams;
   const q = resolvedParams.q || "";
 
-  const supervisors = await prisma.user.findMany({
-    where: { 
-      role: "SUPERVISOR",
-      ...(q ? {
-        OR: [
-          { name: { contains: q, mode: "insensitive" } },
-          { email: { contains: q, mode: "insensitive" } },
-          { phone: { contains: q, mode: "insensitive" } },
-        ]
-      } : {})
-    },
-    include: { assignedSites: { include: { site: true } } },
-    orderBy: { createdAt: "desc" },
-  });
+  const [supervisors, allSites] = await Promise.all([
+    prisma.user.findMany({
+      where: { 
+        role: "SUPERVISOR",
+        ...(q ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" } },
+            { email: { contains: q, mode: "insensitive" } },
+            { phone: { contains: q, mode: "insensitive" } },
+          ]
+        } : {})
+      },
+      include: { assignedSites: { include: { site: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.site.findMany({
+      where: { active: true },
+      select: { id: true, projectName: true },
+      orderBy: { projectName: "asc" },
+    }),
+  ]);
 
   // Calculate KPIs
   const totalSupervisors = supervisors.length;
@@ -53,7 +60,7 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
             </p>
           </div>
           <div className="shrink-0">
-            <SupervisorForm />
+            <SupervisorForm allSites={allSites} />
           </div>
         </div>
       </div>
@@ -187,7 +194,7 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
                   View Ledger & History →
                 </Link>
               </Button>
-              <EditSupervisorForm supervisor={s} />
+              <EditSupervisorForm supervisor={s} allSites={allSites} />
             </div>
           </Card>
         ))}
@@ -202,7 +209,7 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
               <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 mb-6 max-w-xs">
                 {q ? `No results for "${q}". Try a different search.` : "You haven't added any supervisors yet. Start by adding your first supervisor!"}
               </p>
-              {!q && <SupervisorForm />}
+              {!q && <SupervisorForm allSites={allSites} />}
             </div>
           </div>
         )}

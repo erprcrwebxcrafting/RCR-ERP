@@ -4,64 +4,102 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowLeft, Wallet, TrendingUp, History, ArrowRightLeft, CreditCard, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Wallet,
+  TrendingUp,
+  History,
+  ArrowRightLeft,
+  CreditCard,
+  AlertCircle,
+  CalendarDays,
+  CheckCircle2,
+  Building2,
+  Landmark,
+  User,
+  MapPin,
+  Calendar,
+  Hash,
+  Phone,
+  Mail,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { SupervisorPaymentForm } from "./payment-form";
 import { EditSupervisorForm } from "../edit-supervisor-form";
 
+export const dynamic = "force-dynamic";
+
 export default async function SupervisorLedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
-  const supervisor = await prisma.user.findUnique({
-    where: { id: resolvedParams.id, role: "SUPERVISOR" },
-    include: {
-      supervisorPayments: { orderBy: { date: "desc" } },
-      assignedSites: { include: { site: true } },
-      supervisorTransfers: { include: { fromSite: true, toSite: true }, orderBy: { transferDate: "desc" } },
-    } as any,
-  });
+  const [supervisor, allSites] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: resolvedParams.id, role: "SUPERVISOR" },
+      include: {
+        supervisorPayments: { orderBy: { date: "desc" } },
+        assignedSites: { include: { site: true } },
+        supervisorTransfers: { include: { fromSite: true, toSite: true }, orderBy: { transferDate: "desc" } },
+        supervisorAttendances: { orderBy: { date: "desc" } },
+      } as any,
+    }),
+    prisma.site.findMany({
+      where: { active: true },
+      select: { id: true, projectName: true },
+      orderBy: { projectName: "asc" },
+    }),
+  ]);
 
   const sv = supervisor as any;
   if (!sv) return notFound();
 
   const monthlySalary = sv.monthlySalary || 0;
-  
-  // Calculate months worked based on createdAt
-  const startDate = new Date(sv.createdAt);
-  const now = new Date();
-  const diffTime = Math.abs(now.getTime() - startDate.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  // E.g., if they worked 45 days, it's ~1.5 months
-  const monthsWorked = diffDays / 30.44; 
-  
-  const totalEarned = monthlySalary > 0 ? (monthsWorked * monthlySalary) : 0;
-  
-  const totalPaid = sv.supervisorPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
+  const standardDailyRate = Math.round((monthlySalary / 30) * 100) / 100;
+
+  // Attendance calculations
+  const attendances = sv.supervisorAttendances || [];
+  const presentDays = attendances.filter((a: any) => a.status === "PRESENT").length;
+  const halfDays = attendances.filter((a: any) => a.status === "HALF_DAY").length;
+  const totalDaysEquivalent = presentDays + (halfDays * 0.5);
+
+  // Total earned strictly based on attendance marked
+  const totalEarned = attendances.reduce((sum: number, a: any) => sum + (a.earnedAmount || 0), 0);
+  const totalPaid = (sv.supervisorPayments || []).reduce((sum: number, p: any) => sum + p.amount, 0);
   const balance = totalEarned - totalPaid;
 
   return (
     <div className="space-y-8 pb-10 animate-in fade-in duration-700">
-      
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <Link href="/admin/supervisors" className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-blue-600 hover:border-blue-200 dark:hover:border-blue-800 transition-colors shadow-sm">
+          <Link
+            href="/admin/supervisors"
+            className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-blue-600 hover:border-blue-200 dark:hover:border-blue-800 transition-colors shadow-sm"
+          >
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-400 mb-2">
               <Wallet className="h-3.5 w-3.5" />
-              Supervisor Ledger
+              Supervisor Profile & Ledger
             </div>
             <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
               {sv.name}
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
-              Assigned to: {sv.assignedSites.map((a: any) => a.site.projectName).join(", ") || "No active sites"}
+            <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium text-sm">
+              Assigned Sites: {sv.assignedSites.map((a: any) => a.site.projectName).join(", ") || "No active sites"}
             </p>
           </div>
         </div>
-        <div className="shrink-0">
-          <EditSupervisorForm supervisor={sv} />
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            asChild
+            className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/20"
+          >
+            <Link href={`/admin/supervisors/${sv.id}/attendance`}>
+              <CalendarDays className="h-4 w-4" />
+              Attendance Calendar
+            </Link>
+          </Button>
+          <EditSupervisorForm supervisor={sv} allSites={allSites} />
         </div>
       </div>
 
@@ -77,7 +115,7 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
             </div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Monthly Salary</p>
             <p className="text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{monthlySalary.toLocaleString("en-IN")}</p>
-            <p className="text-xs text-slate-400 font-medium mt-1">Fixed Pay / Month</p>
+            <p className="text-xs text-slate-400 font-medium mt-1">Daily Rate: ₹{standardDailyRate}/day (÷ 30)</p>
           </CardContent>
         </Card>
 
@@ -89,9 +127,13 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
                 <TrendingUp className="h-5 w-5 text-emerald-600" />
               </div>
             </div>
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Earned</p>
-            <p className="text-3xl font-black tracking-tight text-emerald-600 dark:text-emerald-500">₹{totalEarned.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</p>
-            <p className="text-xs text-slate-400 font-medium mt-1">Based on ~{monthsWorked.toFixed(1)} months worked</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Attendance Earned</p>
+            <p className="text-3xl font-black tracking-tight text-emerald-600 dark:text-emerald-500">
+              ₹{totalEarned.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </p>
+            <p className="text-xs text-slate-400 font-medium mt-1">
+              For {totalDaysEquivalent} days present ({presentDays} full, {halfDays} half)
+            </p>
           </CardContent>
         </Card>
 
@@ -105,7 +147,7 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
             </div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Paid</p>
             <p className="text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{totalPaid.toLocaleString("en-IN")}</p>
-            <p className="text-xs text-slate-400 font-medium mt-1">Across {sv.supervisorPayments.length} transactions</p>
+            <p className="text-xs text-slate-400 font-medium mt-1">Across {sv.supervisorPayments.length} payout(s)</p>
           </CardContent>
         </Card>
 
@@ -119,9 +161,103 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
             </div>
             <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${balance > 0 ? "text-rose-600/80 dark:text-rose-400/80" : "text-slate-500 dark:text-slate-400"}`}>Outstanding Balance</p>
             <p className={`text-3xl font-black tracking-tight ${balance > 0 ? "text-rose-600 dark:text-rose-500" : "text-slate-800 dark:text-slate-100"}`}>
-              ₹{balance.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+              ₹{balance.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
             </p>
-            <p className={`text-xs font-medium mt-1 ${balance > 0 ? "text-rose-500/70 dark:text-rose-400/70" : "text-slate-400"}`}>Amount to be cleared</p>
+            <p className={`text-xs font-medium mt-1 ${balance > 0 ? "text-rose-500/70 dark:text-rose-400/70" : "text-slate-400"}`}>
+              {balance > 0 ? "Pending salary payout" : "Balance fully cleared"}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Supervisor Details Grid (Personal, Bank, Assigned Sites) */}
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Personal Details */}
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md">
+          <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
+              <User className="h-4 w-4 text-blue-500" /> Personal Info
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-3 text-sm">
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+              <Phone className="h-4 w-4 text-slate-400 shrink-0" />
+              <span>{sv.phone || "No phone number"}</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+              <Mail className="h-4 w-4 text-slate-400 shrink-0" />
+              <span className="truncate">{sv.email}</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+              <MapPin className="h-4 w-4 text-slate-400 shrink-0" />
+              <span className="truncate">{sv.address || "No address on file"}</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+              <CreditCard className="h-4 w-4 text-slate-400 shrink-0" />
+              <span>Aadhar: {sv.aadharNumber || "—"}</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+              <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
+              <span>Joined: {sv.dateOfJoining ? formatDate(sv.dateOfJoining) : formatDate(sv.createdAt)}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Bank Details */}
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md">
+          <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
+              <Landmark className="h-4 w-4 text-emerald-500" /> Bank Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-3 text-sm">
+            <div>
+              <p className="text-xs text-slate-400 font-semibold uppercase">Account Number</p>
+              <p className="font-mono font-bold text-slate-800 dark:text-slate-200">{sv.accountNumber || "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 font-semibold uppercase">IFSC Code</p>
+              <p className="font-mono font-bold text-slate-800 dark:text-slate-200">{sv.ifscCode || "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 font-semibold uppercase">Bank & Branch</p>
+              <p className="font-medium text-slate-800 dark:text-slate-200">{[sv.bankName, sv.bankBranch].filter(Boolean).join(", ") || "—"}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Assigned Sites & Attendance Summary */}
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md">
+          <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
+              <Building2 className="h-4 w-4 text-indigo-500" /> Assigned Sites ({sv.assignedSites.length})
+            </CardTitle>
+            <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs text-blue-600">
+              <Link href={`/admin/supervisors/${sv.id}/attendance`}>View Calendar →</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-2">
+            {sv.assignedSites.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {sv.assignedSites.map((a: any) => (
+                  <span
+                    key={a.id}
+                    className="inline-flex items-center rounded-lg bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800"
+                  >
+                    <Building2 className="h-3 w-3 mr-1" />
+                    {a.site.projectName}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic">No site assignments</p>
+            )}
+            <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 space-y-1">
+              <p className="font-semibold text-slate-700 dark:text-slate-300">Attendance Summary:</p>
+              <p>● Full Days: <strong className="text-emerald-600">{presentDays}</strong></p>
+              <p>● Half Days: <strong className="text-amber-600">{halfDays}</strong></p>
+              <p>● Total Attendance Recorded: <strong>{attendances.length} days</strong></p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -134,7 +270,7 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
               <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
                 <History className="h-4 w-4 text-indigo-600" />
               </div>
-              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Payment History</h2>
+              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Payout History</h2>
             </div>
             <SupervisorPaymentForm supervisorId={sv.id} />
           </div>

@@ -4,7 +4,14 @@ import Link from "next/link";
 import { ArrowLeft, Building2, Plus } from "lucide-react";
 
 export default async function NewSitePage() {
-  const clients = await prisma.client.findMany({ orderBy: { name: "asc" } });
+  const [clients, allSupervisors] = await Promise.all([
+    prisma.client.findMany({ orderBy: { name: "asc" } }),
+    prisma.user.findMany({
+      where: { role: "SUPERVISOR", active: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-700 pb-12">
@@ -35,7 +42,7 @@ export default async function NewSitePage() {
         </div>
       </div>
 
-      <SiteForm clients={clients} />
+      <SiteForm clients={clients} allSupervisors={allSupervisors} />
     </div>
   );
 }

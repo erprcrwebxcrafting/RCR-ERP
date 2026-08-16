@@ -26,6 +26,9 @@ export async function createSite(formData: FormData) {
   const labourWages = formData.getAll("labourWage[]") as string[];
   const labourOT = formData.getAll("labourOT[]") as string[];
 
+  // Supervisor assignment
+  const supervisorIds = formData.getAll("supervisorId[]") as string[];
+
   const site = await prisma.site.create({
     data: {
       projectName,
@@ -62,10 +65,16 @@ export async function createSite(formData: FormData) {
           }))
           .filter((l) => l.name),
       },
+      supervisors: {
+        create: supervisorIds.filter(Boolean).map((supervisorId) => ({
+          supervisorId,
+        })),
+      },
     },
   });
 
   revalidatePath("/admin/sites");
+  revalidatePath("/admin/supervisors");
   redirect(`/admin/sites/${site.id}`);
 }
 

@@ -134,22 +134,57 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
         </div>
 
         <Card>
-          <CardHeader className="flex flex-row items-center gap-2 pb-2">
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">Assigned Site Supervisors</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div className="flex items-center gap-2">
+              <UserCheck className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Assigned Site Supervisors</CardTitle>
+            </div>
+            <span className="text-xs text-muted-foreground font-medium">{site.supervisors.length} Assigned</span>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Assign Supervisor Dropdown Form */}
+            {availableSupervisors.length > 0 && (
+              <form action={assignSupervisorAction.bind(null, site.id)} className="flex gap-2">
+                <select
+                  name="supervisorId"
+                  required
+                  className="flex h-10 flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 text-sm font-medium text-slate-700 dark:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 shadow-sm cursor-pointer"
+                >
+                  <option value="">Select supervisor to assign…</option>
+                  {availableSupervisors.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.email})
+                    </option>
+                  ))}
+                </select>
+                <Button type="submit" size="sm" className="h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+                  Assign
+                </Button>
+              </form>
+            )}
 
-            <div className="space-y-2 border rounded-md p-3">
+            <div className="space-y-2 border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-900/30">
               {site.supervisors.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-2">No supervisors assigned yet.</p>
+                <p className="text-xs text-muted-foreground py-2 text-center">No supervisors assigned to this site yet.</p>
               ) : (
                 site.supervisors.map((s: any) => (
-                  <div key={s.id} className="flex justify-between items-center text-sm py-2 border-b last:border-0">
+                  <div key={s.id} className="flex justify-between items-center text-sm py-2 border-b border-slate-200/60 dark:border-slate-800 last:border-0">
                     <div>
-                      <p className="font-semibold">{s.supervisor.name}</p>
-                      <p className="text-xs text-muted-foreground">{s.supervisor.email}</p>
+                      <Link href={`/admin/supervisors/${s.supervisor.id}`} className="font-semibold hover:text-blue-600 transition-colors">
+                        {s.supervisor.name}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">{s.supervisor.email} {s.supervisor.phone ? `• ${s.supervisor.phone}` : ""}</p>
                     </div>
+                    <form action={unassignSupervisorAction.bind(null, site.id, s.supervisorId)}>
+                      <Button
+                        type="submit"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg text-xs"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
+                      </Button>
+                    </form>
                   </div>
                 ))
               )}

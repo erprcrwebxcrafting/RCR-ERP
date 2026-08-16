@@ -81,11 +81,13 @@ export async function assignSupervisorAction(siteId: string, formData: FormData)
     update: {},
   });
   revalidatePath(`/admin/sites/${siteId}`);
+  revalidatePath(`/admin/supervisors`);
 }
 
 export async function unassignSupervisorAction(siteId: string, supervisorId: string) {
   await prisma.siteSupervisor.delete({ where: { siteId_supervisorId: { siteId, supervisorId } } });
   revalidatePath(`/admin/sites/${siteId}`);
+  revalidatePath(`/admin/supervisors`);
 }
 
 export async function recordPaymentAction(siteId: string, formData: FormData) {
