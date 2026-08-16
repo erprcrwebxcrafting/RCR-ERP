@@ -5,6 +5,8 @@ import { formatDate, formatINR } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Building2, ChevronDown, Receipt, Building } from "lucide-react";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AllBillsPage() {
   // Fetch all sites with their bills
   const sites = await prisma.site.findMany({

@@ -7,6 +7,8 @@ import Link from "next/link";
 import { SupervisorForm } from "./supervisor-form";
 import { EditSupervisorForm } from "./edit-supervisor-form";
 
+export const dynamic = 'force-dynamic';
+
 export default async function SupervisorsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const resolvedParams = await searchParams;
   const q = resolvedParams.q || "";
