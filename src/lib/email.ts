@@ -14,7 +14,8 @@ export async function sendEmailWithAttachment(
   to: string,
   subject: string,
   text: string,
-  attachments: { filename: string; content: Buffer }[]
+  attachments: { filename: string; content: Buffer }[],
+  html?: string
 ) {
   if (!process.env.SMTP_HOST) {
     throw new Error("SMTP email configuration is missing in the .env file. Please configure SMTP_HOST.");
@@ -25,6 +26,7 @@ export async function sendEmailWithAttachment(
     to,
     subject,
     text,
+    html,
     attachments,
   });
 }

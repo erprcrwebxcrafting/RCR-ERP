@@ -439,3 +439,14 @@ model OtpToken {
 
   @@index([email])
 }
+
+model ShareLink {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  type      String   // "BILL" | "QUOTATION"
+  refId     String   // billId or quotationId
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([code])
+}
