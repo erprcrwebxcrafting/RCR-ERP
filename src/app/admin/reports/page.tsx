@@ -21,6 +21,23 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     startDate.setDate(startDate.getDate() - 90);
   }
 
+  if (isAllTime) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4 animate-in fade-in duration-500">
+        <div className="w-24 h-24 mb-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+          <svg className="w-12 h-12 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-4">Select a Financial Year</h1>
+        <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl">
+          The Reports dashboard requires a specific timeframe to generate meaningful graphs and prevent memory overload. 
+          Please select a specific Financial Year (e.g., FY 2024-2025) from the sidebar dropdown to view detailed analytics.
+        </p>
+      </div>
+    );
+  }
+
   const [
     sites,
     bills,
@@ -112,8 +129,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           }
         }
       },
-      orderBy: { date: "desc" },
-      take: isAllTime ? 15000 : undefined,
+      orderBy: { date: "desc" }
     }),
     prisma.supplyLabourEntry.findMany({
       where: { date: { gte: startDate, lte: endDate } },
