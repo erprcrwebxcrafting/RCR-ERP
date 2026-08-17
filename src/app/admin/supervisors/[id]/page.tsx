@@ -50,7 +50,7 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
         bankBranch: true,
         // ✅ NO passwordHash, NO aadharNumber sent to browser
         supervisorPayments: {
-          select: { id: true, amount: true, date: true, mode: true, remarks: true },
+          select: { id: true, amount: true, date: true, transactionId: true, reason: true },
           orderBy: { date: "desc" }
         },
         assignedSites: {
