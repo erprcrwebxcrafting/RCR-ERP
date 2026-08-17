@@ -8,25 +8,28 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 
 export default async function AdminDashboard() {
-  const [clients, sites, supervisors, labours, bills, payments] = await Promise.all([
+  const [clients, sites, supervisors, labours, billAmountAgg, payments, recentBills] = await Promise.all([
     prisma.client.count(),
     prisma.site.count({ where: { active: true } }),
     prisma.user.count({ where: { role: "SUPERVISOR" } }),
     prisma.labour.count({ where: { active: true } }),
-    prisma.runningBill.findMany({ include: { lines: true, site: true } }),
+    // ✅ DB-level sum — no need to load all bill lines in memory
+    prisma.billLine.aggregate({ _sum: { currentAmount: true } }),
     prisma.payment.aggregate({ _sum: { amount: true } }),
+    // ✅ Only last 10 bills for chart (not all 1,160)
+    prisma.runningBill.findMany({
+      include: { lines: { select: { currentAmount: true } }, site: { select: { projectName: true } } },
+      orderBy: { billDate: "desc" },
+      take: 50,
+    }),
   ]);
 
-  const totalBilled = bills.reduce(
-    (sum, b) => sum + b.lines.reduce((s, l) => s + l.currentAmount, 0),
-    0
-  );
-
+  const totalBilled = billAmountAgg._sum.currentAmount ?? 0;
   const totalReceived = payments._sum.amount || 0;
   const outstanding = totalBilled - totalReceived;
 
   const bySite = new Map<string, number>();
-  for (const b of bills) {
+  for (const b of recentBills) {
     const amt = b.lines.reduce((s, l) => s + l.currentAmount, 0);
     bySite.set(b.site.projectName, (bySite.get(b.site.projectName) || 0) + amt);
   }

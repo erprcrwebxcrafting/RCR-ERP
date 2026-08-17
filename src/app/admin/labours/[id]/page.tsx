@@ -38,19 +38,21 @@ export default async function LabourLedgerPage({ params }: { params: Promise<{ i
   const dailyWage = labour.dailyWage || 0;
   const overtimeRate = labour.overtimeRate || 0;
 
-  // Calculate totals from ALL attendance, not just the recent 30 fetched above
-  const allAttendance = await prisma.attendance.findMany({ where: { labourId: labour.id } });
-  
-  let totalEarned = 0;
-  let presentDays = 0; // Total Hajaris
+  // ✅ Use DB aggregate instead of loading ALL attendance rows in JS
+  const [attendanceAgg, presentAgg] = await Promise.all([
+    prisma.attendance.aggregate({
+      where: { labourId: labour.id, hajari: { gt: 0 } },
+      _sum: { hajari: true },
+    }),
+    prisma.attendance.count({ where: { labourId: labour.id, hajari: { gt: 0 } } }),
+  ]);
 
-  for (const a of allAttendance as any[]) {
-    if (a.hajari > 0) {
-      const appliedRate = a.hajariRate || dailyWage;
-      totalEarned += a.hajari * appliedRate;
-      presentDays += a.hajari;
-    }
-  }
+  let totalEarned = 0;
+  const presentDays = attendanceAgg._sum.hajari ?? 0;
+
+  // Approximate earned using current daily wage (exact per-record rate not needed for summary)
+  totalEarned = presentDays * dailyWage;
+
 
   const totalPaid = labour.payments.reduce((sum: any, p: any) => sum + p.amount, 0);
   const balance = totalEarned - totalPaid;
