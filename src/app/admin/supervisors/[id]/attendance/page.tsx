@@ -15,10 +15,19 @@ export default async function SupervisorAttendancePage({
 
   const supervisor = await prisma.user.findUnique({
     where: { id, role: "SUPERVISOR" },
-    include: {
-      assignedSites: { include: { site: true } },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      monthlySalary: true,
+      // ✅ No passwordHash, aadharNumber etc.
+      assignedSites: {
+        select: { site: { select: { id: true, projectName: true } } }
+      },
       supervisorAttendances: {
         orderBy: { date: "asc" },
+        select: { id: true, supervisorId: true, date: true, status: true, dailyRate: true, earnedAmount: true, remarks: true }
       },
     },
   });

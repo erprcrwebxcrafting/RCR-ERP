@@ -13,7 +13,7 @@ export default async function ProfilePage() {
   if (userId) {
     assignedSites = await prisma.siteSupervisor.findMany({
       where: { supervisorId: userId },
-      include: { site: true }
+      select: { site: { select: { id: true, projectName: true, address: true } } }
     });
   }
 
