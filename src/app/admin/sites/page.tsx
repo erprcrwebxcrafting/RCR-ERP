@@ -13,7 +13,7 @@ export default async function SitesPage() {
       id: true,
       projectName: true,
       client: { select: { name: true } },
-      status: true,
+      active: true,
       createdAt: true,
       updatedAt: true,
       _count: { select: { buildings: true, workItems: true, labours: true } },
