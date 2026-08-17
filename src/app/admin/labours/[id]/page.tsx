@@ -38,13 +38,18 @@ export default async function LabourLedgerPage({ params }: { params: Promise<{ i
   const dailyWage = labour.dailyWage || 0;
   const overtimeRate = labour.overtimeRate || 0;
 
-  // ✅ Use DB aggregate instead of loading ALL attendance rows in JS
-  const [attendanceAgg, presentAgg] = await Promise.all([
+  // ✅ Use DB aggregate for KPIs instead of JS loops
+  const [attendanceAgg, presentAgg, allAttendance] = await Promise.all([
     prisma.attendance.aggregate({
       where: { labourId: labour.id, hajari: { gt: 0 } },
       _sum: { hajari: true },
     }),
     prisma.attendance.count({ where: { labourId: labour.id, hajari: { gt: 0 } } }),
+    // Fetch actual records for the calendar component
+    prisma.attendance.findMany({ 
+      where: { labourId: labour.id },
+      orderBy: { date: "desc" }
+    })
   ]);
 
   let totalEarned = 0;

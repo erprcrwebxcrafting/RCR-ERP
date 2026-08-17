@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 
 export default async function AdminDashboard() {
-  const [clients, sites, supervisors, labours, billAmountAgg, payments, recentBills] = await Promise.all([
+  const [clients, sites, supervisors, labours, billAmountAgg, payments, recentBills, totalBillsCount] = await Promise.all([
     prisma.client.count(),
     prisma.site.count({ where: { active: true } }),
     prisma.user.count({ where: { role: "SUPERVISOR" } }),
@@ -22,6 +22,7 @@ export default async function AdminDashboard() {
       orderBy: { billDate: "desc" },
       take: 50,
     }),
+    prisma.runningBill.count(),
   ]);
 
   const totalBilled = billAmountAgg._sum.currentAmount ?? 0;
@@ -106,7 +107,7 @@ export default async function AdminDashboard() {
             </div>
             <div className="mt-4 flex items-center inline-flex bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-500/20">
               <ArrowUpRight className="mr-1 h-3.5 w-3.5" />
-              Across {bills.length} running bills
+              Across {totalBillsCount} running bills
             </div>
           </CardContent>
         </Card>
