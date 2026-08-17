@@ -53,6 +53,7 @@ export default async function ReportsPage() {
         supervisorPayments: {
           orderBy: { date: "desc" },
         },
+        assignedSites: true,
       },
       orderBy: { name: "asc" },
     }),

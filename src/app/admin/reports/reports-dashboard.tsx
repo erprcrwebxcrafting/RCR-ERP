@@ -42,7 +42,12 @@ import {
   ArrowDownRight,
   UserCheck,
   Briefcase,
+  Download,
+  FileSpreadsheet,
+  FileText
 } from "lucide-react";
+
+import ExcelJS from "exceljs";
 
 interface ReportsDashboardProps {
   initialSites: any[];
@@ -66,29 +71,36 @@ export function ReportsDashboard({
   initialSupplyEntries,
 }: ReportsDashboardProps) {
   const [selectedSiteId, setSelectedSiteId] = useState<string>("all");
-  const [timeRange, setTimeRange] = useState<"30d" | "90d" | "fy" | "all">("all");
+  const [timeRange, setTimeRange] = useState<"30d" | "90d" | "fy" | "all" | "custom">("all");
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"financial" | "labour" | "supervisor" | "billing">("financial");
 
   // Date filtering logic
-  const now = new Date();
-  const dateCutoff = useMemo(() => {
+  const { effectiveStartDate, effectiveEndDate } = useMemo(() => {
+    const now = new Date();
+    let start: Date | null = null;
+    let end: Date | null = null;
+
     if (timeRange === "30d") {
-      const d = new Date();
-      d.setDate(d.getDate() - 30);
-      return d;
-    }
-    if (timeRange === "90d") {
-      const d = new Date();
-      d.setDate(d.getDate() - 90);
-      return d;
-    }
-    if (timeRange === "fy") {
+      start = new Date();
+      start.setDate(start.getDate() - 30);
+    } else if (timeRange === "90d") {
+      start = new Date();
+      start.setDate(start.getDate() - 90);
+    } else if (timeRange === "fy") {
       // Current Financial Year (Starting April 1)
       const currentYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
-      return new Date(currentYear, 3, 1);
+      start = new Date(currentYear, 3, 1);
+    } else if (timeRange === "custom") {
+      if (customStartDate) start = new Date(customStartDate);
+      if (customEndDate) {
+        end = new Date(customEndDate);
+        end.setHours(23, 59, 59, 999);
+      }
     }
-    return null;
-  }, [timeRange]);
+    return { effectiveStartDate: start, effectiveEndDate: end };
+  }, [timeRange, customStartDate, customEndDate]);
 
   // Filtered Datasets based on Site and Date
   const filteredSites = useMemo(() => {
@@ -99,31 +111,44 @@ export function ReportsDashboard({
   const filteredBills = useMemo(() => {
     return initialBills.filter((b) => {
       const matchSite = selectedSiteId === "all" || b.siteId === selectedSiteId;
-      const matchDate = !dateCutoff || new Date(b.billDate || b.createdAt) >= dateCutoff;
-      return matchSite && matchDate;
+      const itemDate = new Date(b.billDate || b.createdAt);
+      const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
+      const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
+      return matchSite && matchStart && matchEnd;
     });
-  }, [initialBills, selectedSiteId, dateCutoff]);
+  }, [initialBills, selectedSiteId, effectiveStartDate, effectiveEndDate]);
 
   const filteredPayments = useMemo(() => {
     return initialPayments.filter((p) => {
       const matchSite = selectedSiteId === "all" || p.siteId === selectedSiteId;
-      const matchDate = !dateCutoff || new Date(p.date) >= dateCutoff;
-      return matchSite && matchDate;
+      const itemDate = new Date(p.date);
+      const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
+      const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
+      return matchSite && matchStart && matchEnd;
     });
-  }, [initialPayments, selectedSiteId, dateCutoff]);
+  }, [initialPayments, selectedSiteId, effectiveStartDate, effectiveEndDate]);
 
   const filteredLabours = useMemo(() => {
     if (selectedSiteId === "all") return initialLabours;
     return initialLabours.filter((l) => l.siteId === selectedSiteId);
   }, [initialLabours, selectedSiteId]);
 
+  const filteredSupervisors = useMemo(() => {
+    return initialSupervisors.filter((sup) => {
+      if (selectedSiteId === "all") return true;
+      return sup.assignedSites?.some((as: any) => as.siteId === selectedSiteId);
+    });
+  }, [initialSupervisors, selectedSiteId]);
+
   const filteredAttendances = useMemo(() => {
     return initialAttendances.filter((a) => {
       const matchSite = selectedSiteId === "all" || a.siteId === selectedSiteId;
-      const matchDate = !dateCutoff || new Date(a.date) >= dateCutoff;
-      return matchSite && matchDate;
+      const itemDate = new Date(a.date);
+      const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
+      const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
+      return matchSite && matchStart && matchEnd;
     });
-  }, [initialAttendances, selectedSiteId, dateCutoff]);
+  }, [initialAttendances, selectedSiteId, effectiveStartDate, effectiveEndDate]);
 
   // ==========================================
   // TOP EXECUTIVE KPI AGGREGATIONS
@@ -163,35 +188,41 @@ export function ReportsDashboard({
   const totalLabourPaymentsMade = useMemo(() => {
     return filteredLabours.reduce((sum, l) => {
       const paySum = (l.payments || []).reduce((s: number, p: any) => {
-        const matchDate = !dateCutoff || new Date(p.date) >= dateCutoff;
-        return matchDate ? s + (Number(p.amount) || 0) : s;
+        const itemDate = new Date(p.date);
+        const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
+        const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
+        return (matchStart && matchEnd) ? s + (Number(p.amount) || 0) : s;
       }, 0);
       return sum + paySum;
     }, 0);
-  }, [filteredLabours, dateCutoff]);
+  }, [filteredLabours, effectiveStartDate, effectiveEndDate]);
 
   // Supervisor Salaries
   const totalSupervisorEarned = useMemo(() => {
-    return initialSupervisors.reduce((sum, s) => {
+    return filteredSupervisors.reduce((sum, s) => {
       const atts = (s.supervisorAttendances || []).filter((a: any) => {
-        const matchDate = !dateCutoff || new Date(a.date) >= dateCutoff;
-        return matchDate;
+        const itemDate = new Date(a.date);
+        const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
+        const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
+        return matchStart && matchEnd;
       });
       const supSum = atts.reduce((aSum: number, a: any) => aSum + (Number(a.earnedAmount) || 0), 0);
       return sum + supSum;
     }, 0);
-  }, [initialSupervisors, dateCutoff]);
+  }, [filteredSupervisors, effectiveStartDate, effectiveEndDate]);
 
   const totalSupervisorPaid = useMemo(() => {
-    return initialSupervisors.reduce((sum, s) => {
+    return filteredSupervisors.reduce((sum, s) => {
       const pays = (s.supervisorPayments || []).filter((p: any) => {
-        const matchDate = !dateCutoff || new Date(p.date) >= dateCutoff;
-        return matchDate;
+        const itemDate = new Date(p.date);
+        const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
+        const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
+        return matchStart && matchEnd;
       });
       const supPay = pays.reduce((pSum: number, p: any) => pSum + (Number(p.amount) || 0), 0);
       return sum + supPay;
     }, 0);
-  }, [initialSupervisors, dateCutoff]);
+  }, [filteredSupervisors, effectiveStartDate, effectiveEndDate]);
 
   const grossMargin = totalBilledTaxable - totalLabourWagesEarned - totalSupervisorEarned;
 
@@ -297,13 +328,25 @@ export function ReportsDashboard({
   // CHART DATA: SUPERVISOR PAYROLL
   // ==========================================
   const supervisorPayrollData = useMemo(() => {
-    return initialSupervisors.map((sup) => {
-      const atts = sup.supervisorAttendances || [];
+    return filteredSupervisors.map((sup) => {
+      const atts = (sup.supervisorAttendances || []).filter((a: any) => {
+        const itemDate = new Date(a.date);
+        const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
+        const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
+        return matchStart && matchEnd;
+      });
       const presentCount = atts.filter((a: any) => a.status === "PRESENT").length;
       const halfCount = atts.filter((a: any) => a.status === "HALF_DAY").length;
       const absentCount = atts.filter((a: any) => a.status === "ABSENT").length;
       const grossEarned = atts.reduce((sum: number, a: any) => sum + (Number(a.earnedAmount) || 0), 0);
-      const totalPaid = (sup.supervisorPayments || []).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+      
+      const pays = (sup.supervisorPayments || []).filter((p: any) => {
+        const itemDate = new Date(p.date);
+        const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
+        const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
+        return matchStart && matchEnd;
+      });
+      const totalPaid = pays.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
       const balanceDue = Math.max(0, grossEarned - totalPaid);
 
       return {
@@ -319,7 +362,719 @@ export function ReportsDashboard({
         balanceDue,
       };
     });
-  }, [initialSupervisors]);
+  }, [filteredSupervisors, effectiveStartDate, effectiveEndDate]);
+
+  // Export Utilities
+  const exportFinancialsToExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Financial Report");
+    
+    worksheet.columns = [
+      { header: "Project / Site", key: "project", width: 30 },
+      { header: "Client", key: "client", width: 25 },
+      { header: "Total Billed", key: "billed", width: 18 },
+      { header: "Total Received", key: "received", width: 18 },
+      { header: "Outstanding Balance", key: "outstanding", width: 22 },
+      { header: "Collection %", key: "collection", width: 15 },
+    ];
+
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4F46E5" } };
+    worksheet.getRow(1).font = { color: { argb: "FFFFFFFF" }, bold: true };
+
+    siteFinancialChartData.forEach((s) => {
+      worksheet.addRow({
+        project: s.fullName,
+        client: s.client,
+        billed: s.Billed,
+        received: s.Received,
+        outstanding: s.Outstanding,
+        collection: s.Billed > 0 ? Math.round((s.Received / s.Billed) * 100) + "%" : "0%"
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Financial_Report_${new Date().toISOString().split("T")[0]}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportFinancialsToPDF = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    
+    let html = `
+      <html>
+        <head>
+          <title>Financial Report</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #333; }
+            h2 { color: #4f46e5; margin-bottom: 5px; }
+            .header-info { margin-bottom: 20px; font-size: 14px; color: #666; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; font-size: 14px; }
+            th { background-color: #f8fafc; font-weight: 600; color: #1e293b; }
+            .right { text-align: right; }
+            .outstanding { color: #e11d48; font-weight: bold; }
+            .collection { color: #10b981; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <h2>Financial & Collections Report</h2>
+          <div class="header-info">
+            <p>Generated on: ${new Date().toLocaleDateString()}</p>
+            <p>Date Range: ${timeRange === "custom" ? (customStartDate || "Start") + " to " + (customEndDate || "End") : timeRange === "all" ? "All Time" : timeRange}</p>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Project / Site</th>
+                <th>Client</th>
+                <th class="right">Total Billed</th>
+                <th class="right">Total Received</th>
+                <th class="right">Outstanding Balance</th>
+                <th class="right">Collection %</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    siteFinancialChartData.forEach(s => {
+      const pct = s.Billed > 0 ? Math.round((s.Received / s.Billed) * 100) : 0;
+      html += `
+        <tr>
+          <td>${s.fullName}</td>
+          <td>${s.client}</td>
+          <td class="right">${s.Billed.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+          <td class="right">${s.Received.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+          <td class="right ${s.Outstanding > 0 ? 'outstanding' : ''}">${s.Outstanding.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+          <td class="right collection">${pct}%</td>
+        </tr>
+      `;
+    });
+    
+    html += `
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  const exportLabourToExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    
+    // --- Sheet 1: Summary Matrix ---
+    const summarySheet = workbook.addWorksheet("Labour Summary");
+    summarySheet.columns = [
+      { header: "Labourer Name", key: "name", width: 25 },
+      { header: "Trade / Category", key: "category", width: 20 },
+      { header: "Site", key: "site", width: 25 },
+      { header: "Total Hajaris", key: "hajaris", width: 15 },
+      { header: "Daily Rate", key: "rate", width: 15 },
+      { header: "Gross Earned", key: "earned", width: 18 },
+      { header: "Advance Paid", key: "advance", width: 18 },
+      { header: "Net Payable", key: "payable", width: 18 },
+    ];
+    summarySheet.getRow(1).font = { bold: true };
+    summarySheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4F46E5" } };
+    summarySheet.getRow(1).font = { color: { argb: "FFFFFFFF" }, bold: true };
+
+    labourMatrixList.forEach((l) => {
+      summarySheet.addRow({
+        name: l.name,
+        category: l.category,
+        site: l.site,
+        hajaris: l.totalHajari,
+        rate: l.dailyWage,
+        earned: l.grossEarned,
+        advance: l.advancePaid,
+        payable: l.balance
+      });
+    });
+
+    // --- Sheet 2: Detailed Ledger ---
+    const ledgerSheet = workbook.addWorksheet("Detailed Ledger");
+    ledgerSheet.columns = [
+      { header: "Date", key: "date", width: 15 },
+      { header: "Labourer Name", key: "name", width: 25 },
+      { header: "Type", key: "type", width: 15 },
+      { header: "Details", key: "details", width: 35 },
+      { header: "Earned (₹)", key: "earned", width: 15 },
+      { header: "Paid (₹)", key: "paid", width: 15 },
+    ];
+    ledgerSheet.getRow(1).font = { bold: true };
+    ledgerSheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3B82F6" } };
+    ledgerSheet.getRow(1).font = { color: { argb: "FFFFFFFF" }, bold: true };
+
+    const labourLedger: any[] = [];
+    filteredLabours.forEach(l => {
+      const lAtts = filteredAttendances.filter(a => a.labourId === l.id);
+      const lPays = (l.payments || []).filter((p: any) => {
+        const itemDate = new Date(p.date);
+        return (!effectiveStartDate || itemDate >= effectiveStartDate) && (!effectiveEndDate || itemDate <= effectiveEndDate);
+      });
+      
+      lAtts.forEach(a => {
+        const rate = Number(a.hajariRate) || Number(l.dailyWage) || 800;
+        const haj = Number(a.hajari) || 0;
+        labourLedger.push({ date: a.date, name: l.name, type: "Attendance", details: `Site: ${a.site?.projectName||"—"} | Shift: ${haj}`, earned: haj * rate, paid: 0 });
+      });
+      lPays.forEach((p: any) => labourLedger.push({ date: p.date, name: l.name, type: "Payment", details: p.reason || "Advance", earned: 0, paid: Number(p.amount)||0 }));
+    });
+
+    labourLedger.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).forEach(row => {
+      ledgerSheet.addRow({
+        date: formatDate(row.date),
+        name: row.name,
+        type: row.type,
+        details: row.details,
+        earned: row.earned > 0 ? row.earned : "-",
+        paid: row.paid > 0 ? row.paid : "-"
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Labour_Detailed_Report_${new Date().toISOString().split("T")[0]}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportSupervisorToExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    
+    // --- Sheet 1: Supervisor Summary Matrix ---
+    const summarySheet = workbook.addWorksheet("Supervisor Summary");
+    summarySheet.columns = [
+      { header: "Supervisor Name", key: "name", width: 25 },
+      { header: "Monthly Salary", key: "monthly", width: 15 },
+      { header: "Daily Rate", key: "rate", width: 15 },
+      { header: "Present", key: "present", width: 10 },
+      { header: "Half Days", key: "half", width: 10 },
+      { header: "Absent", key: "absent", width: 10 },
+      { header: "Gross Earned", key: "earned", width: 18 },
+      { header: "Advance Paid", key: "advance", width: 18 },
+      { header: "Net Payable", key: "payable", width: 18 },
+    ];
+    summarySheet.getRow(1).font = { bold: true };
+    summarySheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4F46E5" } };
+    summarySheet.getRow(1).font = { color: { argb: "FFFFFFFF" }, bold: true };
+
+    supervisorPayrollData.forEach((s) => {
+      summarySheet.addRow({
+        name: s.name,
+        monthly: s.monthlySalary,
+        rate: s.dailyRate,
+        present: s.presentCount,
+        half: s.halfCount,
+        absent: s.absentCount,
+        earned: s.grossEarned,
+        advance: s.totalPaid,
+        payable: s.balanceDue
+      });
+    });
+
+    // --- Sheet 2: Detailed Ledger ---
+    const ledgerSheet = workbook.addWorksheet("Detailed Ledger");
+    ledgerSheet.columns = [
+      { header: "Date", key: "date", width: 15 },
+      { header: "Supervisor Name", key: "name", width: 25 },
+      { header: "Type", key: "type", width: 15 },
+      { header: "Details", key: "details", width: 35 },
+      { header: "Earned (₹)", key: "earned", width: 15 },
+      { header: "Paid (₹)", key: "paid", width: 15 },
+    ];
+    ledgerSheet.getRow(1).font = { bold: true };
+    ledgerSheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3B82F6" } };
+    ledgerSheet.getRow(1).font = { color: { argb: "FFFFFFFF" }, bold: true };
+
+    const supLedger: any[] = [];
+    filteredSupervisors.forEach(sup => {
+      const atts = (sup.supervisorAttendances || []).filter((a: any) => {
+        const itemDate = new Date(a.date);
+        return (!effectiveStartDate || itemDate >= effectiveStartDate) && (!effectiveEndDate || itemDate <= effectiveEndDate);
+      });
+      const pays = (sup.supervisorPayments || []).filter((p: any) => {
+        const itemDate = new Date(p.date);
+        return (!effectiveStartDate || itemDate >= effectiveStartDate) && (!effectiveEndDate || itemDate <= effectiveEndDate);
+      });
+      
+      atts.forEach((a: any) => supLedger.push({ date: a.date, name: sup.name, type: "Attendance", details: a.status, earned: Number(a.earnedAmount)||0, paid: 0 }));
+      pays.forEach((p: any) => supLedger.push({ date: p.date, name: sup.name, type: "Payment", details: p.reason || "Advance", earned: 0, paid: Number(p.amount)||0 }));
+    });
+
+    supLedger.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).forEach(row => {
+      ledgerSheet.addRow({
+        date: formatDate(row.date),
+        name: row.name,
+        type: row.type,
+        details: row.details,
+        earned: row.earned > 0 ? row.earned : "-",
+        paid: row.paid > 0 ? row.paid : "-"
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Supervisor_Detailed_Report_${new Date().toISOString().split("T")[0]}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportSupervisorToPDF = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    
+    let html = `
+      <html>
+        <head>
+          <title>Supervisor Payroll Report</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #333; }
+            h2 { color: #4f46e5; margin-bottom: 5px; }
+            .header-info { margin-bottom: 20px; font-size: 14px; color: #666; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; font-size: 13px; }
+            th { background-color: #f8fafc; font-weight: 600; color: #1e293b; }
+            .right { text-align: right; }
+            .center { text-align: center; }
+            .payable { color: #d97706; font-weight: bold; }
+            .advance { color: #10b981; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <h2>Supervisor Payroll & Advances Report</h2>
+          <div class="header-info">
+            <p>Generated on: ${new Date().toLocaleDateString()}</p>
+            <p>Date Range: ${timeRange === "custom" ? (customStartDate || "Start") + " to " + (customEndDate || "End") : timeRange === "all" ? "All Time" : timeRange}</p>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Supervisor Name</th>
+                <th class="center">Present</th>
+                <th class="center">Half Day</th>
+                <th class="center">Absent</th>
+                <th class="right">Monthly Salary</th>
+                <th class="right">Gross Earned</th>
+                <th class="right">Advance Paid</th>
+                <th class="right">Net Payable</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    supervisorPayrollData.forEach(s => {
+      html += `
+        <tr>
+          <td>${s.name}</td>
+          <td class="center">${s.presentCount}</td>
+          <td class="center">${s.halfCount}</td>
+          <td class="center">${s.absentCount}</td>
+          <td class="right">${s.monthlySalary.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+          <td class="right">${s.grossEarned.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+          <td class="right advance">${s.totalPaid.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+          <td class="right ${s.balanceDue > 0 ? 'payable' : ''}">${s.balanceDue.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+        </tr>
+      `;
+    });
+    
+    html += `
+            </tbody>
+          </table>
+    `;
+
+    html += `<h3 style="margin-top: 40px; color: #4f46e5;">Detailed Ledger (Date-wise Attendance & Advances)</h3>`;
+    
+    filteredSupervisors.forEach(sup => {
+      const atts = (sup.supervisorAttendances || []).filter((a: any) => {
+        const itemDate = new Date(a.date);
+        return (!effectiveStartDate || itemDate >= effectiveStartDate) && (!effectiveEndDate || itemDate <= effectiveEndDate);
+      });
+      const pays = (sup.supervisorPayments || []).filter((p: any) => {
+        const itemDate = new Date(p.date);
+        return (!effectiveStartDate || itemDate >= effectiveStartDate) && (!effectiveEndDate || itemDate <= effectiveEndDate);
+      });
+      
+      if (atts.length === 0 && pays.length === 0) return;
+
+      const ledger: any[] = [];
+      atts.forEach((a: any) => ledger.push({ date: a.date, type: "Attendance", details: a.status, earned: Number(a.earnedAmount)||0, paid: 0 }));
+      pays.forEach((p: any) => ledger.push({ date: p.date, type: "Payment", details: p.reason || "Advance", earned: 0, paid: Number(p.amount)||0 }));
+      ledger.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      html += `
+        <div style="margin-top: 20px; page-break-inside: avoid;">
+          <h4 style="margin-bottom: 5px; color: #333;">Supervisor: ${sup.name}</h4>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 15%">Date</th>
+                <th style="width: 15%">Type</th>
+                <th style="width: 40%">Details</th>
+                <th class="right" style="width: 15%">Salary Earned</th>
+                <th class="right" style="width: 15%">Advance Paid</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+      let runEarn = 0;
+      let runPaid = 0;
+      ledger.forEach(row => {
+        runEarn += row.earned;
+        runPaid += row.paid;
+        html += `
+          <tr>
+            <td>${new Date(row.date).toLocaleDateString("en-IN")}</td>
+            <td>${row.type}</td>
+            <td>${row.details}</td>
+            <td class="right">${row.earned > 0 ? row.earned.toLocaleString("en-IN", { style: "currency", currency: "INR" }) : '-'}</td>
+            <td class="right advance">${row.paid > 0 ? row.paid.toLocaleString("en-IN", { style: "currency", currency: "INR" }) : '-'}</td>
+          </tr>
+        `;
+      });
+      html += `
+              <tr style="background-color: #f8fafc; font-weight: bold;">
+                <td colspan="3" class="right">Totals</td>
+                <td class="right">${runEarn.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+                <td class="right advance">${runPaid.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    });
+
+    html += `
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  const exportLabourToPDF = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    
+    let html = `
+      <html>
+        <head>
+          <title>Labour Wages Report</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #333; }
+            h2 { color: #4f46e5; margin-bottom: 5px; }
+            .header-info { margin-bottom: 20px; font-size: 14px; color: #666; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; font-size: 13px; }
+            th { background-color: #f8fafc; font-weight: 600; color: #1e293b; }
+            .right { text-align: right; }
+            .center { text-align: center; }
+            .payable { color: #d97706; font-weight: bold; }
+            .advance { color: #10b981; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <h2>Labour Wages & Advances Report</h2>
+          <div class="header-info">
+            <p>Generated on: ${new Date().toLocaleDateString()}</p>
+            <p>Date Range: ${timeRange === "custom" ? (customStartDate || "Start") + " to " + (customEndDate || "End") : timeRange === "all" ? "All Time" : timeRange}</p>
+            <p>Site: ${selectedSiteId === "all" ? "All Sites" : initialSites.find(s => s.id === selectedSiteId)?.projectName || "All Sites"}</p>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Labourer Name</th>
+                <th>Category</th>
+                <th>Site</th>
+                <th class="center">Hajaris</th>
+                <th class="right">Daily Rate</th>
+                <th class="right">Gross Earned</th>
+                <th class="right">Advance Paid</th>
+                <th class="right">Net Payable</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    labourMatrixList.forEach(l => {
+      html += `
+        <tr>
+          <td>${l.name}</td>
+          <td>${l.category}</td>
+          <td>${l.site}</td>
+          <td class="center">${l.totalHajari.toFixed(1)}</td>
+          <td class="right">${l.dailyWage.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+          <td class="right">${l.grossEarned.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+          <td class="right advance">${l.advancePaid.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+          <td class="right ${l.balance > 0 ? 'payable' : ''}">${l.balance.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+        </tr>
+      `;
+    });
+    
+    html += `
+            </tbody>
+          </table>
+    `;
+
+    html += `<h3 style="margin-top: 40px; color: #4f46e5;">Detailed Ledger (Date-wise Attendance & Advances)</h3>`;
+    
+    filteredLabours.forEach(l => {
+      const lAtts = filteredAttendances.filter(a => a.labourId === l.id);
+      const lPays = (l.payments || []).filter((p: any) => {
+        const itemDate = new Date(p.date);
+        return (!effectiveStartDate || itemDate >= effectiveStartDate) && (!effectiveEndDate || itemDate <= effectiveEndDate);
+      });
+      
+      if (lAtts.length === 0 && lPays.length === 0) return;
+      
+      const ledger: any[] = [];
+      lAtts.forEach(a => {
+        const rate = Number(a.hajariRate) || Number(l.dailyWage) || 800;
+        const haj = Number(a.hajari) || 0;
+        ledger.push({ date: a.date, type: "Attendance", details: `Site: ${a.site?.projectName||"—"} | Shift: ${haj}`, earned: haj * rate, paid: 0 });
+      });
+      lPays.forEach((p: any) => ledger.push({ date: p.date, type: "Payment", details: p.reason || "Advance", earned: 0, paid: Number(p.amount)||0 }));
+      ledger.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      html += `
+        <div style="margin-top: 20px; page-break-inside: avoid;">
+          <h4 style="margin-bottom: 5px; color: #333;">Labourer: ${l.name}</h4>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 15%">Date</th>
+                <th style="width: 15%">Type</th>
+                <th style="width: 40%">Details</th>
+                <th class="right" style="width: 15%">Wages Earned</th>
+                <th class="right" style="width: 15%">Advance Paid</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+      let runEarn = 0;
+      let runPaid = 0;
+      ledger.forEach(row => {
+        runEarn += row.earned;
+        runPaid += row.paid;
+        html += `
+          <tr>
+            <td>${new Date(row.date).toLocaleDateString("en-IN")}</td>
+            <td>${row.type}</td>
+            <td>${row.details}</td>
+            <td class="right">${row.earned > 0 ? row.earned.toLocaleString("en-IN", { style: "currency", currency: "INR" }) : '-'}</td>
+            <td class="right advance">${row.paid > 0 ? row.paid.toLocaleString("en-IN", { style: "currency", currency: "INR" }) : '-'}</td>
+          </tr>
+        `;
+      });
+      html += `
+              <tr style="background-color: #f8fafc; font-weight: bold;">
+                <td colspan="3" class="right">Totals</td>
+                <td class="right">${runEarn.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+                <td class="right advance">${runPaid.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    });
+
+    html += `
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  const exportBillingToExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    
+    // --- Sheet 1: RA Bill Summary ---
+    const summarySheet = workbook.addWorksheet("RA Bill Summary");
+    summarySheet.columns = [
+      { header: "Bill No / Ref", key: "billNo", width: 20 },
+      { header: "Bill Date", key: "date", width: 15 },
+      { header: "Project", key: "project", width: 25 },
+      { header: "Client", key: "client", width: 25 },
+      { header: "Taxable Work Done", key: "taxable", width: 20 },
+      { header: "CGST+SGST", key: "gst", width: 15 },
+      { header: "Retention", key: "retention", width: 15 },
+      { header: "TDS", key: "tds", width: 15 },
+      { header: "Net Payable Amount", key: "net", width: 20 },
+    ];
+    summarySheet.getRow(1).font = { bold: true };
+    summarySheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4F46E5" } };
+    summarySheet.getRow(1).font = { color: { argb: "FFFFFFFF" }, bold: true };
+
+    filteredBills.forEach(b => {
+      const taxable = (b.lines || []).reduce((s: number, l: any) => s + (Number(l.currentAmount) || 0), 0);
+      const cgst = taxable * ((b.cgstPct ?? 9) / 100);
+      const sgst = taxable * ((b.sgstPct ?? 9) / 100);
+      const ret = taxable * ((b.retentionPct ?? 2) / 100);
+      const tds = taxable * ((b.tdsPct ?? 1) / 100);
+      const netAmt = taxable + cgst + sgst;
+
+      summarySheet.addRow({
+        billNo: b.billNo + (b.refNo ? ` (${b.refNo})` : ""),
+        date: formatDate(b.billDate),
+        project: b.site?.projectName || "—",
+        client: b.site?.client?.name || "—",
+        taxable: taxable,
+        gst: cgst + sgst,
+        retention: ret,
+        tds: tds,
+        net: netAmt
+      });
+    });
+
+    // --- Sheet 2: Detailed Bill Lines ---
+    const linesSheet = workbook.addWorksheet("Detailed Bill Items");
+    linesSheet.columns = [
+      { header: "Bill No", key: "billNo", width: 15 },
+      { header: "Project", key: "project", width: 20 },
+      { header: "Item Description", key: "desc", width: 40 },
+      { header: "Type", key: "type", width: 15 },
+      { header: "Unit", key: "unit", width: 10 },
+      { header: "Qty Billed", key: "qty", width: 15 },
+      { header: "Rate", key: "rate", width: 15 },
+      { header: "Amount", key: "amount", width: 18 },
+    ];
+    linesSheet.getRow(1).font = { bold: true };
+    linesSheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF10B981" } };
+    linesSheet.getRow(1).font = { color: { argb: "FFFFFFFF" }, bold: true };
+
+    filteredBills.forEach(b => {
+      (b.lines || []).forEach((l: any) => {
+        linesSheet.addRow({
+          billNo: b.billNo,
+          project: b.site?.projectName || "—",
+          desc: l.description,
+          type: l.category === "SUPPLY" ? "Material Supply" : "Work Done",
+          unit: l.uom || "LS",
+          qty: Number(l.currentQty) || 0,
+          rate: Number(l.rate) || 0,
+          amount: Number(l.currentAmount) || 0
+        });
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `RABilling_Registry_${new Date().toISOString().split("T")[0]}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportBillingToPDF = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    
+    let html = `
+      <html>
+        <head>
+          <title>RA Billing Registry Report</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #333; }
+            h2 { color: #4f46e5; margin-bottom: 5px; }
+            .header-info { margin-bottom: 20px; font-size: 14px; color: #666; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; font-size: 13px; }
+            th { background-color: #f8fafc; font-weight: 600; color: #1e293b; }
+            .right { text-align: right; }
+            .center { text-align: center; }
+            .payable { color: #10b981; font-weight: bold; }
+            .deduction { color: #ef4444; }
+          </style>
+        </head>
+        <body>
+          <h2>Running Account (RA) Bill Registry</h2>
+          <div class="header-info">
+            <p>Generated on: ${new Date().toLocaleDateString()}</p>
+            <p>Date Range: ${timeRange === "custom" ? (customStartDate || "Start") + " to " + (customEndDate || "End") : timeRange === "all" ? "All Time" : timeRange}</p>
+            <p>Site: ${selectedSiteId === "all" ? "All Sites" : initialSites.find(s => s.id === selectedSiteId)?.projectName || "All Sites"}</p>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Bill No / Ref</th>
+                <th>Bill Date</th>
+                <th>Project</th>
+                <th>Client</th>
+                <th class="right">Taxable Work Done</th>
+                <th class="right">CGST+SGST</th>
+                <th class="right">Retention</th>
+                <th class="right">TDS</th>
+                <th class="right">Net Payable Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    filteredBills.forEach(b => {
+      const taxable = (b.lines || []).reduce((s: number, l: any) => s + (Number(l.currentAmount) || 0), 0);
+      const cgst = taxable * ((b.cgstPct ?? 9) / 100);
+      const sgst = taxable * ((b.sgstPct ?? 9) / 100);
+      const ret = taxable * ((b.retentionPct ?? 2) / 100);
+      const tds = taxable * ((b.tdsPct ?? 1) / 100);
+      const netAmt = taxable + cgst + sgst;
+
+      html += `
+        <tr>
+          <td>${b.billNo} <br/><small style="color:#666">${b.refNo || ""}</small></td>
+          <td>${new Date(b.billDate).toLocaleDateString("en-IN")}</td>
+          <td>${b.site?.projectName || "—"}</td>
+          <td>${b.site?.client?.name || "—"}</td>
+          <td class="right">${taxable.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+          <td class="right">${(cgst+sgst).toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+          <td class="right deduction">-${ret.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+          <td class="right deduction">-${tds.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+          <td class="right payable">${netAmt.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
+        </tr>
+      `;
+    });
+    
+    html += `
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-16">
@@ -393,8 +1148,40 @@ export function ReportsDashboard({
               >
                 30 Days
               </button>
+              <button
+                onClick={() => setTimeRange("custom")}
+                className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                  timeRange === "custom" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                Custom Date
+              </button>
             </div>
           </div>
+
+          {/* Custom Date Picker Row (Conditionally Rendered) */}
+          {timeRange === "custom" && (
+            <div className="flex items-center gap-4 bg-white/10 dark:bg-black/30 p-2 rounded-2xl backdrop-blur-md border border-white/10 mt-3 animate-in fade-in slide-in-from-top-2 w-full max-w-md">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-300 text-xs font-bold">From:</span>
+                <input 
+                  type="date" 
+                  value={customStartDate} 
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="bg-slate-900/80 text-white text-xs border border-indigo-500/30 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-300 text-xs font-bold">To:</span>
+                <input 
+                  type="date" 
+                  value={customEndDate} 
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="bg-slate-900/80 text-white text-xs border border-indigo-500/30 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -598,10 +1385,20 @@ export function ReportsDashboard({
 
               {/* Site Financial Health Table */}
               <Card className="border-slate-200 dark:border-slate-800 shadow-md overflow-hidden">
-                <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
+                <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <CardTitle className="text-base font-bold flex items-center gap-2">
                     <Building2 className="h-5 w-5 text-indigo-500" /> Project Realization Ledger
                   </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={exportFinancialsToExcel} className="h-8 gap-1.5 bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 hover:text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:hover:bg-emerald-900/50">
+                      <FileSpreadsheet className="h-4 w-4" />
+                      Export Excel
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={exportFinancialsToPDF} className="h-8 gap-1.5 bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 hover:text-rose-700 dark:bg-rose-950/30 dark:border-rose-800 dark:hover:bg-rose-900/50">
+                      <FileText className="h-4 w-4" />
+                      Export PDF
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
@@ -701,14 +1498,24 @@ export function ReportsDashboard({
 
               {/* Detailed Labour Wage & Advance Ledger */}
               <Card className="border-slate-200 dark:border-slate-800 shadow-md overflow-hidden">
-                <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between">
+                <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <CardTitle className="text-base font-bold flex items-center gap-2">
                       <Users className="h-5 w-5 text-indigo-500" /> Labourer Wage & Advance Payout Matrix
                     </CardTitle>
                     <CardDescription>Individual worker hajaris, daily wage rates, gross earnings and pending balances</CardDescription>
                   </div>
-                  <Badge variant="outline" className="font-mono">{labourMatrixList.length} Active Labours</Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="font-mono mr-2">{labourMatrixList.length} Active Labours</Badge>
+                    <Button variant="outline" size="sm" onClick={exportLabourToExcel} className="h-8 gap-1.5 bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 hover:text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:hover:bg-emerald-900/50">
+                      <FileSpreadsheet className="h-4 w-4" />
+                      Export Excel
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={exportLabourToPDF} className="h-8 gap-1.5 bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 hover:text-rose-700 dark:bg-rose-950/30 dark:border-rose-800 dark:hover:bg-rose-900/50">
+                      <FileText className="h-4 w-4" />
+                      Export PDF
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto max-h-[450px]">
@@ -803,10 +1610,20 @@ export function ReportsDashboard({
 
               {/* Supervisor Payroll Table */}
               <Card className="border-slate-200 dark:border-slate-800 shadow-md overflow-hidden">
-                <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
+                <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <CardTitle className="text-base font-bold flex items-center gap-2">
                     <Briefcase className="h-5 w-5 text-indigo-500" /> Supervisor Monthly Compensation Registry
                   </CardTitle>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={exportSupervisorToExcel} className="h-8 gap-1.5 bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 hover:text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:hover:bg-emerald-900/50">
+                      <FileSpreadsheet className="h-4 w-4" />
+                      Export Excel
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={exportSupervisorToPDF} className="h-8 gap-1.5 bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 hover:text-rose-700 dark:bg-rose-950/30 dark:border-rose-800 dark:hover:bg-rose-900/50">
+                      <FileText className="h-4 w-4" />
+                      Export PDF
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
@@ -861,9 +1678,19 @@ export function ReportsDashboard({
                     </CardTitle>
                     <CardDescription>Full tax, TDS, retention deductions, and gross receivable details for all generated invoices</CardDescription>
                   </div>
-                  <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 border-0 font-mono">
-                    {filteredBills.length} Invoices
-                  </Badge>
+                  <div className="flex items-center gap-3">
+                    <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 border-0 font-mono">
+                      {filteredBills.length} Invoices
+                    </Badge>
+                    <Button variant="outline" size="sm" onClick={exportBillingToExcel} className="h-8 gap-1.5 bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 hover:text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:hover:bg-emerald-900/50">
+                      <FileSpreadsheet className="h-4 w-4" />
+                      Export Excel
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={exportBillingToPDF} className="h-8 gap-1.5 bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 hover:text-rose-700 dark:bg-rose-950/30 dark:border-rose-800 dark:hover:bg-rose-900/50">
+                      <FileText className="h-4 w-4" />
+                      Export PDF
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
