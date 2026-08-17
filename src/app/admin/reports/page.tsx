@@ -17,11 +17,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   } else if (range === "90d") {
     startDate = new Date();
     startDate.setDate(startDate.getDate() - 90);
-  } else if (range === "fy") {
+  } else if (range === "fy" || range === "all") {
+    // Both FY and All Time use current Financial Year to prevent heap crashes
+    // "All Time" across 600K+ records will crash Node.js — cap at FY
     const currentYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
     startDate = new Date(currentYear, 3, 1); // April 1st
-  } else if (range === "all") {
-    startDate = new Date(2000, 0, 1); // Way back
   }
 
   const [

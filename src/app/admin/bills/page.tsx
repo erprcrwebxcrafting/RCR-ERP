@@ -10,10 +10,19 @@ export const dynamic = 'force-dynamic';
 export default async function AllBillsPage() {
   // Fetch all sites with their bills
   const sites = await prisma.site.findMany({
-    include: {
-      client: true,
+    select: {
+      id: true,
+      projectName: true,
+      client: { select: { name: true } },
       bills: {
-        include: { lines: true },
+        select: {
+          id: true,
+          billNo: true,
+          billDate: true,
+          createdAt: true,
+          status: true,
+          lines: { select: { currentAmount: true } },
+        },
         orderBy: { createdAt: "desc" },
       },
     },

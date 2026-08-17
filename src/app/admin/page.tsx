@@ -18,7 +18,7 @@ export default async function AdminDashboard() {
     prisma.payment.aggregate({ _sum: { amount: true } }),
     // ✅ Only last 10 bills for chart (not all 1,160)
     prisma.runningBill.findMany({
-      include: { lines: { select: { currentAmount: true } }, site: { select: { projectName: true } } },
+      select: { id: true, billDate: true, lines: { select: { currentAmount: true } }, site: { select: { projectName: true } } },
       orderBy: { billDate: "desc" },
       take: 50,
     }),
