@@ -19,63 +19,95 @@ export default async function ReportsPage() {
     supplyEntries,
   ] = await Promise.all([
     prisma.site.findMany({
-      include: { client: true, buildings: true },
+      select: {
+        id: true,
+        projectName: true,
+        client: { select: { name: true } }
+      },
       orderBy: { projectName: "asc" },
     }),
-    // ✅ All bills OK — only 1,160 total, small
     prisma.runningBill.findMany({
-      include: {
-        site: { include: { client: true } },
-        lines: true,
-        supplyLabourEntries: true,
+      select: {
+        id: true,
+        billNo: true,
+        billDate: true,
+        siteId: true,
+        site: { select: { projectName: true, client: { select: { name: true } } } },
+        lines: { select: { currentAmount: true } },
       },
       orderBy: { billDate: "desc" },
     }),
-    // ✅ All payments OK — only 1,160 total
     prisma.payment.findMany({
-      include: { site: true },
+      select: {
+        id: true,
+        amount: true,
+        date: true,
+        siteId: true,
+      },
       orderBy: { date: "desc" },
     }),
-    // ✅ Labours without full payment history (too heavy)
     prisma.labour.findMany({
-      include: {
-        labourCategory: true,
-        site: true,
+      select: {
+        id: true,
+        name: true,
+        dailyWage: true,
+        active: true,
+        siteId: true,
+        labourCategory: { select: { name: true } },
         payments: {
+          select: { amount: true, date: true },
           orderBy: { date: "desc" },
-          take: 12, // last 12 payments only per labour
+          take: 12,
         },
       },
       orderBy: { name: "asc" },
     }),
-    // ✅ Supervisors with only current year attendances
     prisma.user.findMany({
       where: { role: "SUPERVISOR" },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        monthlySalary: true,
         supervisorAttendances: {
           where: { date: { gte: yearStart, lte: yearEnd } },
+          select: { date: true, status: true, earnedAmount: true },
           orderBy: { date: "desc" },
         },
         supervisorPayments: {
+          select: { amount: true, date: true },
           orderBy: { date: "desc" },
-          take: 24, // last 24 payments only
+          take: 24,
         },
-        assignedSites: true,
       },
       orderBy: { name: "asc" },
     }),
-    // ✅ Attendance: current year only (was loading ALL 610K rows!)
     prisma.attendance.findMany({
       where: { date: { gte: yearStart, lte: yearEnd } },
-      include: {
-        site: true,
-        labour: { include: { labourCategory: true } },
+      select: {
+        id: true,
+        date: true,
+        hajari: true,
+        hajariRate: true,
+        overtimeHours: true,
+        overtimeRate: true,
+        siteId: true,
+        labourId: true,
+        labour: {
+          select: {
+            dailyWage: true,
+            labourCategory: { select: { name: true } }
+          }
+        }
       },
       orderBy: { date: "desc" },
     }),
-    // ✅ Supply entries: all OK — only 1,160 total
     prisma.supplyLabourEntry.findMany({
-      include: { site: true },
+      select: {
+        id: true,
+        date: true,
+        totalAmount: true,
+        siteId: true,
+      },
       orderBy: { date: "desc" },
     }),
   ]);

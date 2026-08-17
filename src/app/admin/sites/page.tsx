@@ -9,11 +9,22 @@ export const dynamic = 'force-dynamic';
 
 export default async function SitesPage() {
   const sites = await prisma.site.findMany({
-    include: { 
-      client: true, 
-      buildings: { include: { workItems: true } },
-      _count: { select: { buildings: true, workItems: true, labours: true } } as any
-    } as any,
+    select: {
+      id: true,
+      projectName: true,
+      client: { select: { name: true } },
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      _count: { select: { buildings: true, workItems: true, labours: true } },
+      buildings: {
+        select: {
+          workItems: {
+            select: { partAmount: true, buWork: true, rate: true, previousPct: true, previousAmt: true }
+          }
+        }
+      }
+    },
     orderBy: { createdAt: "desc" },
   });
 
