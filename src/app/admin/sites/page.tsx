@@ -1,14 +1,22 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Plus, Building2, HardHat, Pickaxe, MapPin, ChevronRight, Activity } from "lucide-react";
+import { Plus, Building2, HardHat, Pickaxe, MapPin, ChevronRight, Activity, ChevronLeft } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 export const dynamic = 'force-dynamic';
 
-export default async function SitesPage() {
-  const sites = await prisma.site.findMany({
+export default async function SitesPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const resolvedParams = await searchParams;
+  const page = Math.max(1, parseInt(resolvedParams.page || "1", 10));
+  const PAGE_SIZE = 15;
+
+  const [totalSites, sites] = await Promise.all([
+    prisma.site.count(),
+    prisma.site.findMany({
+      take: PAGE_SIZE,
+      skip: (page - 1) * PAGE_SIZE,
     select: {
       id: true,
       projectName: true,
@@ -26,7 +34,7 @@ export default async function SitesPage() {
       }
     },
     orderBy: { createdAt: "desc" },
-  });
+  })]);
 
   const sitesWithProgress = sites.map((s: any) => {
     let totalAllocatedValue = 0;
@@ -155,6 +163,41 @@ export default async function SitesPage() {
           </div>
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {totalSites > PAGE_SIZE && (
+        <div className="mt-8 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-6">
+          <div className="text-sm text-slate-500 font-medium">
+            Showing <span className="font-bold text-slate-900 dark:text-white">{(page - 1) * PAGE_SIZE + 1}</span> to <span className="font-bold text-slate-900 dark:text-white">{Math.min(page * PAGE_SIZE, totalSites)}</span> of <span className="font-bold text-slate-900 dark:text-white">{totalSites}</span> sites
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              disabled={page <= 1}
+              className={page <= 1 ? "opacity-50 pointer-events-none" : ""}
+            >
+              <Link href={`/admin/sites?page=${page - 1}`}>
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              disabled={page * PAGE_SIZE >= totalSites}
+              className={page * PAGE_SIZE >= totalSites ? "opacity-50 pointer-events-none" : ""}
+            >
+              <Link href={`/admin/sites?page=${page + 1}`}>
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

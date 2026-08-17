@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import {
   BarChart,
   Bar,
@@ -57,6 +58,7 @@ interface ReportsDashboardProps {
   initialSupervisors: any[];
   initialAttendances: any[];
   initialSupplyEntries: any[];
+  initialRange: string;
 }
 
 const COLORS = ["#4f46e5", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
@@ -69,12 +71,21 @@ export function ReportsDashboard({
   initialSupervisors,
   initialAttendances,
   initialSupplyEntries,
+  initialRange,
 }: ReportsDashboardProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  
   const [selectedSiteId, setSelectedSiteId] = useState<string>("all");
-  const [timeRange, setTimeRange] = useState<"30d" | "90d" | "fy" | "all" | "custom">("all");
+  const [timeRange, setTimeRange] = useState<"30d" | "90d" | "fy" | "all" | "custom">(initialRange as any || "30d");
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"financial" | "labour" | "supervisor" | "billing">("financial");
+
+  const handleTimeRangeChange = (range: string) => {
+    setTimeRange(range as any);
+    router.push(`${pathname}?range=${range}`);
+  };
 
   // Date filtering logic
   const { effectiveStartDate, effectiveEndDate } = useMemo(() => {
@@ -1117,31 +1128,31 @@ export function ReportsDashboard({
             {/* Time Presets */}
             <div className="flex items-center rounded-xl bg-slate-900/80 p-1 border border-indigo-500/30 text-xs">
               <button
-                onClick={() => setTimeRange("all")}
-                className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                onClick={() => handleTimeRangeChange("all")}
+                className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
                   timeRange === "all" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
                 }`}
               >
                 All Time
               </button>
               <button
-                onClick={() => setTimeRange("fy")}
-                className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                onClick={() => handleTimeRangeChange("fy")}
+                className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
                   timeRange === "fy" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
                 }`}
               >
-                This FY
+                FY {new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1}-{new Date().getMonth() >= 3 ? new Date().getFullYear() + 1 : new Date().getFullYear()}
               </button>
               <button
-                onClick={() => setTimeRange("90d")}
-                className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                onClick={() => handleTimeRangeChange("90d")}
+                className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
                   timeRange === "90d" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
                 }`}
               >
                 90 Days
               </button>
               <button
-                onClick={() => setTimeRange("30d")}
+                onClick={() => handleTimeRangeChange("30d")}
                 className={`px-3 py-1 rounded-lg font-bold transition-all ${
                   timeRange === "30d" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
                 }`}
@@ -1149,7 +1160,7 @@ export function ReportsDashboard({
                 30 Days
               </button>
               <button
-                onClick={() => setTimeRange("custom")}
+                onClick={() => handleTimeRangeChange("custom")}
                 className={`px-3 py-1 rounded-lg font-bold transition-all ${
                   timeRange === "custom" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
                 }`}

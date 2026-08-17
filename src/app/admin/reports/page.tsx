@@ -3,11 +3,26 @@ import { ReportsDashboard } from "./reports-dashboard";
 
 export const dynamic = "force-dynamic";
 
-export default async function ReportsPage() {
-  // ✅ Limit to current year only — prevents loading all 610K historical records
-  const currentYear = new Date().getFullYear();
-  const yearStart = new Date(currentYear, 0, 1);
-  const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
+  const resolvedParams = await searchParams;
+  const range = resolvedParams.range || "30d";
+
+  const now = new Date();
+  let startDate = new Date(now.getFullYear(), 0, 1);
+  let endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+  if (range === "30d") {
+    startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+  } else if (range === "90d") {
+    startDate = new Date();
+    startDate.setDate(startDate.getDate() - 90);
+  } else if (range === "fy") {
+    const currentYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    startDate = new Date(currentYear, 3, 1); // April 1st
+  } else if (range === "all") {
+    startDate = new Date(2000, 0, 1); // Way back
+  }
 
   const [
     sites,
@@ -27,6 +42,7 @@ export default async function ReportsPage() {
       orderBy: { projectName: "asc" },
     }),
     prisma.runningBill.findMany({
+      where: { billDate: { gte: startDate, lte: endDate } },
       select: {
         id: true,
         billNo: true,
@@ -38,6 +54,7 @@ export default async function ReportsPage() {
       orderBy: { billDate: "desc" },
     }),
     prisma.payment.findMany({
+      where: { date: { gte: startDate, lte: endDate } },
       select: {
         id: true,
         amount: true,
@@ -69,7 +86,7 @@ export default async function ReportsPage() {
         name: true,
         monthlySalary: true,
         supervisorAttendances: {
-          where: { date: { gte: yearStart, lte: yearEnd } },
+          where: { date: { gte: startDate, lte: endDate } },
           select: { date: true, status: true, earnedAmount: true },
           orderBy: { date: "desc" },
         },
@@ -82,7 +99,7 @@ export default async function ReportsPage() {
       orderBy: { name: "asc" },
     }),
     prisma.attendance.findMany({
-      where: { date: { gte: yearStart, lte: yearEnd } },
+      where: { date: { gte: startDate, lte: endDate } },
       select: {
         id: true,
         date: true,
@@ -101,6 +118,7 @@ export default async function ReportsPage() {
       orderBy: { date: "desc" },
     }),
     prisma.supplyLabourEntry.findMany({
+      where: { date: { gte: startDate, lte: endDate } },
       select: {
         id: true,
         date: true,
@@ -114,6 +132,7 @@ export default async function ReportsPage() {
 
   return (
     <ReportsDashboard
+      initialRange={range}
       initialSites={JSON.parse(JSON.stringify(sites))}
       initialBills={JSON.parse(JSON.stringify(bills))}
       initialPayments={JSON.parse(JSON.stringify(payments))}
