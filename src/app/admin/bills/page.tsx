@@ -4,10 +4,13 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { formatDate, formatINR } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Building2, ChevronDown, Receipt, Building } from "lucide-react";
+import { getFinancialYearDates } from "@/lib/get-fy";
 
 export const dynamic = 'force-dynamic';
 
 export default async function AllBillsPage() {
+  const { startDate, endDate } = await getFinancialYearDates();
+
   // Fetch all sites with their bills
   const sites = await prisma.site.findMany({
     select: {
@@ -15,6 +18,7 @@ export default async function AllBillsPage() {
       projectName: true,
       client: { select: { name: true } },
       bills: {
+        where: { billDate: { gte: startDate, lte: endDate } },
         select: {
           id: true,
           billNo: true,

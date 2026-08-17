@@ -6,23 +6,32 @@ import { DashboardChart } from "./dashboard-chart";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { getFinancialYearDates } from "@/lib/get-fy";
 
 export default async function AdminDashboard() {
+  const { startDate, endDate } = await getFinancialYearDates();
+
   const [clients, sites, supervisors, labours, billAmountAgg, payments, recentBills, totalBillsCount] = await Promise.all([
-    prisma.client.count(),
-    prisma.site.count({ where: { active: true } }),
-    prisma.user.count({ where: { role: "SUPERVISOR" } }),
-    prisma.labour.count({ where: { active: true } }),
-    // ✅ DB-level sum — no need to load all bill lines in memory
-    prisma.billLine.aggregate({ _sum: { currentAmount: true } }),
-    prisma.payment.aggregate({ _sum: { amount: true } }),
-    // ✅ Only last 10 bills for chart (not all 1,160)
+    prisma.client.count({ where: { createdAt: { lte: endDate } } }),
+    prisma.site.count({ where: { active: true, createdAt: { lte: endDate } } }),
+    prisma.user.count({ where: { role: "SUPERVISOR", createdAt: { lte: endDate } } }),
+    prisma.labour.count({ where: { active: true, createdAt: { lte: endDate } } }),
+    // DB-level sum
+    prisma.billLine.aggregate({ 
+      where: { runningBill: { billDate: { gte: startDate, lte: endDate } } },
+      _sum: { currentAmount: true } 
+    }),
+    prisma.payment.aggregate({ 
+      where: { date: { gte: startDate, lte: endDate } },
+      _sum: { amount: true } 
+    }),
     prisma.runningBill.findMany({
+      where: { billDate: { gte: startDate, lte: endDate } },
       select: { id: true, billDate: true, lines: { select: { currentAmount: true } }, site: { select: { projectName: true } } },
       orderBy: { billDate: "desc" },
       take: 50,
     }),
-    prisma.runningBill.count(),
+    prisma.runningBill.count({ where: { billDate: { gte: startDate, lte: endDate } } }),
   ]);
 
   const totalBilled = billAmountAgg._sum.currentAmount ?? 0;

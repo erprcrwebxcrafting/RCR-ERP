@@ -1,15 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import { ReportsDashboard } from "./reports-dashboard";
+import { getFinancialYearDates } from "@/lib/get-fy";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
   const resolvedParams = await searchParams;
-  const range = resolvedParams.range || "30d";
+  const range = resolvedParams.range || "fy";
 
-  const now = new Date();
-  let startDate = new Date(now.getFullYear(), 0, 1);
-  let endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+  const { startDate: fyStart, endDate: fyEnd, isAllTime } = await getFinancialYearDates();
+  
+  let startDate = fyStart;
+  let endDate = fyEnd;
 
   if (range === "30d") {
     startDate = new Date();
@@ -17,11 +19,6 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   } else if (range === "90d") {
     startDate = new Date();
     startDate.setDate(startDate.getDate() - 90);
-  } else if (range === "fy" || range === "all") {
-    // Both FY and All Time use current Financial Year to prevent heap crashes
-    // "All Time" across 600K+ records will crash Node.js — cap at FY
-    const currentYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
-    startDate = new Date(currentYear, 3, 1); // April 1st
   }
 
   const [
@@ -116,6 +113,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         }
       },
       orderBy: { date: "desc" },
+      take: isAllTime ? 15000 : undefined,
     }),
     prisma.supplyLabourEntry.findMany({
       where: { date: { gte: startDate, lte: endDate } },

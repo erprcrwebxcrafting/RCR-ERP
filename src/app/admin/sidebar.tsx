@@ -8,6 +8,7 @@ import {
   ClipboardList, Receipt, FileText, BarChart3, Settings,
   Menu, X
 } from "lucide-react";
+import { YearSelector } from "@/components/year-selector";
 
 const nav = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -110,6 +111,9 @@ export function AdminSidebar({
           </div>
         </div>
         
+        <div className="px-3 pb-4">
+          <YearSelector />
+        </div>
         {logoutButton}
       </div>
     </>

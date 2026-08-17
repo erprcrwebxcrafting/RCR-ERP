@@ -9,9 +9,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Trash2, FileText, Search, ExternalLink } from "lucide-react";
 import { QuotationSendButtons } from "../sites/[id]/quotations/send-buttons";
 import { deleteQuotationAction } from "./actions";
-
+import { getFinancialYearDates } from "@/lib/get-fy";
 export default async function AllQuotationsPage() {
+  const { startDate, endDate } = await getFinancialYearDates();
+
   const quotations = await prisma.quotation.findMany({
+    where: { createdAt: { gte: startDate, lte: endDate } },
     include: { site: { include: { client: true } }, client: true },
     orderBy: { createdAt: "desc" },
   });

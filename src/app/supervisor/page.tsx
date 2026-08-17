@@ -4,6 +4,7 @@ import { startOfDay, endOfDay } from "date-fns";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, Building2, CalendarCheck, ArrowRight, UserCheck, ClipboardList } from "lucide-react";
+import { getFinancialYearDates } from "@/lib/get-fy";
 
 export default async function SupervisorHome() {
   const session = await auth();
@@ -12,6 +13,7 @@ export default async function SupervisorHome() {
 
   const todayStart = startOfDay(new Date());
   const todayEnd = endOfDay(new Date());
+  const { startDate, endDate } = await getFinancialYearDates();
 
   const [assignedSites, totalLabours, todayAttendances] = await Promise.all([
     prisma.siteSupervisor.findMany({

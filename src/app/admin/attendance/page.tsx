@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Search, Users, CheckCircle2, XCircle, Clock, Building, FileText, FileSpreadsheet, MapPin, CalendarDays, Filter, UserCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
+import { getFinancialYearDates } from "@/lib/get-fy";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
@@ -21,10 +22,23 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
   const startDateStr = resolvedParams.startDate || todayStr;
   const endDateStr = resolvedParams.endDate || todayStr;
 
+  const { startDate: fyStart, endDate: fyEnd } = await getFinancialYearDates();
+
   const startDate = new Date(startDateStr);
   startDate.setHours(0, 0, 0, 0);
   const endDate = new Date(endDateStr);
   endDate.setHours(23, 59, 59, 999);
+
+  // If user hasn't explicitly filtered by date, default to today within FY
+  // Note: Attendance page has its own date filter, which is fine, but we can constrain it to FY if needed.
+  // Actually, since it defaults to `today`, it usually doesn't load much anyway.
+  // We'll enforce that `startDate` cannot be before `fyStart`
+  if (startDate < fyStart) {
+    startDate.setTime(fyStart.getTime());
+  }
+  if (endDate > fyEnd) {
+    endDate.setTime(fyEnd.getTime());
+  }
 
   const sites = await prisma.site.findMany({
     where: { active: true },
