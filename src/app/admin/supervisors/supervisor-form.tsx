@@ -84,9 +84,18 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
   }
 
   function toggleSite(siteId: string) {
-    setSelectedSites((prev) =>
-      prev.includes(siteId) ? prev.filter((id) => id !== siteId) : [...prev, siteId]
-    );
+    setSelectedSites((prev) => {
+      if (prev.includes(siteId)) {
+        return prev.filter((id) => id !== siteId);
+      }
+      if (prev.length >= 3) {
+        toast.error("Site Limit Reached", {
+          description: "A supervisor can only manage a maximum of 3 sites simultaneously.",
+        });
+        return prev;
+      }
+      return [...prev, siteId];
+    });
   }
 
   const inputClass = "h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 shadow-sm";

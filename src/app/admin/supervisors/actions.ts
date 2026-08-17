@@ -1,7 +1,7 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import bcrypt from "bcryptjs";
+import { hashPassword } from "@/lib/hash-password";
 
 export async function createSupervisor(formData: FormData) {
   const name = (formData.get("name") as string || "").trim();
@@ -59,7 +59,7 @@ export async function createSupervisor(formData: FormData) {
     throw new Error(`A user with email "${email}" already exists. Please use a unique email.`);
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await hashPassword(password);
   const supervisor = await prisma.user.create({ 
     data: { 
       name, 
@@ -77,6 +77,11 @@ export async function createSupervisor(formData: FormData) {
       bankBranch,
     } 
   });
+
+  // ✅ Max 3 active sites validation
+  if (siteIds.length > 3) {
+    throw new Error("A supervisor can only manage a maximum of 3 sites simultaneously. Please reduce the number of assigned sites.");
+  }
 
   // Create site assignments
   if (siteIds.length > 0) {
@@ -164,7 +169,12 @@ export async function updateSupervisor(id: string, formData: FormData) {
   };
 
   if (password && password.trim() !== "") {
-    data.passwordHash = await bcrypt.hash(password, 10);
+    data.passwordHash = await hashPassword(password);
+  }
+
+  // ✅ Max 3 active sites validation
+  if (siteIds.length > 3) {
+    throw new Error("A supervisor can only manage a maximum of 3 sites simultaneously. Please reduce the number of assigned sites.");
   }
 
   await prisma.user.update({

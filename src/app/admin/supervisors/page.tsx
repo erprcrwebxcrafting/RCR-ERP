@@ -35,7 +35,9 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
         monthlySalary: true,
         dateOfJoining: true,
         // ✅ NO passwordHash, aadharNumber, accountNumber, ifscCode, bankName etc.
+        // ✅ Only show currently ACTIVE site assignments
         assignedSites: {
+          where: { site: { active: true } },
           select: {
             siteId: true,
             site: { select: { id: true, projectName: true } }
@@ -195,16 +197,21 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
               </div>
 
               <div className="pt-2 border-t border-dashed border-slate-200 dark:border-slate-700">
-                <div className="text-xs uppercase font-semibold text-slate-500 dark:text-slate-400 mb-2 flex items-center">
-                  <Building2 className="h-3.5 w-3.5 mr-1" /> Assigned Sites ({s.assignedSites.length})
+                <div className="text-xs uppercase font-semibold text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1">
+                  <Building2 className="h-3.5 w-3.5" /> Active Sites ({s.assignedSites.length})
                 </div>
                 {s.assignedSites.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
-                    {s.assignedSites.map((a: any) => (
-                      <span key={a.id} className="inline-flex items-center rounded-md bg-blue-500/10 px-2 py-1 text-xs font-semibold text-blue-700 border border-blue-500/20 dark:text-blue-400">
+                    {s.assignedSites.slice(0, 2).map((a: any) => (
+                      <span key={a.siteId} className="inline-flex items-center rounded-full bg-blue-500/10 px-2.5 py-1 text-xs font-semibold text-blue-700 border border-blue-500/20 dark:text-blue-400 truncate max-w-[130px]" title={a.site.projectName}>
                         {a.site.projectName}
                       </span>
                     ))}
+                    {s.assignedSites.length > 2 && (
+                      <span className="inline-flex items-center rounded-full bg-slate-200 dark:bg-slate-700 px-2.5 py-1 text-xs font-bold text-slate-600 dark:text-slate-300">
+                        +{s.assignedSites.length - 2} more
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <div className="text-sm text-slate-400 dark:text-slate-500 italic">No active site assignments</div>

@@ -1,9 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Building2, ShieldCheck } from "lucide-react";
+import { Settings, Building2, ShieldCheck, KeyRound } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { SettingsForm } from "./settings-form";
+import { ChangePasswordForm } from "./change-password-form";
+import { auth } from "@/auth";
 
 export default async function SettingsPage() {
+  const session = await auth();
+  const adminEmail = session?.user?.email || "";
+
   const globalSettings = await prisma.globalSettings.findUnique({
     where: { id: "global" },
   });
@@ -62,6 +67,24 @@ export default async function SettingsPage() {
             <div className="mt-6 p-4 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
               <p className="text-xs text-center text-slate-500 font-bold uppercase tracking-widest">Update Pending</p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Change Admin Password Card */}
+        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+               <div className="h-10 w-10 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 flex items-center justify-center text-rose-600 dark:text-rose-400">
+                  <KeyRound className="h-5 w-5" />
+               </div>
+               <div>
+                 <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-100">Change Password</CardTitle>
+                 <p className="text-xs text-slate-500 mt-0.5">OTP-secured admin password reset</p>
+               </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ChangePasswordForm adminEmail={adminEmail} />
           </CardContent>
         </Card>
 
