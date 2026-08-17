@@ -88,7 +88,7 @@ export default async function ReportsPage() {
         date: true,
         hajari: true,
         hajariRate: true,
-        overtimeHours: true,
+        overtimeHrs: true,
         overtimeRate: true,
         siteId: true,
         labourId: true,
