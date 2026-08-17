@@ -3,6 +3,7 @@ import { useState, useTransition } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/password-input";
 import { Label } from "@/components/ui/label";
 import { Edit, X, User, Mail, Phone, IndianRupee, MapPin, CreditCard, Building2, Calendar, Landmark, Hash, Lock, ChevronDown, Save } from "lucide-react";
 import { updateSupervisor } from "./actions";
@@ -27,6 +28,7 @@ export function EditSupervisorForm({ supervisor, allSites = [] }: { supervisor: 
     const aadharNumber = (formData.get("aadharNumber") as string)?.trim();
     const ifscCode = (formData.get("ifscCode") as string)?.trim();
     const salaryStr = (formData.get("monthlySalary") as string)?.trim();
+    const newPassword = (formData.get("password") as string)?.trim();
 
     if (!name || name.length < 2) {
       toast.error("Supervisor name is required (minimum 2 characters).");
@@ -61,6 +63,17 @@ export function EditSupervisorForm({ supervisor, allSites = [] }: { supervisor: 
       const salaryCheck = validatePositiveNumber(salaryStr, "Monthly Salary", true);
       if (!salaryCheck.valid) {
         toast.error(salaryCheck.error);
+        return;
+      }
+    }
+
+    // If admin is setting a new password, validate its strength
+    if (newPassword) {
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{}|;':",.\/<>?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{}|;':",.\/<>?]{8,}$/;
+      if (!passwordRegex.test(newPassword)) {
+        toast.error("Weak Password", {
+          description: "Must be at least 8 characters with uppercase, lowercase, a number, and a special character (!@#$...)."
+        });
         return;
       }
     }
@@ -271,12 +284,19 @@ export function EditSupervisorForm({ supervisor, allSites = [] }: { supervisor: 
               </div>
             )}
 
-            {/* Password Section */}
-            <div className="space-y-1.5">
+            {/* Password Reset Section */}
+            <div className="space-y-1.5 rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50/50 dark:bg-amber-900/10 p-4">
               <Label className={labelClass}>
-                <Lock className="h-3.5 w-3.5 text-purple-500" /> New Password (leave blank to keep current)
+                <Lock className="h-3.5 w-3.5 text-amber-600" /> Reset Login Password (optional)
               </Label>
-              <Input name="password" type="password" placeholder="••••••••" className={inputClass} />
+              <PasswordInput 
+                name="password" 
+                placeholder="Leave blank to keep current password" 
+                className={inputClass} 
+              />
+              <p className="text-[11px] text-amber-600/80 dark:text-amber-400/80 mt-1">
+                Only fill this if you want to reset the supervisor's login password.
+              </p>
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">

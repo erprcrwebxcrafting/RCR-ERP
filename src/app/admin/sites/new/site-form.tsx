@@ -56,6 +56,7 @@ export function SiteForm({ clients, allSupervisors = [] }: { clients: Client[]; 
         await createSite(formData);
         toast.success("Site project created successfully!");
       } catch (err: any) {
+        if (err?.message === "NEXT_REDIRECT") throw err;
         toast.error("Failed to create site", {
           description: err?.message || "Please check inputs and retry.",
         });

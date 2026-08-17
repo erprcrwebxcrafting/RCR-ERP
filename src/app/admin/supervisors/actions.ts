@@ -59,6 +59,12 @@ export async function createSupervisor(formData: FormData) {
     throw new Error(`A user with email "${email}" already exists. Please use a unique email.`);
   }
 
+  // ✅ Enforce strong password policy
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{}|;':",./<>?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{}|;':",./<>?]{8,}$/;
+  if (!password || !passwordRegex.test(password)) {
+    throw new Error("Password must be at least 8 characters with uppercase, lowercase, a number, and a special character.");
+  }
+
   const passwordHash = await hashPassword(password);
   const supervisor = await prisma.user.create({ 
     data: { 
@@ -169,7 +175,12 @@ export async function updateSupervisor(id: string, formData: FormData) {
   };
 
   if (password && password.trim() !== "") {
-    data.passwordHash = await hashPassword(password);
+    // ✅ Enforce strong password policy
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{}|;':",./<>?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{}|;':",./<>?]{8,}$/;
+    if (!passwordRegex.test(password.trim())) {
+      throw new Error("Password must be at least 8 characters with uppercase, lowercase, a number, and a special character.");
+    }
+    data.passwordHash = await hashPassword(password.trim());
   }
 
   // ✅ Max 3 active sites validation

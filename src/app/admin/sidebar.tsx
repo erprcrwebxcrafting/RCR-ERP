@@ -25,10 +25,12 @@ const nav = [
 
 export function AdminSidebar({ 
   userName, 
-  logoutButton 
+  logoutButton,
+  earliestYear
 }: { 
   userName?: string | null,
-  logoutButton: React.ReactNode
+  logoutButton: React.ReactNode,
+  earliestYear?: number
 }) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
@@ -112,7 +114,7 @@ export function AdminSidebar({
         </div>
         
         <div className="px-3 pb-4">
-          <YearSelector />
+          <YearSelector earliestYear={earliestYear} />
         </div>
         {logoutButton}
       </div>

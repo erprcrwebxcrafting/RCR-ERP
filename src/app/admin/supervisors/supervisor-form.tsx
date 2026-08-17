@@ -3,6 +3,7 @@ import { useState, useTransition } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/password-input";
 import { Label } from "@/components/ui/label";
 import { Plus, X, User, Mail, Phone, Lock, IndianRupee, MapPin, CreditCard, Building2, Calendar, Landmark, Hash, ChevronDown, UserPlus } from "lucide-react";
 import { createSupervisor } from "./actions";
@@ -26,6 +27,7 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
     const aadharNumber = (formData.get("aadharNumber") as string)?.trim();
     const ifscCode = (formData.get("ifscCode") as string)?.trim();
     const salaryStr = (formData.get("monthlySalary") as string)?.trim();
+    const password = (formData.get("password") as string)?.trim();
 
     if (!name || name.length < 2) {
       toast.error("Supervisor name is required (minimum 2 characters).");
@@ -62,6 +64,19 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
         toast.error(salaryCheck.error);
         return;
       }
+    }
+
+    // Password validation
+    if (!password) {
+      toast.error("Password is required.");
+      return;
+    }
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{}|;':",.\/<>?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{}|;':",.\/<>?]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      toast.error("Weak Password", {
+        description: "Must be at least 8 characters with uppercase, lowercase, a number, and a special character (!@#$...)."
+      });
+      return;
     }
 
     // Append selected site IDs
@@ -270,11 +285,17 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
               </div>
             )}
 
+            {/* Password Section */}
             <div className="space-y-1.5">
               <Label className={labelClass}>
-                <Lock className="h-3.5 w-3.5 text-purple-500" /> Temporary Password
+                <Lock className="h-3.5 w-3.5 text-purple-500" /> Login Password *
               </Label>
-              <Input name="password" placeholder="supervisor123" className={inputClass} />
+              <PasswordInput
+                name="password"
+                required
+                placeholder="Type a strong password"
+                className={inputClass}
+              />
             </div>
 
             <div className="pt-2">

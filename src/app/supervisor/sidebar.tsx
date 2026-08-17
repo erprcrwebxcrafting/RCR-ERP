@@ -16,10 +16,12 @@ const nav = [
 
 export function SupervisorSidebar({ 
   userName, 
-  logoutButton 
+  logoutButton,
+  earliestYear
 }: { 
   userName?: string | null,
-  logoutButton: React.ReactNode
+  logoutButton: React.ReactNode,
+  earliestYear?: number
 }) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
@@ -95,7 +97,7 @@ export function SupervisorSidebar({
         
         <div className="flex flex-col gap-2 mt-auto pt-4 border-t border-slate-800">
           <div className="px-3 pb-2">
-            <YearSelector />
+            <YearSelector earliestYear={earliestYear} />
           </div>
           {logoutButton}
         </div>

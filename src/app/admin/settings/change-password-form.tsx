@@ -2,6 +2,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/password-input";
 import { Label } from "@/components/ui/label";
 import { KeyRound, ShieldCheck, Eye, EyeOff, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -96,17 +97,13 @@ export function ChangePasswordForm({ adminEmail }: { adminEmail: string }) {
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">New Password</Label>
-            <div className="relative">
-              <Input
-                value={newPass} onChange={(e) => setNewPass(e.target.value)}
-                type={showPass ? "text" : "password"}
-                placeholder="Min 8 chars, A-Z, a-z, 0-9, !@#"
-                className="h-11 rounded-xl pr-10"
-              />
-              <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
+            <PasswordInput
+              value={newPass} 
+              onChange={(e) => setNewPass(e.target.value)}
+              required
+              placeholder="Min 8 chars, A-Z, a-z, 0-9, !@#"
+              className="h-11 rounded-xl"
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Confirm Password</Label>

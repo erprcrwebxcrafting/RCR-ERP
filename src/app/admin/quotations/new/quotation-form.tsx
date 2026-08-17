@@ -72,6 +72,7 @@ export function QuotationForm({
         await action(formData);
         toast.success("Quotation generated successfully!");
       } catch (err: any) {
+        if (err?.message === "NEXT_REDIRECT") throw err;
         toast.error("Failed to generate quotation", {
           description: err?.message || "Please check inputs and retry.",
         });

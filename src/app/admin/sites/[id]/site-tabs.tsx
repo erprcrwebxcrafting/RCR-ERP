@@ -8,23 +8,28 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatINR, formatDate } from "@/lib/utils";
 import Link from "next/link";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import {
   addLabourCategoryAction, addLabourerAction, assignSupervisorAction,
   unassignSupervisorAction, calculateLabourPaymentAction, approveLabourEntryAction
 } from "./actions";
+import { updateSiteTaxSettingsAction } from "../actions";
 import { TowerWorkManager } from "./components/tower-work-manager";
 import { SupplyLabourManager } from "./components/supply-labour-manager";
 import { RABillViewer } from "./components/ra-bill-viewer";
 import { SiteBalanceSheet } from "./components/site-balance-sheet";
 import { 
   Building2, Hammer, Users, Banknote, UserCheck, Receipt, FileText, 
-  MapPin, Percent, FileCheck, CircleDollarSign, CalendarDays, Contact2, Trash2, HardHat
+  MapPin, Percent, FileCheck, CircleDollarSign, CalendarDays, Contact2, Trash2, HardHat, Edit2
 } from "lucide-react";
 
 const tabTrigger =
   "px-4 py-2 text-sm font-medium text-muted-foreground border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground transition-colors";
 
 export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: any[] }) {
+  const [isPending, startTransition] = useTransition();
+  const [isEditingTaxes, setIsEditingTaxes] = useState(false);
   const assignedIds = new Set(site.supervisors.map((s: any) => s.supervisorId));
   const availableSupervisors = allSupervisors.filter((s) => !assignedIds.has(s.id));
 
@@ -108,15 +113,69 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
 
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
-            <CardHeader className="flex flex-row items-center gap-2 pb-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="text-sm font-medium text-muted-foreground">Address & Project Info</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-muted-foreground">Address & Project Info</CardTitle>
+              </div>
+              {(site.bills?.length || 0) === 0 && !isEditingTaxes && (
+                <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setIsEditingTaxes(true)}>
+                  <Edit2 className="h-3 w-3 mr-1" /> Edit Taxes
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="text-sm space-y-2">
               <p><span className="font-semibold">Address:</span> {site.address || "No address provided."}</p>
               <p><span className="font-semibold">GST No:</span> {site.gstNo || "—"}</p>
               <p><span className="font-semibold">Work Order No:</span> {site.workOrderNo || "—"}</p>
-              <p><span className="font-semibold">Retention:</span> {site.retentionPct}%</p>
+              
+              {isEditingTaxes ? (
+                <form 
+                  action={(formData) => {
+                    startTransition(async () => {
+                      try {
+                        await updateSiteTaxSettingsAction(site.id, formData);
+                        toast.success("Tax settings updated successfully!");
+                        setIsEditingTaxes(false);
+                      } catch (err: any) {
+                        toast.error(err.message || "Failed to update tax settings");
+                      }
+                    });
+                  }}
+                  className="mt-4 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 space-y-3"
+                >
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Retention %</label>
+                      <Input name="retentionPct" type="number" step="0.1" defaultValue={site.retentionPct ?? 2} className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">CGST %</label>
+                      <Input name="cgstPct" type="number" step="0.1" defaultValue={site.cgstPct ?? 9} className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">SGST %</label>
+                      <Input name="sgstPct" type="number" step="0.1" defaultValue={site.sgstPct ?? 9} className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">TDS %</label>
+                      <Input name="tdsPct" type="number" step="0.1" defaultValue={site.tdsPct ?? 1} className="h-8 text-sm" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end pt-1">
+                    <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setIsEditingTaxes(false)}>Cancel</Button>
+                    <Button type="submit" size="sm" className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700 text-white" disabled={isPending}>
+                      {isPending ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <div className="pt-1 mt-2 border-t border-slate-100 dark:border-slate-800">
+                  <p><span className="font-semibold text-slate-500">Retention:</span> {site.retentionPct}%</p>
+                  <p><span className="font-semibold text-slate-500">CGST/SGST:</span> {site.cgstPct}% / {site.sgstPct}%</p>
+                  <p><span className="font-semibold text-slate-500">TDS:</span> {site.tdsPct}%</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
