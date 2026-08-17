@@ -21,14 +21,23 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
         workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
         supplyLabourEntries: { orderBy: { date: "asc" } },
         labourCategories: { orderBy: { order: "asc" }, include: { labours: true } },
-        supervisors: { include: { supervisor: true } },
+        supervisors: { 
+          select: { 
+            supervisor: { select: { id: true, name: true, email: true, phone: true } }
+          } 
+        },
         bills: { orderBy: { createdAt: "desc" }, include: { lines: { orderBy: { order: "asc" } }, supplyLabourEntries: { orderBy: { date: "asc" } } } },
         quotations: { orderBy: { createdAt: "desc" } },
         payments: { orderBy: { date: "desc" } },
         labourEntries: { orderBy: { createdAt: "desc" } },
       },
     }),
-    prisma.user.findMany({ where: { role: "SUPERVISOR" }, orderBy: { name: "asc" } }),
+    // ✅ Only safe fields - no passwordHash, aadharNumber etc.
+    prisma.user.findMany({ 
+      where: { role: "SUPERVISOR" }, 
+      select: { id: true, name: true, email: true, phone: true },
+      orderBy: { name: "asc" } 
+    }),
     prisma.site.findMany({
       where: { active: true },
       select: {

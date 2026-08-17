@@ -15,13 +15,28 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
 
   const sites = await prisma.site.findMany({
     where: { active: true },
-    include: {
-      labourCategories: true,
-      supervisors: { include: { supervisor: true } },
+    select: {
+      id: true,
+      projectName: true,
+      labourCategories: {
+        select: { id: true, name: true, order: true }
+      },
+      // ✅ Only safe supervisor fields — no passwordHash etc.
+      supervisors: {
+        select: {
+          supervisor: { select: { id: true, name: true } }
+        }
+      },
       labours: {
-        include: {
-          labourCategory: true,
-          supervisor: true,
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          active: true,
+          joiningDate: true,
+          dailyWage: true,
+          labourCategory: { select: { id: true, name: true } },
+          supervisor: { select: { id: true, name: true } },
         },
         where: q ? {
           OR: [
@@ -31,7 +46,7 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
         } : undefined,
         orderBy: { createdAt: "desc" }
       }
-    } as any,
+    },
     orderBy: { projectName: "asc" },
   });
 

@@ -12,8 +12,17 @@ export default async function SupervisorAttendanceHubPage() {
   const [supervisors, allSites, attendances] = await Promise.all([
     prisma.user.findMany({
       where: { role: "SUPERVISOR" },
-      include: {
-        assignedSites: { include: { site: true } },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        active: true,
+        monthlySalary: true,
+        // ✅ NO passwordHash, aadharNumber, bankAccount etc.
+        assignedSites: {
+          select: { site: { select: { id: true, projectName: true } } }
+        },
         supervisorPayments: {
           select: { amount: true },
         },

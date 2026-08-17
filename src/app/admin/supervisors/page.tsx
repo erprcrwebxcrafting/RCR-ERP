@@ -25,7 +25,23 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
           ]
         } : {})
       },
-      include: { assignedSites: { include: { site: true } } },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        active: true,
+        createdAt: true,
+        monthlySalary: true,
+        dateOfJoining: true,
+        // ✅ NO passwordHash, aadharNumber, accountNumber, ifscCode, bankName etc.
+        assignedSites: {
+          select: {
+            siteId: true,
+            site: { select: { id: true, projectName: true } }
+          }
+        },
+      },
       orderBy: { createdAt: "desc" },
     }),
     prisma.site.findMany({

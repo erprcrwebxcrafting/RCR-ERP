@@ -29,9 +29,14 @@ export default async function LabourLedgerPage({ params }: { params: Promise<{ i
 
   const sites = await prisma.site.findMany({
     where: { active: true },
-    include: {
-      labourCategories: true,
-      supervisors: { include: { supervisor: true } },
+    select: {
+      id: true,
+      projectName: true,
+      labourCategories: { select: { id: true, name: true } },
+      // ✅ Only safe supervisor fields
+      supervisors: {
+        select: { supervisor: { select: { id: true, name: true } } }
+      },
     }
   });
 

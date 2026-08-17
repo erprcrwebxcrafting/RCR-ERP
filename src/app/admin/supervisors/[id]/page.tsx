@@ -34,12 +34,46 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
   const [supervisor, allSites] = await Promise.all([
     prisma.user.findUnique({
       where: { id: resolvedParams.id, role: "SUPERVISOR" },
-      include: {
-        supervisorPayments: { orderBy: { date: "desc" } },
-        assignedSites: { include: { site: true } },
-        supervisorTransfers: { include: { fromSite: true, toSite: true }, orderBy: { transferDate: "desc" } },
-        supervisorAttendances: { orderBy: { date: "desc" } },
-      } as any,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        active: true,
+        monthlySalary: true,
+        dateOfJoining: true,
+        address: true,
+        // ✅ Safe bank details only (needed for ledger display)
+        bankName: true,
+        accountNumber: true,
+        ifscCode: true,
+        bankBranch: true,
+        // ✅ NO passwordHash, NO aadharNumber sent to browser
+        supervisorPayments: {
+          select: { id: true, amount: true, date: true, mode: true, remarks: true },
+          orderBy: { date: "desc" }
+        },
+        assignedSites: {
+          select: {
+            siteId: true,
+            site: { select: { id: true, projectName: true } }
+          }
+        },
+        supervisorTransfers: {
+          select: {
+            id: true,
+            transferDate: true,
+            laboursTransferred: true,
+            fromSite: { select: { projectName: true } },
+            toSite: { select: { projectName: true } },
+          },
+          orderBy: { transferDate: "desc" }
+        },
+        supervisorAttendances: {
+          select: { id: true, date: true, status: true, earnedAmount: true, dailyRate: true },
+          orderBy: { date: "desc" }
+        },
+      },
     }),
     prisma.site.findMany({
       where: { active: true },
