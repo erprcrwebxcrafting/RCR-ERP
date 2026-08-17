@@ -171,6 +171,10 @@ model Labour {
   labourEntries    LabourEntry[]
   payments         LabourPayment[]
   transferHistory  LabourTransferHistory[]
+
+  @@index([siteId])
+  @@index([supervisorId])
+  @@index([active])
 }
 
 model LabourPayment {
@@ -182,6 +186,9 @@ model LabourPayment {
   reason        String?
   createdAt     DateTime @default(now())
   labour        Labour   @relation(fields: [labourId], references: [id], onDelete: Cascade)
+
+  @@index([labourId])
+  @@index([date])
 }
 
 model SupervisorPayment {
@@ -285,6 +292,10 @@ model RunningBill {
   lines               BillLine[]
   site                Site                @relation(fields: [siteId], references: [id], onDelete: Cascade)
   supplyLabourEntries SupplyLabourEntry[]
+
+  @@index([siteId])
+  @@index([billDate])
+  @@index([status])
 }
 
 model BillLine {
@@ -322,6 +333,9 @@ model Payment {
   remarks         String?
   createdAt       DateTime @default(now())
   site            Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([date])
 }
 
 model LabourTransferHistory {
