@@ -4,6 +4,11 @@ import { SupervisorAttendanceHub } from "./supervisor-attendance-hub";
 export const dynamic = "force-dynamic";
 
 export default async function SupervisorAttendanceHubPage() {
+  // ✅ Only load current month's attendance — NOT all 63,000+ historical records
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
   const [supervisors, allSites, attendances] = await Promise.all([
     prisma.user.findMany({
       where: { role: "SUPERVISOR" },
@@ -20,7 +25,9 @@ export default async function SupervisorAttendanceHubPage() {
       select: { id: true, projectName: true },
       orderBy: { projectName: "asc" },
     }),
+    // ✅ Only current month — ~40 records max (20 supervisors × ~30 days current month)
     prisma.supervisorAttendance.findMany({
+      where: { date: { gte: monthStart, lte: monthEnd } },
       orderBy: { date: "asc" },
     }),
   ]);
