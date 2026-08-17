@@ -1,25 +1,86 @@
 "use client";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, X, User, Mail, Phone, Lock, IndianRupee, MapPin, CreditCard, Building2, Calendar, Landmark, Hash, ChevronDown } from "lucide-react";
+import { Plus, X, User, Mail, Phone, Lock, IndianRupee, MapPin, CreditCard, Building2, Calendar, Landmark, Hash, ChevronDown, UserPlus } from "lucide-react";
 import { createSupervisor } from "./actions";
+import { toast } from "sonner";
+import { validatePhone, validateAadhar, validateIFSC, validateEmail, validatePositiveNumber } from "@/lib/validations";
 
 type SiteOption = { id: string; projectName: string };
 
 export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
   const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [selectedSites, setSelectedSites] = useState<string[]>([]);
   const [siteDropdownOpen, setSiteDropdownOpen] = useState(false);
 
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const name = (formData.get("name") as string)?.trim();
+    const email = (formData.get("email") as string)?.trim();
+    const phone = (formData.get("phone") as string)?.trim();
+    const aadharNumber = (formData.get("aadharNumber") as string)?.trim();
+    const ifscCode = (formData.get("ifscCode") as string)?.trim();
+    const salaryStr = (formData.get("monthlySalary") as string)?.trim();
+
+    if (!name || name.length < 2) {
+      toast.error("Supervisor name is required (minimum 2 characters).");
+      return;
+    }
+
+    const emailCheck = validateEmail(email, true);
+    if (!emailCheck.valid) {
+      toast.error(emailCheck.error);
+      return;
+    }
+
+    const phoneCheck = validatePhone(phone);
+    if (!phoneCheck.valid) {
+      toast.error(phoneCheck.error);
+      return;
+    }
+
+    const aadharCheck = validateAadhar(aadharNumber);
+    if (!aadharCheck.valid) {
+      toast.error(aadharCheck.error);
+      return;
+    }
+
+    const ifscCheck = validateIFSC(ifscCode);
+    if (!ifscCheck.valid) {
+      toast.error(ifscCheck.error);
+      return;
+    }
+
+    if (salaryStr) {
+      const salaryCheck = validatePositiveNumber(salaryStr, "Monthly Salary", true);
+      if (!salaryCheck.valid) {
+        toast.error(salaryCheck.error);
+        return;
+      }
+    }
+
     // Append selected site IDs
     selectedSites.forEach((id) => formData.append("siteIds[]", id));
-    await createSupervisor(formData);
-    setSelectedSites([]);
-    setOpen(false);
+
+    startTransition(async () => {
+      try {
+        await createSupervisor(formData);
+        toast.success("Supervisor account created successfully!", {
+          description: `${name} (${email}) has been registered.`,
+        });
+        setSelectedSites([]);
+        setOpen(false);
+      } catch (err: any) {
+        toast.error("Failed to create supervisor", {
+          description: err?.message || "Please check inputs and retry.",
+        });
+      }
+    });
   }
 
   function toggleSite(siteId: string) {
@@ -28,7 +89,7 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
     );
   }
 
-  const inputClass = "h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20";
+  const inputClass = "h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 shadow-sm";
   const labelClass = "text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5";
 
   return (
@@ -54,7 +115,7 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
             </Dialog.Close>
           </div>
 
-          <form action={handleSubmit} className="p-6 space-y-6">
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
             {/* Personal Details Section */}
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
@@ -77,15 +138,15 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className={labelClass}>
-                    <Phone className="h-3.5 w-3.5 text-emerald-500" /> Phone
+                    <Phone className="h-3.5 w-3.5 text-emerald-500" /> Phone (10 Digits)
                   </Label>
-                  <Input name="phone" placeholder="9876543210" className={inputClass} />
+                  <Input name="phone" maxLength={10} placeholder="9876543210" className={`${inputClass} font-mono`} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className={labelClass}>
                     <Calendar className="h-3.5 w-3.5 text-orange-500" /> Date of Joining
                   </Label>
-                  <Input name="dateOfJoining" type="date" className={inputClass} />
+                  <Input name="dateOfJoining" type="date" className={inputClass} defaultValue={new Date().toISOString().split("T")[0]} />
                 </div>
               </div>
 
@@ -99,15 +160,15 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className={labelClass}>
-                    <CreditCard className="h-3.5 w-3.5 text-violet-500" /> Aadhar Number
+                    <CreditCard className="h-3.5 w-3.5 text-violet-500" /> Aadhar Number (12 Digits)
                   </Label>
-                  <Input name="aadharNumber" placeholder="1234 5678 9012" className={inputClass} />
+                  <Input name="aadharNumber" maxLength={12} placeholder="1234 5678 9012" className={`${inputClass} font-mono`} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className={labelClass}>
-                    <IndianRupee className="h-3.5 w-3.5 text-rose-500" /> Monthly Salary
+                    <IndianRupee className="h-3.5 w-3.5 text-rose-500" /> Monthly Salary (₹)
                   </Label>
-                  <Input name="monthlySalary" type="number" placeholder="e.g. 30000" className={inputClass} />
+                  <Input name="monthlySalary" type="number" placeholder="e.g. 30000" className={`${inputClass} font-mono font-bold`} />
                 </div>
               </div>
             </div>
@@ -122,13 +183,13 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
                   <Label className={labelClass}>
                     <Hash className="h-3.5 w-3.5 text-blue-500" /> Account Number
                   </Label>
-                  <Input name="accountNumber" placeholder="Account No." className={inputClass} />
+                  <Input name="accountNumber" placeholder="Account No." className={`${inputClass} font-mono`} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className={labelClass}>
-                    <Hash className="h-3.5 w-3.5 text-indigo-500" /> IFSC Code
+                    <Hash className="h-3.5 w-3.5 text-indigo-500" /> IFSC Code (11 Chars)
                   </Label>
-                  <Input name="ifscCode" placeholder="e.g. ICIC0001234" className={inputClass} />
+                  <Input name="ifscCode" maxLength={11} placeholder="e.g. ICIC0001234" className={`${inputClass} font-mono uppercase`} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -147,72 +208,59 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
               </div>
             </div>
 
-            {/* Site Assignment Section */}
             {allSites.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-                  <Building2 className="h-4 w-4 text-indigo-500" /> Assign to Sites
-                </h3>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setSiteDropdownOpen(!siteDropdownOpen)}
-                    className="flex h-11 w-full items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 text-sm font-medium text-slate-700 dark:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 shadow-sm transition-all cursor-pointer"
-                  >
-                    <span className={selectedSites.length > 0 ? "" : "text-slate-400"}>
-                      {selectedSites.length > 0
-                        ? `${selectedSites.length} site${selectedSites.length > 1 ? "s" : ""} selected`
-                        : "Select sites to assign..."}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-indigo-500" /> Assign to Sites
+                  </h3>
+                  {selectedSites.length > 0 && (
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full border border-blue-200 dark:border-blue-800">
+                      {selectedSites.length} Selected
                     </span>
-                    <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${siteDropdownOpen ? "rotate-180" : ""}`} />
-                  </button>
-                  {siteDropdownOpen && (
-                    <div className="absolute z-20 mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl max-h-48 overflow-y-auto">
-                      {allSites.map((site) => (
-                        <button
-                          key={site.id}
-                          type="button"
-                          onClick={() => toggleSite(site.id)}
-                          className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${
-                            selectedSites.includes(site.id) ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-semibold" : "text-slate-700 dark:text-slate-300"
-                          }`}
-                        >
-                          <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${
-                            selectedSites.includes(site.id) ? "bg-blue-600 border-blue-600" : "border-slate-300 dark:border-slate-600"
-                          }`}>
-                            {selectedSites.includes(site.id) && (
-                              <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </div>
-                          <Building2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          {site.projectName}
-                        </button>
-                      ))}
-                    </div>
                   )}
                 </div>
-                {selectedSites.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedSites.map((siteId) => {
-                      const site = allSites.find((s) => s.id === siteId);
-                      return (
-                        <span key={siteId} className="inline-flex items-center gap-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-                          <Building2 className="h-3 w-3" />
-                          {site?.projectName}
-                          <button type="button" onClick={() => toggleSite(siteId)} className="ml-0.5 hover:text-red-500">
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto p-1">
+                  {allSites.map((site) => {
+                    const isSelected = selectedSites.includes(site.id);
+                    return (
+                      <button
+                        key={site.id}
+                        type="button"
+                        onClick={() => toggleSite(site.id)}
+                        className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-all duration-200 cursor-pointer ${
+                          isSelected
+                            ? "bg-blue-600/10 border-blue-500/50 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/30 font-semibold"
+                            : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        }`}
+                      >
+                        <div
+                          className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected
+                              ? "bg-blue-600 border-blue-600 text-white"
+                              : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900"
+                          }`}
+                        >
+                          {isSelected && (
+                            <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                        <Building2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                        <span className="text-xs truncate">{site.projectName}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {selectedSites.map((siteId) => (
+                  <input key={siteId} type="hidden" name="siteIds[]" value={siteId} />
+                ))}
               </div>
             )}
 
-            {/* Password Section */}
             <div className="space-y-1.5">
               <Label className={labelClass}>
                 <Lock className="h-3.5 w-3.5 text-purple-500" /> Temporary Password
@@ -221,8 +269,9 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
             </div>
 
             <div className="pt-2">
-              <Button type="submit" className="w-full h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md hover:shadow-lg transition-all active:scale-95">
-                Create Account
+              <Button type="submit" disabled={isPending} className="w-full h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md hover:shadow-lg transition-all active:scale-95 gap-2">
+                <UserPlus className="h-4 w-4" />
+                {isPending ? "Creating Account..." : "Create Account"}
               </Button>
             </div>
           </form>

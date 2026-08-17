@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, UserCheck, IndianRupee, MapPin, Mail, Phone, Building2 } from "lucide-react";
+import { Search, UserCheck, IndianRupee, MapPin, Mail, Phone, Building2, CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { SupervisorForm } from "./supervisor-form";
 import { EditSupervisorForm } from "./edit-supervisor-form";
@@ -61,7 +61,13 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
               Manage your site supervisors and view their assignments.
             </p>
           </div>
-          <div className="shrink-0">
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <Link href="/admin/supervisors/attendance">
+              <Button className="bg-white hover:bg-white/90 text-blue-700 font-black rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 gap-2 border border-white">
+                <CalendarDays className="h-4 w-4" />
+                Attendance Hub
+              </Button>
+            </Link>
             <SupervisorForm allSites={allSites} />
           </div>
         </div>

@@ -22,6 +22,40 @@ const labourSchema = z.object({
 
 export async function saveLabour(formData: FormData) {
   const parsed = labourSchema.parse(Object.fromEntries(formData));
+
+  if (!parsed.name || parsed.name.trim().length < 2) {
+    throw new Error("Labourer full name is required (minimum 2 characters).");
+  }
+
+  if (!parsed.siteId) {
+    throw new Error("Please select a construction site.");
+  }
+
+  if (!parsed.labourCategoryId) {
+    throw new Error("Please select a labour category / trade.");
+  }
+
+  if (parsed.phone && parsed.phone.trim()) {
+    const cleanedPhone = parsed.phone.replace(/\s+/g, "").replace(/^(\+91|91)/, "");
+    if (!/^[6-9]\d{9}$/.test(cleanedPhone)) {
+      throw new Error("Please enter a valid 10-digit Indian mobile number.");
+    }
+  }
+
+  if (parsed.aadharNumber && parsed.aadharNumber.trim()) {
+    const cleanedAadhar = parsed.aadharNumber.replace(/[\s-]+/g, "");
+    if (!/^\d{12}$/.test(cleanedAadhar)) {
+      throw new Error("Aadhar card number must be exactly 12 digits.");
+    }
+  }
+
+  if (parsed.ifscCode && parsed.ifscCode.trim()) {
+    const cleanedIFSC = parsed.ifscCode.trim().toUpperCase();
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanedIFSC)) {
+      throw new Error("Invalid IFSC Code format (e.g. ICIC0000884).");
+    }
+  }
+
   const data = {
     name: parsed.name,
     phone: parsed.phone || null,

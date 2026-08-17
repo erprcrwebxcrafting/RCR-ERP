@@ -35,9 +35,17 @@ export async function createIndependentQuotation(formData: FormData) {
   }
 
   if (!clientId) throw new Error("Please select a client or provide a new client name");
-  const subject = formData.get("subject") as string;
+  const subject = (formData.get("subject") as string || "").trim();
   const terms = formData.get("terms") as string;
   const exclusions = formData.get("exclusions") as string;
+
+  if (!projectName || projectName.trim().length < 2) {
+    throw new Error("Project name is required (minimum 2 characters).");
+  }
+
+  if (!subject || subject.length < 3) {
+    throw new Error("Quotation subject is required.");
+  }
 
   const descs = formData.getAll("itemDescription[]") as string[];
   const units = formData.getAll("itemUnit[]") as string[];

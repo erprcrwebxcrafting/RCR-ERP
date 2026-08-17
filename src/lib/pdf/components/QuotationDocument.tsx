@@ -279,8 +279,13 @@ export function QuotationDocument({ data }: { data: QuotationData }) {
   const logoUrl = data.logoUrl;
   const signUrl = data.signUrl;
   
-  // Re-format GST / Email as a single line address string similar to reference
-  const headerAddress = `GST No: ${data.companyGst}  |  Email: ${data.companyEmail}  |  Contact: ${data.companyPhone}`;
+  // Re-format GST / Email / Phone / Website as a clean header string
+  const headerAddress = [
+    data.companyGst ? `GST No: ${data.companyGst}` : "",
+    data.companyEmail ? `Email: ${data.companyEmail}` : "",
+    data.companyPhone ? `Contact: ${data.companyPhone}` : "",
+    data.companyWebsite ? `Website: ${data.companyWebsite}` : "",
+  ].filter(Boolean).join("  |  ");
 
   return (
     <Document>
@@ -376,7 +381,7 @@ export function QuotationDocument({ data }: { data: QuotationData }) {
         {/* FOOTER */}
         <View style={styles.footer} fixed>
           <Text style={styles.footerText}>
-            Office No- 04, Raipada, Nr. Anand Gaushalla, Chandansar Road, Virar (E) - 401305
+            {data.companyAddress || "Office No- 04, Raipada, Nr. Anand Gaushalla, Chandansar Road, Virar (E) - 401305"}
           </Text>
         </View>
 

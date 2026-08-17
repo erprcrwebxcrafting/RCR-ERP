@@ -33,6 +33,27 @@ export async function createSupervisor(formData: FormData) {
     throw new Error("Monthly salary cannot be negative.");
   }
 
+  if (phone) {
+    const cleanedPhone = phone.replace(/\s+/g, "").replace(/^(\+91|91)/, "");
+    if (!/^[6-9]\d{9}$/.test(cleanedPhone)) {
+      throw new Error("Please enter a valid 10-digit Indian mobile number.");
+    }
+  }
+
+  if (aadharNumber) {
+    const cleanedAadhar = aadharNumber.replace(/[\s-]+/g, "");
+    if (!/^\d{12}$/.test(cleanedAadhar)) {
+      throw new Error("Aadhar card number must be exactly 12 digits.");
+    }
+  }
+
+  if (ifscCode) {
+    const cleanedIFSC = ifscCode.trim().toUpperCase();
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanedIFSC)) {
+      throw new Error("Invalid IFSC Code format (e.g. ICIC0001234).");
+    }
+  }
+
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     throw new Error(`A user with email "${email}" already exists. Please use a unique email.`);
@@ -100,6 +121,27 @@ export async function updateSupervisor(id: string, formData: FormData) {
   }
   if (monthlySalary !== null && (isNaN(monthlySalary) || monthlySalary < 0)) {
     throw new Error("Monthly salary cannot be negative.");
+  }
+
+  if (phone) {
+    const cleanedPhone = phone.replace(/\s+/g, "").replace(/^(\+91|91)/, "");
+    if (!/^[6-9]\d{9}$/.test(cleanedPhone)) {
+      throw new Error("Please enter a valid 10-digit Indian mobile number.");
+    }
+  }
+
+  if (aadharNumber) {
+    const cleanedAadhar = aadharNumber.replace(/[\s-]+/g, "");
+    if (!/^\d{12}$/.test(cleanedAadhar)) {
+      throw new Error("Aadhar card number must be exactly 12 digits.");
+    }
+  }
+
+  if (ifscCode) {
+    const cleanedIFSC = ifscCode.trim().toUpperCase();
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanedIFSC)) {
+      throw new Error("Invalid IFSC Code format (e.g. ICIC0001234).");
+    }
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });

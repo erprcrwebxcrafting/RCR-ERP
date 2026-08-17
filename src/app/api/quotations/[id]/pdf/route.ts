@@ -4,10 +4,15 @@ import { renderQuotationToStream } from "@/lib/pdf/components/renderPdf";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const quotation = await prisma.quotation.findUnique({
-    where: { id: id },
-    include: { site: { include: { client: true } }, client: true },
-  });
+  const [quotation, globalSettings] = await Promise.all([
+    prisma.quotation.findUnique({
+      where: { id: id },
+      include: { site: { include: { client: true } }, client: true },
+    }),
+    prisma.globalSettings.findUnique({
+      where: { id: "global" },
+    }),
+  ]);
   if (!quotation) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const items = JSON.parse(quotation.itemsJson);
@@ -19,10 +24,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const baseUrl = `${protocol}://${host}`;
   
   const data = {
-    companyName: "RCR ENTERPRISES",
+    companyName: globalSettings?.companyName || "RCR ENTERPRISES",
     companyGst: "27CIMPR8276H1ZF",
-    companyEmail: "rcrenterprises786@gmail.com",
-    companyPhone: "+91 9619439243",
+    companyEmail: globalSettings?.email || "rcrenterprises786@gmail.com",
+    companyPhone: globalSettings?.phone || "+91 9619439243",
+    companyWebsite: globalSettings?.website || "www.rcrenterprises.in",
+    companyAddress: globalSettings?.address || "Office No- 04, Raipada, Nr. Anand Gaushalla, Chandansar Road, Virar (E) - 401305",
     clientName: quotation.client?.name || quotation.site?.client.name || "",
     projectAddress: quotation.projectName || quotation.site?.address || quotation.site?.projectName || "",
     quotationNo: quotation.quotationNo,

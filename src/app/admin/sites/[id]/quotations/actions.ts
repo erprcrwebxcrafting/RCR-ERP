@@ -11,10 +11,15 @@ export async function sendQuotationEmailAction(quotationId: string) {
   const session = await auth();
   if (!session || (session.user as any).role !== "ADMIN") throw new Error("Unauthorized");
 
-  const q = await prisma.quotation.findUnique({
-    where: { id: quotationId },
-    include: { site: { include: { client: true } }, client: true },
-  });
+  const [q, globalSettings] = await Promise.all([
+    prisma.quotation.findUnique({
+      where: { id: quotationId },
+      include: { site: { include: { client: true } }, client: true },
+    }),
+    prisma.globalSettings.findUnique({
+      where: { id: "global" },
+    }),
+  ]);
   const clientName = q?.client?.name || q?.site?.client.name;
   const clientEmail = q?.client?.email || q?.site?.client.email;
   const projectName = q?.projectName || q?.site?.projectName;
@@ -23,10 +28,12 @@ export async function sendQuotationEmailAction(quotationId: string) {
   if (!clientEmail) return { error: "Client email is missing. Please update the Client profile with an email address." };
 
   const pdfBuffer = await generateQuotationPdf({
-    companyName: "RCR Enterprises",
-    companyGst: "27XXXXX0000X1Z5",
-    companyEmail: "hello@rcrenterprises.com",
-    companyPhone: "+91 99999 99999",
+    companyName: globalSettings?.companyName || "RCR Enterprises",
+    companyGst: "27CIMPR8276H1ZF",
+    companyEmail: globalSettings?.email || "rcrenterprises786@gmail.com",
+    companyPhone: globalSettings?.phone || "+91 9619439243",
+    companyWebsite: globalSettings?.website || "www.rcrenterprises.in",
+    companyAddress: globalSettings?.address || "Office No- 04, Raipada, Nr. Anand Gaushalla, Chandansar Road, Virar (E) - 401305",
     clientName: clientName || "",
     projectAddress: projectName || "",
     subject: q.subject,

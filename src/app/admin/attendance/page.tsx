@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Users, CheckCircle2, XCircle, Clock, Building, Download, FileText, FileSpreadsheet, MapPin, CalendarDays, Filter } from "lucide-react";
+import { Search, Users, CheckCircle2, XCircle, Clock, Building, Download, FileText, FileSpreadsheet, MapPin, CalendarDays, Filter, UserCheck } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
@@ -120,6 +120,24 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
               {!siteId && <span className="text-[11px] text-white/90 font-bold px-3 py-1.5 bg-black/20 rounded-full backdrop-blur-md border border-white/10 shadow-inner">Select a site to enable export</span>}
           </div>
         </div>
+      </div>
+
+      {/* Top Switcher Tabs */}
+      <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl w-fit border border-slate-200 dark:border-slate-700">
+        <Link
+          href="/admin/attendance"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
+        >
+          <Users className="h-4 w-4" />
+          Labour Attendance Explorer
+        </Link>
+        <Link
+          href="/admin/supervisors/attendance"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+        >
+          <UserCheck className="h-4 w-4" />
+          Supervisor Attendance Hub
+        </Link>
       </div>
 
       {/* Filters Bar */}

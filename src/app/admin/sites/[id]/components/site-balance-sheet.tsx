@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -10,10 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { formatINR, formatDate } from "@/lib/utils";
 import { recordClientPaymentAction, updateSiteTaxSettingsAction } from "../bill-actions";
 import { CircleDollarSign, Plus, ArrowDownLeft, Banknote, ShieldAlert, Settings2, Percent } from "lucide-react";
+import { toast } from "sonner";
+import { validatePositiveNumber } from "@/lib/validations";
 
 export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any, hidePaymentForm?: boolean }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isEditingSettings, setIsEditingSettings] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const payments = site.payments || [];
   const bills = site.bills || [];
@@ -244,9 +247,36 @@ export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any,
           {/* Record Payment Form */}
           {!hidePaymentForm && isRecording && (
             <form
-              action={async (formData) => {
-                await recordClientPaymentAction(site.id, formData);
-                setIsRecording(false);
+              onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const amountStr = (formData.get("amount") as string)?.replace(/,/g, "").trim();
+                const dateStr = (formData.get("date") as string)?.trim();
+
+                const amtCheck = validatePositiveNumber(amountStr, "Amount Received");
+                if (!amtCheck.valid) {
+                  toast.error(amtCheck.error);
+                  return;
+                }
+
+                if (!dateStr) {
+                  toast.error("Please enter a valid payment date.");
+                  return;
+                }
+
+                startTransition(async () => {
+                  try {
+                    await recordClientPaymentAction(site.id, formData);
+                    toast.success("Client payment recorded successfully!", {
+                      description: `₹${Number(amountStr).toLocaleString("en-IN")} receipt credited to ledger.`,
+                    });
+                    setIsRecording(false);
+                  } catch (err: any) {
+                    toast.error("Failed to record client payment", {
+                      description: err?.message || "Please check inputs and retry.",
+                    });
+                  }
+                });
               }}
               className="p-4 bg-muted/40 rounded-lg space-y-4 border mb-4"
             >
@@ -285,7 +315,9 @@ export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any,
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="ghost" onClick={() => setIsRecording(false)}>Cancel</Button>
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">Save Payment</Button>
+                <Button type="submit" disabled={isPending} className="bg-emerald-600 hover:bg-emerald-700">
+                  {isPending ? "Recording..." : "Save Payment"}
+                </Button>
               </div>
             </form>
           )}

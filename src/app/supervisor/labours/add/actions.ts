@@ -27,6 +27,24 @@ export async function saveSupervisorLabour(formData: FormData) {
 
   const parsed = labourSchema.parse(Object.fromEntries(formData));
 
+  if (!parsed.name || parsed.name.trim().length < 2) {
+    throw new Error("Full name is required and must be at least 2 characters.");
+  }
+
+  if (parsed.phone && parsed.phone.trim()) {
+    const cleanedPhone = parsed.phone.replace(/\s+/g, "").replace(/^(\+91|91)/, "");
+    if (!/^[6-9]\d{9}$/.test(cleanedPhone)) {
+      throw new Error("Please enter a valid 10-digit Indian mobile number.");
+    }
+  }
+
+  if (parsed.aadharNumber && parsed.aadharNumber.trim()) {
+    const cleanedAadhar = parsed.aadharNumber.replace(/[\s-]+/g, "");
+    if (!/^\d{12}$/.test(cleanedAadhar)) {
+      throw new Error("Aadhar card number must be exactly 12 digits.");
+    }
+  }
+
   // Verify that the supervisor is actually assigned to this site
   const assignment = await prisma.siteSupervisor.findUnique({
     where: { siteId_supervisorId: { siteId: parsed.siteId, supervisorId } }

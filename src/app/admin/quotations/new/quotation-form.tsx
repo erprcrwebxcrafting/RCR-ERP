@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { createIndependentQuotation } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, Building2, UserCircle2, Mail, Phone, FileText, AlignLeft, ShieldAlert } from "lucide-react";
+import { Plus, Trash2, Building2, UserCircle2, Mail, Phone, FileText, AlignLeft, ShieldAlert, Send } from "lucide-react";
+import { toast } from "sonner";
+import { validatePhone, validateEmail } from "@/lib/validations";
 
 type Client = { id: string; name: string };
 
@@ -20,9 +22,65 @@ export function QuotationForm({
   const [items, setItems] = useState<{ description: string; unit: string; rate: string | number }[]>(
     initialData?.items ? initialData.items : [{ description: "", unit: "Sft", rate: "" }]
   );
+  const [isPending, startTransition] = useTransition();
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const clientId = (formData.get("clientId") as string)?.trim();
+    const newClientName = (formData.get("newClientName") as string)?.trim();
+    const projectName = (formData.get("projectName") as string)?.trim();
+    const subject = (formData.get("subject") as string)?.trim();
+    const clientPhone = (formData.get("clientPhone") as string)?.trim();
+    const clientEmail = (formData.get("clientEmail") as string)?.trim();
+
+    if (!clientId && !newClientName) {
+      toast.error("Please select an existing client or enter a new client name.");
+      return;
+    }
+
+    if (!projectName || projectName.length < 2) {
+      toast.error("Project name is required (minimum 2 characters).");
+      return;
+    }
+
+    if (!subject || subject.length < 3) {
+      toast.error("Quotation subject is required.");
+      return;
+    }
+
+    const phoneCheck = validatePhone(clientPhone);
+    if (!phoneCheck.valid) {
+      toast.error(phoneCheck.error);
+      return;
+    }
+
+    const emailCheck = validateEmail(clientEmail, false);
+    if (!emailCheck.valid) {
+      toast.error(emailCheck.error);
+      return;
+    }
+
+    const validItems = items.filter((it) => it.description.trim() !== "");
+    if (validItems.length === 0) {
+      toast.error("Please add at least one line item with description and rate.");
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        await action(formData);
+        toast.success("Quotation generated successfully!");
+      } catch (err: any) {
+        toast.error("Failed to generate quotation", {
+          description: err?.message || "Please check inputs and retry.",
+        });
+      }
+    });
+  }
 
   return (
-    <form action={action} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <Card className="border-t-4 border-t-indigo-500 shadow-lg bg-card/50 backdrop-blur-sm">
         <CardHeader className="pb-4">
           <CardTitle className="text-xl flex items-center gap-2">
@@ -123,8 +181,8 @@ export function QuotationForm({
       </div>
 
       <div className="sticky bottom-4 z-10 flex justify-end">
-        <Button type="submit" size="lg" className="w-full sm:w-auto text-lg h-14 px-8 rounded-full shadow-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all transform hover:scale-105">
-          {initialData ? "Save Changes" : "Create Quotation"}
+        <Button type="submit" disabled={isPending} size="lg" className="w-full sm:w-auto text-lg h-14 px-8 rounded-full shadow-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all transform hover:scale-105">
+          {isPending ? "Generating..." : (initialData ? "Save Changes" : "Create Quotation")}
         </Button>
       </div>
     </form>

@@ -26,7 +26,21 @@ export async function createSite(formData: FormData) {
   const labourWages = formData.getAll("labourWage[]") as string[];
   const labourOT = formData.getAll("labourOT[]") as string[];
 
-  // Supervisor assignment
+  if (!projectName || projectName.trim().length < 2) {
+    throw new Error("Project / Site name is required (minimum 2 characters).");
+  }
+
+  if (!clientId) {
+    throw new Error("Please select a client developer.");
+  }
+
+  if (gstNo && gstNo.trim()) {
+    const cleanedGST = gstNo.trim().toUpperCase();
+    if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(cleanedGST)) {
+      throw new Error("Invalid GST Number format (e.g. 27AAAAA0000A1Z5).");
+    }
+  }
+
   const supervisorIds = formData.getAll("supervisorId[]") as string[];
 
   const site = await prisma.site.create({

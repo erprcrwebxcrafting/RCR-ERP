@@ -15,6 +15,25 @@ const clientSchema = z.object({
 
 export async function createClient(formData: FormData) {
   const parsed = clientSchema.parse(Object.fromEntries(formData));
+
+  if (!parsed.name || parsed.name.trim().length < 2) {
+    throw new Error("Client name is required (minimum 2 characters).");
+  }
+
+  if (parsed.phone && parsed.phone.trim()) {
+    const cleanedPhone = parsed.phone.replace(/\s+/g, "").replace(/^(\+91|91)/, "");
+    if (!/^[6-9]\d{9}$/.test(cleanedPhone)) {
+      throw new Error("Please enter a valid 10-digit Indian mobile number.");
+    }
+  }
+
+  if (parsed.gstNo && parsed.gstNo.trim()) {
+    const cleanedGST = parsed.gstNo.trim().toUpperCase();
+    if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(cleanedGST)) {
+      throw new Error("Invalid GST Number format (e.g. 27AAAAA0000A1Z5).");
+    }
+  }
+
   await prisma.client.create({ data: parsed });
   revalidatePath("/admin/clients");
 }
@@ -37,6 +56,25 @@ export async function deleteClient(id: string) {
 
 export async function updateClient(id: string, formData: FormData) {
   const parsed = clientSchema.parse(Object.fromEntries(formData));
+
+  if (!parsed.name || parsed.name.trim().length < 2) {
+    throw new Error("Client name is required (minimum 2 characters).");
+  }
+
+  if (parsed.phone && parsed.phone.trim()) {
+    const cleanedPhone = parsed.phone.replace(/\s+/g, "").replace(/^(\+91|91)/, "");
+    if (!/^[6-9]\d{9}$/.test(cleanedPhone)) {
+      throw new Error("Please enter a valid 10-digit Indian mobile number.");
+    }
+  }
+
+  if (parsed.gstNo && parsed.gstNo.trim()) {
+    const cleanedGST = parsed.gstNo.trim().toUpperCase();
+    if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(cleanedGST)) {
+      throw new Error("Invalid GST Number format (e.g. 27AAAAA0000A1Z5).");
+    }
+  }
+
   await prisma.client.update({
     where: { id },
     data: parsed,

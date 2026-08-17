@@ -9,6 +9,8 @@ export type QuotationData = {
   companyGst: string;
   companyEmail: string;
   companyPhone: string;
+  companyWebsite?: string;
+  companyAddress?: string;
   clientName: string;
   projectAddress: string;
   subject: string;
@@ -81,10 +83,15 @@ export async function generateQuotationPdf(data: QuotationData): Promise<Uint8Ar
     page.drawImage(logoImage, { x: MARGIN, y: PAGE_H - 95, width: 90, height: 90 * (dims.height/dims.width) });
   }
 
-  page.drawText(data.companyName, { x: MARGIN + 110, y: PAGE_H - 55, size: 26, font: bold, color: teal });
-  
-  page.drawText(`GST NO. ${data.companyGst}    |    Email: ${data.companyEmail}    |    Mob: ${data.companyPhone}`, {
-    x: MARGIN + 110, y: PAGE_H - 75, size: 9, font, color: darkGray
+  const headerDetails = [
+    data.companyGst ? `GST NO. ${data.companyGst}` : "",
+    data.companyEmail ? `Email: ${data.companyEmail}` : "",
+    data.companyPhone ? `Mob: ${data.companyPhone}` : "",
+    data.companyWebsite ? `Web: ${data.companyWebsite}` : "",
+  ].filter(Boolean).join("    |    ");
+
+  page.drawText(headerDetails, {
+    x: MARGIN + 110, y: PAGE_H - 75, size: 8, font, color: darkGray
   });
 
   page.drawLine({

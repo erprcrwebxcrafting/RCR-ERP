@@ -471,13 +471,21 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
 }
 
 export async function recordClientPaymentAction(siteId: string, formData: FormData) {
-  const amount = parseFloat((formData.get("amount") as string) || "0");
+  const amountStr = (formData.get("amount") as string)?.replace(/,/g, "") || "0";
+  const amount = parseFloat(amountStr);
   const mode = (formData.get("mode") as string) || "CASH";
   const accountCredited = formData.get("accountCredited") as string;
   const reference = formData.get("reference") as string;
   const remarks = formData.get("remarks") as string;
   const dateStr = formData.get("date") as string;
-  if (!amount) return;
+
+  if (isNaN(amount) || amount <= 0) {
+    throw new Error("Payment amount must be greater than 0.");
+  }
+
+  if (!dateStr) {
+    throw new Error("Payment date is required.");
+  }
 
   const date = dateStr ? new Date(dateStr) : new Date();
 

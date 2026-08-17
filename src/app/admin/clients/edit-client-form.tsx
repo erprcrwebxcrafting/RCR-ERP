@@ -1,22 +1,63 @@
 "use client";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit, X, User2, Building2, Phone, Mail, FileText, MapPin, AlignLeft } from "lucide-react";
+import { Edit, X, User2, Building2, Phone, Mail, FileText, MapPin, AlignLeft, Save } from "lucide-react";
 import { updateClient } from "./actions";
+import { toast } from "sonner";
+import { validatePhone, validateGST, validateEmail } from "@/lib/validations";
 
 export function EditClientForm({ client }: { client: any }) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
-  async function handleSubmit(formData: FormData) {
-    setLoading(true);
-    await updateClient(client.id, formData);
-    setLoading(false);
-    setOpen(false);
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const name = (formData.get("name") as string)?.trim();
+    const phone = (formData.get("phone") as string)?.trim();
+    const email = (formData.get("email") as string)?.trim();
+    const gstNo = (formData.get("gstNo") as string)?.trim();
+
+    if (!name || name.length < 2) {
+      toast.error("Client name is required (minimum 2 characters).");
+      return;
+    }
+
+    const phoneCheck = validatePhone(phone);
+    if (!phoneCheck.valid) {
+      toast.error(phoneCheck.error);
+      return;
+    }
+
+    const emailCheck = validateEmail(email, false);
+    if (!emailCheck.valid) {
+      toast.error(emailCheck.error);
+      return;
+    }
+
+    const gstCheck = validateGST(gstNo);
+    if (!gstCheck.valid) {
+      toast.error(gstCheck.error);
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        await updateClient(client.id, formData);
+        toast.success("Client details updated successfully!", {
+          description: `Changes to ${name} have been saved.`,
+        });
+        setOpen(false);
+      } catch (err: any) {
+        toast.error("Failed to update client", {
+          description: err?.message || "Please check inputs and retry.",
+        });
+      }
+    });
   }
 
   return (
@@ -51,7 +92,7 @@ export function EditClientForm({ client }: { client: any }) {
               </Dialog.Close>
             </div>
 
-            <form action={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Company / Client Name <span className="text-rose-500">*</span></Label>
                 <div className="relative">
@@ -72,7 +113,7 @@ export function EditClientForm({ client }: { client: any }) {
                   <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Phone</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input name="phone" defaultValue={client.phone || ""} className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all" />
+                    <Input name="phone" maxLength={10} defaultValue={client.phone || ""} className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-mono" />
                   </div>
                 </div>
               </div>
@@ -82,14 +123,14 @@ export function EditClientForm({ client }: { client: any }) {
                   <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Email Address</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input id="email" name="email" type="email" multiple defaultValue={client.email || ""} placeholder="client@example.com" className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all" />
+                    <Input id="email" name="email" type="email" defaultValue={client.email || ""} placeholder="client@example.com" className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all" />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">GST Number</Label>
                   <div className="relative">
                     <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input name="gstNo" defaultValue={client.gstNo || ""} className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-mono" />
+                    <Input name="gstNo" maxLength={15} defaultValue={client.gstNo || ""} className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-mono uppercase" />
                   </div>
                 </div>
               </div>
@@ -98,26 +139,25 @@ export function EditClientForm({ client }: { client: any }) {
                 <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Address</Label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400 pointer-events-none" />
-                  <Textarea name="address" defaultValue={client.address || ""} className="pl-10 min-h-[100px] rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all resize-y" />
+                  <Textarea name="address" defaultValue={client.address || ""} rows={3} className="pl-10 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all" />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Remarks / Notes</Label>
+                <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Remarks / Internal Notes</Label>
                 <div className="relative">
                   <AlignLeft className="absolute left-3 top-3 h-4 w-4 text-slate-400 pointer-events-none" />
-                  <Textarea name="remarks" defaultValue={client.remarks || ""} className="pl-10 min-h-[100px] rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all resize-y" />
+                  <Textarea name="remarks" defaultValue={client.remarks || ""} rows={2} className="pl-10 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all" />
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-3">
-                <Dialog.Close asChild>
-                  <Button type="button" variant="outline" className="w-full sm:w-1/3 h-12 rounded-xl font-semibold border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                    Cancel
-                  </Button>
-                </Dialog.Close>
-                <Button type="submit" className="w-full sm:w-2/3 h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-base shadow-lg shadow-blue-500/25 transition-all hover:-translate-y-0.5" disabled={loading}>
-                  {loading ? "Saving Changes..." : "Save Changes"}
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-xl border-slate-200 dark:border-slate-700 font-semibold">
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isPending} className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl px-6 gap-2">
+                  <Save className="h-4 w-4" />
+                  {isPending ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
             </form>

@@ -7,14 +7,36 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { CardContent } from "@/components/ui/card";
-import { Building2, MapPin, Mail, Phone, Globe } from "lucide-react";
+import { Building2, MapPin, Mail, Phone, Globe, Save } from "lucide-react";
 import { toast } from "sonner";
+import { validatePhone, validateEmail } from "@/lib/validations";
 
 export function SettingsForm({ settings }: { settings: any }) {
   const [isPending, startTransition] = useTransition();
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const companyName = (formData.get("companyName") as string)?.trim();
+    const phone = (formData.get("phone") as string)?.trim();
+    const email = (formData.get("email") as string)?.trim();
+
+    if (!companyName || companyName.length < 2) {
+      toast.error("Company name is required (minimum 2 characters).");
+      return;
+    }
+
+    const phoneCheck = validatePhone(phone);
+    if (!phoneCheck.valid) {
+      toast.error(phoneCheck.error);
+      return;
+    }
+
+    const emailCheck = validateEmail(email, false);
+    if (!emailCheck.valid) {
+      toast.error(emailCheck.error);
+      return;
+    }
+
     startTransition(async () => {
       const res = await updateGlobalSettings(formData);
       if (res?.error) {

@@ -1,18 +1,62 @@
 "use client";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "./actions";
 import { Plus, X, Building2, User, Phone, Mail, Receipt, MapPin } from "lucide-react";
+import { toast } from "sonner";
+import { validatePhone, validateGST, validateEmail } from "@/lib/validations";
 
 export function NewClientDialog() {
   const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
-  async function handleSubmit(formData: FormData) {
-    await createClient(formData);
-    setOpen(false);
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const name = (formData.get("name") as string)?.trim();
+    const phone = (formData.get("phone") as string)?.trim();
+    const email = (formData.get("email") as string)?.trim();
+    const gstNo = (formData.get("gstNo") as string)?.trim();
+
+    if (!name || name.length < 2) {
+      toast.error("Client name is required (minimum 2 characters).");
+      return;
+    }
+
+    const phoneCheck = validatePhone(phone);
+    if (!phoneCheck.valid) {
+      toast.error(phoneCheck.error);
+      return;
+    }
+
+    const emailCheck = validateEmail(email, false);
+    if (!emailCheck.valid) {
+      toast.error(emailCheck.error);
+      return;
+    }
+
+    const gstCheck = validateGST(gstNo);
+    if (!gstCheck.valid) {
+      toast.error(gstCheck.error);
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        await createClient(formData);
+        toast.success("Client created successfully!", {
+          description: `${name} has been added to your client roster.`,
+        });
+        setOpen(false);
+      } catch (err: any) {
+        toast.error("Failed to create client", {
+          description: err?.message || "Please check inputs and retry.",
+        });
+      }
+    });
   }
 
   return (
@@ -38,7 +82,7 @@ export function NewClientDialog() {
             </Dialog.Close>
           </div>
 
-          <form action={handleSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleSubmit} className="p-6 space-y-5">
             <div className="space-y-1.5">
               <Label htmlFor="name" className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                 <Building2 className="h-3.5 w-3.5 text-blue-500" /> Client Name *
@@ -58,13 +102,13 @@ export function NewClientDialog() {
                 <Label htmlFor="phone" className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                   <Phone className="h-3.5 w-3.5 text-emerald-500" /> Phone
                 </Label>
-                <Input id="phone" name="phone" placeholder="+91 XXXXX XXXXX" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20" />
+                <Input id="phone" name="phone" maxLength={10} placeholder="10-digit number" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 font-mono" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="email" className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                   <Mail className="h-3.5 w-3.5 text-rose-500" /> Email
                 </Label>
-                <Input id="email" name="email" type="email" multiple placeholder="client@example.com" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20" />
+                <Input id="email" name="email" type="email" placeholder="client@example.com" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20" />
               </div>
             </div>
 
@@ -72,7 +116,7 @@ export function NewClientDialog() {
               <Label htmlFor="gstNo" className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                 <Receipt className="h-3.5 w-3.5 text-amber-500" /> GST No.
               </Label>
-              <Input id="gstNo" name="gstNo" placeholder="e.g. 27AAAAA0000A1Z5" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 uppercase" />
+              <Input id="gstNo" name="gstNo" maxLength={15} placeholder="e.g. 27AAAAA0000A1Z5" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 uppercase font-mono" />
             </div>
 
             <div className="space-y-1.5">
@@ -83,8 +127,8 @@ export function NewClientDialog() {
             </div>
 
             <div className="pt-2">
-              <Button type="submit" className="w-full h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md hover:shadow-lg transition-all active:scale-95">
-                Create Client
+              <Button type="submit" disabled={isPending} className="w-full h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md hover:shadow-lg transition-all active:scale-95">
+                {isPending ? "Creating Client..." : "Create Client"}
               </Button>
             </div>
           </form>
