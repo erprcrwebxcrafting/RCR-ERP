@@ -5,3 +5,22 @@ dev.db
 *.log
 /generated
 *.tsbuildinfo
+
+# Test & temp files
+test-*.js
+test-*.ts
+test-*.pdf
+fix_*.js
+seed-categories.js
+scratch_*.py
+scratch/
+error.html
+verify-*.ts
+update-*.ts
+
+# Temporary media & documents
+*.xlsx
+*.jpeg
+*.jpg
+*.pdf
+WhatsApp\ Image*
