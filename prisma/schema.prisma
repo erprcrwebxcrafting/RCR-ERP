@@ -82,6 +82,8 @@ model Site {
   supervisorTransfersTo   SupervisorTransferHistory[] @relation("SupervisorTransferToSite")
   supplyLabourEntries     SupplyLabourEntry[]
   workItems               WorkItem[]
+
+  @@index([clientId])
 }
 
 model SiteSupervisor {
@@ -92,6 +94,8 @@ model SiteSupervisor {
   supervisor   User   @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
 
   @@unique([siteId, supervisorId])
+  @@index([siteId])
+  @@index([supervisorId])
 }
 
 model Building {
@@ -106,6 +110,8 @@ model Building {
   billLines    BillLine[]
   site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
   workItems    WorkItem[]
+
+  @@index([siteId])
 }
 
 model WorkItem {
@@ -131,6 +137,9 @@ model WorkItem {
   billLines     BillLine[]
   building      Building?  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   site          Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([buildingId])
 }
 
 model LabourCategory {
@@ -144,6 +153,8 @@ model LabourCategory {
   billLines    BillLine[]
   labours      Labour[]
   site         Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
 }
 
 model Labour {
@@ -173,6 +184,7 @@ model Labour {
   transferHistory  LabourTransferHistory[]
 
   @@index([siteId])
+  @@index([labourCategoryId])
   @@index([supervisorId])
   @@index([active])
 }
@@ -200,6 +212,8 @@ model SupervisorPayment {
   reason        String?
   createdAt     DateTime @default(now())
   supervisor    User     @relation("SupervisorPayments", fields: [supervisorId], references: [id], onDelete: Cascade)
+
+  @@index([supervisorId])
 }
 
 model Attendance {
@@ -221,6 +235,7 @@ model Attendance {
 
   @@unique([labourId, date])
   @@index([siteId, date])
+  @@index([buildingId])
 }
 
 model LabourEntry {
@@ -238,6 +253,9 @@ model LabourEntry {
   createdAt    DateTime @default(now())
   labour       Labour   @relation(fields: [labourId], references: [id], onDelete: Cascade)
   site         Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([labourId])
 }
 
 model Quotation {
@@ -255,6 +273,9 @@ model Quotation {
   createdAt      DateTime @default(now())
   client         Client?  @relation(fields: [clientId], references: [id])
   site           Site?    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([siteId])
 }
 
 model SupplyLabourEntry {
@@ -274,6 +295,9 @@ model SupplyLabourEntry {
   createdAt     DateTime     @default(now())
   runningBill   RunningBill? @relation(fields: [runningBillId], references: [id])
   site          Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([runningBillId])
 }
 
 model RunningBill {
@@ -320,6 +344,11 @@ model BillLine {
   labourCategory   LabourCategory? @relation(fields: [labourCategoryId], references: [id])
   runningBill      RunningBill     @relation(fields: [runningBillId], references: [id], onDelete: Cascade)
   workItem         WorkItem?       @relation(fields: [workItemId], references: [id])
+
+  @@index([runningBillId])
+  @@index([buildingId])
+  @@index([workItemId])
+  @@index([labourCategoryId])
 }
 
 model Payment {
