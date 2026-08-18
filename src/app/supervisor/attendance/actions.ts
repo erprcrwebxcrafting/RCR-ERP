@@ -11,10 +11,22 @@ export async function saveAttendance(siteId: string, formData: FormData) {
   const date = new Date(dateStr); 
   const buildingId = (formData.get("buildingId") as string) || null;
 
-  // 1. Future date validation
+  // 1. Future and Past date validation
   const today = new Date();
-  if (new Date(date).setHours(0, 0, 0, 0) > today.setHours(0, 0, 0, 0)) {
+  today.setHours(0, 0, 0, 0);
+  
+  const targetDate = new Date(date);
+  targetDate.setHours(0, 0, 0, 0);
+
+  if (targetDate.getTime() > today.getTime()) {
     throw new Error("Attendance date cannot be in the future.");
+  }
+
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (targetDate.getTime() < yesterday.getTime()) {
+    throw new Error("Attendance cannot be marked or edited for dates older than 24 hours (yesterday).");
   }
 
   const labourIds = formData.getAll("labourId[]") as string[];
@@ -48,15 +60,7 @@ export async function saveAttendance(siteId: string, formData: FormData) {
     const remarks = formData.get(`remarks__${labourId}`) as string;
 
     const existing = existingMap.get(labourId);
-    if (existing) {
-      const createdAtTime = new Date(existing.createdAt).getTime();
-      if (now - createdAtTime > TWENTY_FOUR_HOURS_MS) {
-        if (existing.hajari !== hajari || (existing.remarks || "") !== (remarks || "")) {
-          throw new Error("Attendance cannot be edited after 24 hours of creation.");
-        }
-        continue;
-      }
-    }
+    // createdAt check removed as per new rule (using attendance date instead)
 
     const currentRate = rateMap.get(labourId) || 0;
 

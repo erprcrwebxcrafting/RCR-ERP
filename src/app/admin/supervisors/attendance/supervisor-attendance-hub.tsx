@@ -490,16 +490,17 @@ export function SupervisorAttendanceHub({
 
                       {/* Attendance Status Buttons */}
                       <div className="flex items-center gap-2 self-end sm:self-center">
+                        {isLocked && <span className="text-xs text-rose-500 font-bold mr-2 hidden sm:inline">Locked (Past 24h)</span>}
                         <Button
                           type="button"
                           size="sm"
-                          disabled={isPending}
+                          disabled={isPending || isLocked}
                           onClick={() => handleMarkAttendance(sup.id, "PRESENT")}
                           className={`h-9 px-4 rounded-xl font-bold text-xs transition-all ${
                             status === "PRESENT"
                               ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20"
                               : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 hover:text-emerald-700"
-                          }`}
+                          } ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
                           <Check className="h-3.5 w-3.5 mr-1" />
                           Present (₹{dailyRate})
@@ -508,13 +509,13 @@ export function SupervisorAttendanceHub({
                         <Button
                           type="button"
                           size="sm"
-                          disabled={isPending}
+                          disabled={isPending || isLocked}
                           onClick={() => handleMarkAttendance(sup.id, "HALF_DAY")}
                           className={`h-9 px-3.5 rounded-xl font-bold text-xs transition-all ${
                             status === "HALF_DAY"
                               ? "bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/20"
                               : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100 dark:hover:bg-amber-950/40 hover:text-amber-700"
-                          }`}
+                          } ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
                           <Clock className="h-3.5 w-3.5 mr-1" />
                           Half (₹{Math.round(dailyRate / 2)})
@@ -523,13 +524,13 @@ export function SupervisorAttendanceHub({
                         <Button
                           type="button"
                           size="sm"
-                          disabled={isPending}
+                          disabled={isPending || isLocked}
                           onClick={() => handleMarkAttendance(sup.id, "ABSENT")}
                           className={`h-9 px-3.5 rounded-xl font-bold text-xs transition-all ${
                             status === "ABSENT"
                               ? "bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/20"
                               : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-100 dark:hover:bg-rose-950/40 hover:text-rose-700"
-                          }`}
+                          } ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
                           <XCircle className="h-3.5 w-3.5 mr-1" />
                           Absent (₹0)
@@ -540,10 +541,10 @@ export function SupervisorAttendanceHub({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            disabled={isPending}
-                            title="Reset / Clear status"
+                            disabled={isPending || isLocked}
+                            title={isLocked ? "Cannot clear locked records" : "Reset / Clear status"}
                             onClick={() => handleClearAttendance(sup.id)}
-                            className="h-9 w-9 text-slate-400 hover:text-rose-500 rounded-xl"
+                            className={`h-9 w-9 text-slate-400 hover:text-rose-500 rounded-xl ${isLocked ? "opacity-50 cursor-not-allowed hover:text-slate-400" : ""}`}
                           >
                             <RotateCcw className="h-3.5 w-3.5" />
                           </Button>

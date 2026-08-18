@@ -78,12 +78,13 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
     },
   });
 
-  const existingMap = new Map(existingAttendances.map(a => [a.labourId, a]));
-  const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
-  const now = new Date().getTime();
-  
   const hasExisting = existingAttendances.length > 0;
-  const allLocked = hasExisting && existingAttendances.every(a => (now - new Date(a.createdAt).getTime()) > TWENTY_FOUR_HOURS_MS);
+  const existingMap = new Map(existingAttendances.map(a => [a.labourId, a]));
+
+  const yesterday = new Date();
+  yesterday.setHours(0, 0, 0, 0);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const allLocked = targetDate.getTime() < yesterday.getTime();
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700 pb-24">
@@ -187,7 +188,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                       </tr>
                       {cat.labours.map((p: any) => {
                         const existing = existingMap.get(p.id);
-                        const isLocked = existing && (now - new Date(existing.createdAt).getTime() > TWENTY_FOUR_HOURS_MS);
+                        const isLocked = allLocked;
                         
                         const colors = ['bg-blue-50 text-blue-600 border-blue-200', 'bg-emerald-50 text-emerald-600 border-emerald-200', 'bg-purple-50 text-purple-600 border-purple-200', 'bg-amber-50 text-amber-600 border-amber-200', 'bg-rose-50 text-rose-600 border-rose-200'];
                         const colorClass = colors[p.name.charCodeAt(0) % colors.length];
