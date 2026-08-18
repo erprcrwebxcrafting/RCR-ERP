@@ -190,6 +190,13 @@ export function SupervisorAttendanceHub({
     "July", "August", "September", "October", "November", "December"
   ];
 
+  const selectedDateObj = new Date(selectedDate);
+  selectedDateObj.setHours(0, 0, 0, 0);
+  const yesterday = new Date();
+  yesterday.setHours(0, 0, 0, 0);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isLocked = selectedDateObj.getTime() < yesterday.getTime();
+
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-700 max-w-7xl mx-auto">
       {/* Top Banner */}

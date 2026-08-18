@@ -214,8 +214,8 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                             <td className="px-6 py-4">
                               {isLocked ? (
                                 <>
-                                  <input type="hidden" name={`hajari__${p.id}`} defaultValue={existing.hajari} />
-                                  <select className="h-11 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium text-sm cursor-not-allowed opacity-80" disabled defaultValue={existing.hajari?.toString()}>
+                                  <input type="hidden" name={`hajari__${p.id}`} defaultValue={existing?.hajari} />
+                                  <select className="h-11 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium text-sm cursor-not-allowed opacity-80" disabled defaultValue={existing?.hajari?.toString()}>
                                     {HAJARI_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                   </select>
                                 </>
@@ -228,8 +228,8 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                             <td className="px-6 py-4">
                               {isLocked ? (
                                 <>
-                                  <input type="hidden" name={`remarks__${p.id}`} defaultValue={existing.remarks || ""} />
-                                  <Input className="h-11 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium cursor-not-allowed opacity-80" disabled defaultValue={existing.remarks || ""} placeholder="" />
+                                  <input type="hidden" name={`remarks__${p.id}`} defaultValue={existing?.remarks || ""} />
+                                  <Input className="h-11 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium cursor-not-allowed opacity-80" disabled defaultValue={existing?.remarks || ""} placeholder="" />
                                 </>
                               ) : (
                                 <Input className="h-11 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-medium focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500/20 transition-all shadow-sm hover:border-indigo-400" name={`remarks__${p.id}`} placeholder="Add a remark..." defaultValue={existing?.remarks || ""} />
