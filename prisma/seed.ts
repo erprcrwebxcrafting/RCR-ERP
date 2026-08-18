@@ -67,14 +67,23 @@ export async function seed150SitesDatabase() {
   });
 
   // 3. User Accounts (Admin + 20 Supervisors across 15 Years)
-  console.log("\n3. Seeding Admin & 20 Supervisors spanning 2011 to 2026...");
-  const adminPass = await bcrypt.hash("admin123", 10);
-  const supPass = await bcrypt.hash("supervisor123", 10);
+  console.log("\\n3. Seeding Admin & 20 Supervisors spanning 2011 to 2026...");
+  
+  const PEPPER = process.env.PASSWORD_PEPPER;
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
+  if (!PEPPER || !ADMIN_EMAIL || !ADMIN_PASSWORD) {
+    throw new Error("Missing required environment variables for seeding: PASSWORD_PEPPER, ADMIN_EMAIL, ADMIN_PASSWORD");
+  }
+
+  const adminPass = await bcrypt.hash(ADMIN_PASSWORD + PEPPER, 12);
+  const supPass = await bcrypt.hash("supervisor123" + PEPPER, 12);
 
   const admin = await prisma.user.create({
     data: {
       name: "RCR Admin",
-      email: "admin@rcrenterprises.in",
+      email: ADMIN_EMAIL,
       passwordHash: adminPass,
       role: "ADMIN",
     },

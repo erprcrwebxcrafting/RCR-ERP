@@ -17,14 +17,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    if (state?.success) {
-      toast.success("Login successful!", { description: "Welcome back to RCR-ERP." });
-      router.push("/");
-      router.refresh();
-    } else if (state?.error) {
+    if (state?.error) {
       toast.error("Authentication Failed", { description: state.error });
     }
-  }, [state?.success, state?.error, router]);
+  }, [state?.error]);
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-950 selection:bg-indigo-500/30">
