@@ -20,8 +20,12 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
 
   const today = new Date();
   const todayStr = format(today, 'yyyy-MM-dd');
+  
+  // Default to the 1st of the current month so the table isn't empty by default
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const firstOfMonthStr = format(firstOfMonth, 'yyyy-MM-dd');
 
-  const startDateStr = resolvedParams.startDate || todayStr;
+  const startDateStr = resolvedParams.startDate || firstOfMonthStr;
   const endDateStr = resolvedParams.endDate || todayStr;
 
   const { startDate: fyStart, endDate: fyEnd } = await getFinancialYearDates();
