@@ -78,8 +78,7 @@ export function EditSupervisorForm({ supervisor, allSites = [] }: { supervisor: 
       }
     }
 
-    // Append selected site IDs
-    selectedSites.forEach((id) => formData.append("siteIds[]", id));
+    // Site IDs are automatically included via hidden inputs
 
     startTransition(async () => {
       try {
