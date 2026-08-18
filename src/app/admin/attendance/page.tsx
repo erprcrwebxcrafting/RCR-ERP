@@ -7,8 +7,9 @@ import Link from "next/link";
 import { getFinancialYearDates } from "@/lib/get-fy";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { Pagination } from "@/components/ui/pagination";
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 10;
 
 export default async function AdminAttendancePage({ searchParams }: { searchParams: Promise<{ q?: string; siteId?: string; startDate?: string; endDate?: string; page?: string }> }) {
   const resolvedParams = await searchParams;
@@ -192,7 +193,7 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Site</label>
             <select name="siteId" defaultValue={siteId} className="h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 px-3 cursor-pointer outline-none transition-all shadow-sm w-full appearance-none">
               <option value="">All Sites</option>
-              {sites.map(s => <option key={s.id} value={s.id}>{s.projectName}</option>)}
+              {sites.map((s: any) => <option key={s.id} value={s.id}>{s.projectName}</option>)}
             </select>
           </div>
 
@@ -267,27 +268,13 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
         </Card>
       </div>
 
-      {/* Pagination Info */}
-      <div className="flex items-center justify-between px-1">
-        <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-          Showing <span className="text-slate-800 dark:text-slate-200 font-bold">{((page - 1) * PAGE_SIZE + 1).toLocaleString("en-IN")}–{Math.min(page * PAGE_SIZE, total).toLocaleString("en-IN")}</span> of <span className="text-slate-800 dark:text-slate-200 font-bold">{total.toLocaleString("en-IN")}</span> records
-        </p>
-        <div className="flex items-center gap-2">
-          {page > 1 && (
-            <Link href={buildPageUrl(page - 1)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-colors">
-              <ChevronLeft className="h-4 w-4" /> Prev
-            </Link>
-          )}
-          <span className="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300">
-            Page {page} / {totalPages}
-          </span>
-          {page < totalPages && (
-            <Link href={buildPageUrl(page + 1)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-colors">
-              Next <ChevronRight className="h-4 w-4" />
-            </Link>
-          )}
-        </div>
-      </div>
+      {/* Pagination Info Component */}
+      <Pagination 
+        currentPage={page} 
+        totalPages={totalPages} 
+        totalItems={total} 
+        pageSize={PAGE_SIZE} 
+      />
 
       {/* Main Table */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
@@ -360,24 +347,6 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
           </Table>
         </div>
 
-        {/* Bottom Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 px-6 py-4 border-t border-slate-100 dark:border-slate-800">
-            {page > 1 && (
-              <Link href={buildPageUrl(page - 1)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-colors">
-                <ChevronLeft className="h-4 w-4" /> Previous
-              </Link>
-            )}
-            <span className="px-4 py-2 text-sm font-semibold text-slate-500">
-              {page} of {totalPages} pages
-            </span>
-            {page < totalPages && (
-              <Link href={buildPageUrl(page + 1)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-colors">
-                Next <ChevronRight className="h-4 w-4" />
-              </Link>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

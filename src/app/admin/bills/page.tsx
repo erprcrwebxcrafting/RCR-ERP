@@ -5,15 +5,25 @@ import { formatDate, formatINR } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Building2, ChevronDown, Receipt, Building } from "lucide-react";
 import { getFinancialYearDates } from "@/lib/get-fy";
+import { Pagination } from "@/components/ui/pagination";
 
 export const dynamic = 'force-dynamic';
 
-export default async function AllBillsPage() {
+export default async function AllBillsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const resolvedParams = await searchParams;
   const { startDate, endDate } = await getFinancialYearDates();
+  const page = Math.max(1, parseInt(resolvedParams.page || "1", 10));
+  const PAGE_SIZE = 10;
 
-  // Fetch all sites with their bills
-  const sites = await prisma.site.findMany({
-    select: {
+  const whereClause = {
+    bills: { some: { billDate: { gte: startDate, lte: endDate } } }
+  };
+
+  const [totalSites, sites] = await Promise.all([
+    prisma.site.count({ where: whereClause }),
+    prisma.site.findMany({
+      where: whereClause,
+      select: {
       id: true,
       projectName: true,
       client: { select: { name: true } },
@@ -31,10 +41,7 @@ export default async function AllBillsPage() {
       },
     },
     orderBy: { createdAt: "desc" },
-  });
-
-  // Only show sites that have at least one bill
-  const sitesWithBills = sites.filter((s) => s.bills.length > 0);
+  })]);
 
   return (
     <div className="space-y-6">
@@ -44,7 +51,7 @@ export default async function AllBillsPage() {
       </div>
 
       <div className="space-y-4">
-        {sitesWithBills.map((site) => (
+        {sites.map((site: any) => (
           <details
             key={site.id}
             className="group border rounded-lg bg-card text-card-foreground shadow-sm [&_summary::-webkit-details-marker]:hidden open:ring-1 open:ring-border overflow-hidden"
@@ -79,12 +86,12 @@ export default async function AllBillsPage() {
                     </TR>
                   </THead>
                   <TBody>
-                    {site.bills.map((b) => (
+                    {site.bills.map((b: any) => (
                       <TR key={b.id} className="hover:bg-muted/30">
                         <TD className="font-bold">{b.billNo}</TD>
                         <TD className="font-mono text-muted-foreground text-sm">{formatDate(b.billDate)}</TD>
                         <TD className="text-right font-mono font-semibold text-emerald-600">
-                          {formatINR(b.lines.reduce((s, l) => s + l.currentAmount, 0))}
+                          {formatINR(b.lines.reduce((s: number, l: any) => s + l.currentAmount, 0))}
                         </TD>
                         <TD className="text-center">
                           <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">
@@ -108,7 +115,7 @@ export default async function AllBillsPage() {
           </details>
         ))}
 
-        {sitesWithBills.length === 0 && (
+        {sites.length === 0 && (
           <div className="text-center p-12 border rounded-lg border-dashed">
             <Building className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
             <h3 className="text-lg font-medium text-foreground">No Bills Found</h3>
@@ -116,6 +123,13 @@ export default async function AllBillsPage() {
           </div>
         )}
       </div>
+
+      <Pagination 
+        currentPage={page} 
+        totalPages={Math.ceil(totalSites / PAGE_SIZE)} 
+        totalItems={totalSites} 
+        pageSize={PAGE_SIZE} 
+      />
     </div>
   );
 }

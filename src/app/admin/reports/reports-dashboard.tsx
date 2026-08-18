@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { Pagination } from "@/components/ui/pagination";
+import { toast } from "sonner";
 import {
   BarChart,
   Bar,
@@ -75,16 +77,43 @@ export function ReportsDashboard({
 }: ReportsDashboardProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   
   const [selectedSiteId, setSelectedSiteId] = useState<string>("all");
-  const [timeRange, setTimeRange] = useState<"30d" | "90d" | "fy" | "all" | "custom">(initialRange as any || "30d");
+  const [timeRange, setTimeRange] = useState<"30d" | "90d" | "custom">(initialRange as any || "30d");
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"financial" | "labour" | "supervisor" | "billing">("financial");
 
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+  const PAGE_SIZE = 10;
+
   const handleTimeRangeChange = (range: string) => {
     setTimeRange(range as any);
     router.push(`${pathname}?range=${range}`);
+  };
+
+  const handleCustomDateChange = (type: "start" | "end", value: string) => {
+    const newStart = type === "start" ? value : customStartDate;
+    const newEnd = type === "end" ? value : customEndDate;
+
+    if (newStart && newEnd) {
+      const diffTime = new Date(newEnd).getTime() - new Date(newStart).getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays > 90) {
+        toast.error("Maximum 90 days allowed for custom range to ensure fast loading.");
+        return;
+      }
+      
+      if (diffDays < 0) {
+        toast.error("End date cannot be before start date.");
+        return;
+      }
+    }
+
+    if (type === "start") setCustomStartDate(value);
+    else setCustomEndDate(value);
   };
 
   // Date filtering logic
@@ -99,10 +128,6 @@ export function ReportsDashboard({
     } else if (timeRange === "90d") {
       start = new Date();
       start.setDate(start.getDate() - 90);
-    } else if (timeRange === "fy") {
-      // Current Financial Year (Starting April 1)
-      const currentYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
-      start = new Date(currentYear, 3, 1);
     } else if (timeRange === "custom") {
       if (customStartDate) start = new Date(customStartDate);
       if (customEndDate) {
@@ -438,7 +463,7 @@ export function ReportsDashboard({
           <h2>Financial & Collections Report</h2>
           <div class="header-info">
             <p>Generated on: ${new Date().toLocaleDateString()}</p>
-            <p>Date Range: ${timeRange === "custom" ? (customStartDate || "Start") + " to " + (customEndDate || "End") : timeRange === "all" ? "All Time" : timeRange}</p>
+            <p>Date Range: ${timeRange === "custom" ? (customStartDate || "Start") + " to " + (customEndDate || "End") : timeRange}</p>
           </div>
           <table>
             <thead>
@@ -674,7 +699,7 @@ export function ReportsDashboard({
           <h2>Supervisor Payroll & Advances Report</h2>
           <div class="header-info">
             <p>Generated on: ${new Date().toLocaleDateString()}</p>
-            <p>Date Range: ${timeRange === "custom" ? (customStartDate || "Start") + " to " + (customEndDate || "End") : timeRange === "all" ? "All Time" : timeRange}</p>
+            <p>Date Range: ${timeRange === "custom" ? (customStartDate || "Start") + " to " + (customEndDate || "End") : timeRange}</p>
           </div>
           <table>
             <thead>
@@ -810,7 +835,7 @@ export function ReportsDashboard({
           <h2>Labour Wages & Advances Report</h2>
           <div class="header-info">
             <p>Generated on: ${new Date().toLocaleDateString()}</p>
-            <p>Date Range: ${timeRange === "custom" ? (customStartDate || "Start") + " to " + (customEndDate || "End") : timeRange === "all" ? "All Time" : timeRange}</p>
+            <p>Date Range: ${timeRange === "custom" ? (customStartDate || "Start") + " to " + (customEndDate || "End") : timeRange}</p>
             <p>Site: ${selectedSiteId === "all" ? "All Sites" : initialSites.find(s => s.id === selectedSiteId)?.projectName || "All Sites"}</p>
           </div>
           <table>
@@ -1030,7 +1055,7 @@ export function ReportsDashboard({
           <h2>Running Account (RA) Bill Registry</h2>
           <div class="header-info">
             <p>Generated on: ${new Date().toLocaleDateString()}</p>
-            <p>Date Range: ${timeRange === "custom" ? (customStartDate || "Start") + " to " + (customEndDate || "End") : timeRange === "all" ? "All Time" : timeRange}</p>
+            <p>Date Range: ${timeRange === "custom" ? (customStartDate || "Start") + " to " + (customEndDate || "End") : timeRange}</p>
             <p>Site: ${selectedSiteId === "all" ? "All Sites" : initialSites.find(s => s.id === selectedSiteId)?.projectName || "All Sites"}</p>
           </div>
           <table>
@@ -1128,22 +1153,6 @@ export function ReportsDashboard({
             {/* Time Presets */}
             <div className="flex items-center rounded-xl bg-slate-900/80 p-1 border border-indigo-500/30 text-xs">
               <button
-                onClick={() => handleTimeRangeChange("all")}
-                className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
-                  timeRange === "all" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                All Time
-              </button>
-              <button
-                onClick={() => handleTimeRangeChange("fy")}
-                className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
-                  timeRange === "fy" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                FY {new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1}-{new Date().getMonth() >= 3 ? new Date().getFullYear() + 1 : new Date().getFullYear()}
-              </button>
-              <button
                 onClick={() => handleTimeRangeChange("90d")}
                 className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
                   timeRange === "90d" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
@@ -1178,7 +1187,7 @@ export function ReportsDashboard({
                 <input 
                   type="date" 
                   value={customStartDate} 
-                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  onChange={(e) => handleCustomDateChange("start", e.target.value)}
                   className="bg-slate-900/80 text-white text-xs border border-indigo-500/30 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -1187,7 +1196,7 @@ export function ReportsDashboard({
                 <input 
                   type="date" 
                   value={customEndDate} 
-                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  onChange={(e) => handleCustomDateChange("end", e.target.value)}
                   className="bg-slate-900/80 text-white text-xs border border-indigo-500/30 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -1425,7 +1434,7 @@ export function ReportsDashboard({
                         </TR>
                       </THead>
                       <TBody>
-                        {siteFinancialChartData.map((s, idx) => {
+                        {siteFinancialChartData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((s, idx) => {
                           const pct = s.Billed > 0 ? Math.min(100, Math.round((s.Received / s.Billed) * 100)) : 0;
                           return (
                             <TR key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
@@ -1452,6 +1461,12 @@ export function ReportsDashboard({
                   </div>
                 </CardContent>
               </Card>
+              <Pagination 
+                currentPage={page} 
+                totalPages={Math.ceil(siteFinancialChartData.length / PAGE_SIZE)} 
+                totalItems={siteFinancialChartData.length} 
+                pageSize={PAGE_SIZE} 
+              />
             </div>
           )}
 
@@ -1544,7 +1559,7 @@ export function ReportsDashboard({
                         </TR>
                       </THead>
                       <TBody>
-                        {labourMatrixList.map((lab) => (
+                        {labourMatrixList.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((lab) => (
                           <TR key={lab.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
                             <TD className="font-bold text-slate-900 dark:text-slate-100">{lab.name}</TD>
                             <TD><Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800">{lab.category}</Badge></TD>
@@ -1563,6 +1578,12 @@ export function ReportsDashboard({
                   </div>
                 </CardContent>
               </Card>
+              <Pagination 
+                currentPage={page} 
+                totalPages={Math.ceil(labourMatrixList.length / PAGE_SIZE)} 
+                totalItems={labourMatrixList.length} 
+                pageSize={PAGE_SIZE} 
+              />
             </div>
           )}
 
@@ -1653,7 +1674,7 @@ export function ReportsDashboard({
                         </TR>
                       </THead>
                       <TBody>
-                        {supervisorPayrollData.map((sup) => (
+                        {supervisorPayrollData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((sup) => (
                           <TR key={sup.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
                             <TD className="font-bold text-slate-900 dark:text-slate-100">{sup.name}</TD>
                             <TD className="text-right font-mono text-slate-700 dark:text-slate-300 font-semibold">{formatINR(sup.monthlySalary)}</TD>
@@ -1673,6 +1694,12 @@ export function ReportsDashboard({
                   </div>
                 </CardContent>
               </Card>
+              <Pagination 
+                currentPage={page} 
+                totalPages={Math.ceil(supervisorPayrollData.length / PAGE_SIZE)} 
+                totalItems={supervisorPayrollData.length} 
+                pageSize={PAGE_SIZE} 
+              />
             </div>
           )}
 
@@ -1720,7 +1747,7 @@ export function ReportsDashboard({
                         </TR>
                       </THead>
                       <TBody>
-                        {filteredBills.map((b) => {
+                        {filteredBills.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((b) => {
                           const taxable = (b.lines || []).reduce((s: number, l: any) => s + (Number(l.currentAmount) || 0), 0);
                           const cgst = taxable * ((b.cgstPct ?? 9) / 100);
                           const sgst = taxable * ((b.sgstPct ?? 9) / 100);
@@ -1750,6 +1777,12 @@ export function ReportsDashboard({
                   </div>
                 </CardContent>
               </Card>
+              <Pagination 
+                currentPage={page} 
+                totalPages={Math.ceil(filteredBills.length / PAGE_SIZE)} 
+                totalItems={filteredBills.length} 
+                pageSize={PAGE_SIZE} 
+              />
             </div>
           )}
         </div>

@@ -8,26 +8,35 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Building2, User2, Phone, Mail, FileText } from "lucide-react";
 
-export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+import { Pagination } from "@/components/ui/pagination";
+
+export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
   const resolvedParams = await searchParams;
   const q = resolvedParams.q || "";
+  const page = Math.max(1, parseInt(resolvedParams.page || "1", 10));
+  const PAGE_SIZE = 10;
 
-  const clients = await prisma.client.findMany({
-    where: q ? {
-      OR: [
-        { name: { contains: q, mode: "insensitive" } },
-        { contactPerson: { contains: q, mode: "insensitive" } },
-        { phone: { contains: q, mode: "insensitive" } },
-        { email: { contains: q, mode: "insensitive" } },
-        { gstNo: { contains: q, mode: "insensitive" } },
-      ]
-    } : {},
-    include: { _count: { select: { sites: true } } },
-    orderBy: { createdAt: "desc" },
-  });
+  const whereClause = q ? {
+    OR: [
+      { name: { contains: q, mode: "insensitive" } },
+      { contactPerson: { contains: q, mode: "insensitive" } },
+      { phone: { contains: q, mode: "insensitive" } },
+      { email: { contains: q, mode: "insensitive" } },
+      { gstNo: { contains: q, mode: "insensitive" } },
+    ]
+  } : {};
 
-  const totalClients = clients.length;
-  const totalSites = clients.reduce((acc, c) => acc + c._count.sites, 0);
+  const [totalClients, totalSites, clients] = await Promise.all([
+    prisma.client.count({ where: whereClause as any }),
+    prisma.site.count(),
+    prisma.client.findMany({
+      where: whereClause as any,
+      take: PAGE_SIZE,
+      skip: (page - 1) * PAGE_SIZE,
+      include: { _count: { select: { sites: true } } },
+      orderBy: { createdAt: "desc" },
+    })
+  ]);
 
   return (
     <div className="space-y-8 pb-10 animate-in fade-in duration-700">
@@ -113,14 +122,14 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         </form>
         {q && (
           <p className="mt-2.5 text-sm text-slate-500 dark:text-slate-400 font-medium">
-            Showing <span className="font-bold text-blue-600">{clients.length}</span> result{clients.length !== 1 ? "s" : ""} for &quot;<span className="font-bold">{q}</span>&quot;
+            Showing <span className="font-bold text-blue-600">{totalClients}</span> result{totalClients !== 1 ? "s" : ""} for &quot;<span className="font-bold">{q}</span>&quot;
           </p>
         )}
       </div>
 
       {/* Clients Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-        {clients.map((c) => (
+        {clients.map((c: any) => (
           <Card key={c.id} className="group flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/60 hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-300 overflow-hidden rounded-2xl">
             
             {/* Card Top Color Accent */}
@@ -206,6 +215,13 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           </div>
         )}
       </div>
+      
+      <Pagination 
+        currentPage={page} 
+        totalPages={Math.ceil(totalClients / PAGE_SIZE)} 
+        totalItems={totalClients} 
+        pageSize={PAGE_SIZE} 
+      />
     </div>
   );
 }

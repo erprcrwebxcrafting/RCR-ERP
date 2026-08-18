@@ -8,12 +8,13 @@ import { Trash2, Search, ChevronDown, Users, MapPin, Pickaxe, Phone, FileText, F
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { Pagination } from "@/components/ui/pagination";
 
 export default async function LaboursPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
   const resolvedParams = await searchParams;
   const q = resolvedParams.q || "";
   const page = Math.max(1, parseInt(resolvedParams.page || "1", 10));
-  const PAGE_SIZE = 15;
+  const PAGE_SIZE = 10;
 
   const [totalSites, sites] = await Promise.all([
     prisma.site.count({ where: { active: true } }),
@@ -255,38 +256,13 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
         )}
 
         {/* Pagination Controls */}
-        {!q && totalSites > PAGE_SIZE && (
-          <div className="mt-8 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-6">
-            <div className="text-sm text-slate-500 font-medium">
-              Showing <span className="font-bold text-slate-900 dark:text-white">{(page - 1) * PAGE_SIZE + 1}</span> to <span className="font-bold text-slate-900 dark:text-white">{Math.min(page * PAGE_SIZE, totalSites)}</span> of <span className="font-bold text-slate-900 dark:text-white">{totalSites}</span> sites
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-                disabled={page <= 1}
-                className={page <= 1 ? "opacity-50 pointer-events-none" : ""}
-              >
-                <Link href={`/admin/labours?page=${page - 1}`}>
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Previous
-                </Link>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-                disabled={page * PAGE_SIZE >= totalSites}
-                className={page * PAGE_SIZE >= totalSites ? "opacity-50 pointer-events-none" : ""}
-              >
-                <Link href={`/admin/labours?page=${page + 1}`}>
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Link>
-              </Button>
-            </div>
-          </div>
+        {!q && (
+          <Pagination 
+            currentPage={page} 
+            totalPages={Math.ceil(totalSites / PAGE_SIZE)} 
+            totalItems={totalSites} 
+            pageSize={PAGE_SIZE} 
+          />
         )}
       </div>
     </div>

@@ -6,25 +6,37 @@ import { Search, UserCheck, IndianRupee, MapPin, Mail, Phone, Building2, Calenda
 import Link from "next/link";
 import { SupervisorForm } from "./supervisor-form";
 import { EditSupervisorForm } from "./edit-supervisor-form";
+import { Pagination } from "@/components/ui/pagination";
 
 export const dynamic = 'force-dynamic';
 
-export default async function SupervisorsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+export default async function SupervisorsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
   const resolvedParams = await searchParams;
   const q = resolvedParams.q || "";
+  const page = Math.max(1, parseInt(resolvedParams.page || "1", 10));
+  const PAGE_SIZE = 10;
 
-  const [supervisors, allSites] = await Promise.all([
+  const whereClause = { 
+    role: "SUPERVISOR",
+    ...(q ? {
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { email: { contains: q, mode: "insensitive" } },
+        { phone: { contains: q, mode: "insensitive" } },
+      ]
+    } : {})
+  };
+
+  const [totalSupervisors, salaryAggregate, supervisors, allSites] = await Promise.all([
+    prisma.user.count({ where: whereClause as any }),
+    prisma.user.aggregate({
+      where: whereClause as any,
+      _sum: { monthlySalary: true }
+    }),
     prisma.user.findMany({
-      where: { 
-        role: "SUPERVISOR",
-        ...(q ? {
-          OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { email: { contains: q, mode: "insensitive" } },
-            { phone: { contains: q, mode: "insensitive" } },
-          ]
-        } : {})
-      },
+      where: whereClause as any,
+      take: PAGE_SIZE,
+      skip: (page - 1) * PAGE_SIZE,
       select: {
         id: true,
         name: true,
@@ -54,8 +66,7 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
   ]);
 
   // Calculate KPIs
-  const totalSupervisors = supervisors.length;
-  const totalSalaryLiability = (supervisors as any[]).reduce((sum: number, s: any) => sum + (s.monthlySalary || 0), 0);
+  const totalSalaryLiability = salaryAggregate._sum.monthlySalary || 0;
 
   return (
     <div className="space-y-8 pb-10 animate-in fade-in duration-700">
@@ -147,7 +158,7 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
         </form>
         {q && (
           <p className="mt-2.5 text-sm text-slate-500 dark:text-slate-400 font-medium">
-            Showing <span className="font-bold text-blue-600">{supervisors.length}</span> result{supervisors.length !== 1 ? "s" : ""} for "<span className="font-bold">{q}</span>"
+            Showing <span className="font-bold text-blue-600">{totalSupervisors}</span> result{totalSupervisors !== 1 ? "s" : ""} for "<span className="font-bold">{q}</span>"
           </p>
         )}
       </div>
@@ -245,6 +256,13 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
           </div>
         )}
       </div>
+      
+      <Pagination 
+        currentPage={page} 
+        totalPages={Math.ceil(totalSupervisors / PAGE_SIZE)} 
+        totalItems={totalSupervisors} 
+        pageSize={PAGE_SIZE} 
+      />
     </div>
   );
 }

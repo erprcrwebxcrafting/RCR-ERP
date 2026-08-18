@@ -10,14 +10,26 @@ import { Plus, Trash2, FileText, Search, ExternalLink } from "lucide-react";
 import { QuotationSendButtons } from "../sites/[id]/quotations/send-buttons";
 import { deleteQuotationAction } from "./actions";
 import { getFinancialYearDates } from "@/lib/get-fy";
-export default async function AllQuotationsPage() {
-  const { startDate, endDate } = await getFinancialYearDates();
+import { Pagination } from "@/components/ui/pagination";
 
-  const quotations = await prisma.quotation.findMany({
-    where: { createdAt: { gte: startDate, lte: endDate } },
-    include: { site: { include: { client: true } }, client: true },
-    orderBy: { createdAt: "desc" },
-  });
+export default async function AllQuotationsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const resolvedParams = await searchParams;
+  const { startDate, endDate } = await getFinancialYearDates();
+  const page = Math.max(1, parseInt(resolvedParams.page || "1", 10));
+  const PAGE_SIZE = 10;
+
+  const whereClause = { createdAt: { gte: startDate, lte: endDate } };
+
+  const [totalQuotations, quotations] = await Promise.all([
+    prisma.quotation.count({ where: whereClause }),
+    prisma.quotation.findMany({
+      where: whereClause,
+      take: PAGE_SIZE,
+      skip: (page - 1) * PAGE_SIZE,
+      include: { site: { include: { client: true } }, client: true },
+      orderBy: { createdAt: "desc" },
+    })
+  ]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -52,7 +64,7 @@ export default async function AllQuotationsPage() {
               </TR>
             </THead>
             <TBody>
-              {quotations.map((q) => (
+              {quotations.map((q: any) => (
                 <TR key={q.id} className="group hover:bg-muted/30 transition-colors">
                   <TD className="font-bold text-foreground py-4">
                     <div className="flex items-center gap-2">
@@ -115,6 +127,13 @@ export default async function AllQuotationsPage() {
           </Table>
         </div>
       </Card>
+      
+      <Pagination 
+        currentPage={page} 
+        totalPages={Math.ceil(totalQuotations / PAGE_SIZE)} 
+        totalItems={totalQuotations} 
+        pageSize={PAGE_SIZE} 
+      />
     </div>
   );
 }

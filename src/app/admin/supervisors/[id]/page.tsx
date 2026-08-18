@@ -273,9 +273,9 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
           <CardContent className="pt-4 space-y-2">
             {sv.assignedSites.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
-                {sv.assignedSites.map((a: any) => (
+                {sv.assignedSites.map((a: any, index: number) => (
                   <span
-                    key={a.id}
+                    key={a.id || index}
                     className="inline-flex items-center rounded-lg bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800"
                   >
                     <Building2 className="h-3 w-3 mr-1" />
