@@ -233,6 +233,20 @@ export function SupervisorAttendanceHub({
         </div>
       </div>
 
+      {selectedTab === "daily" && !isLocked && unmarkedTodayCount > 0 && (
+        <div className="bg-rose-50 border border-rose-200 dark:bg-rose-950/30 dark:border-rose-900 rounded-2xl p-5 flex items-start gap-4 shadow-sm animate-in slide-in-from-top-2">
+          <div className="p-2 bg-rose-100 dark:bg-rose-900/50 rounded-xl shrink-0">
+            <AlertTriangle className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-rose-800 dark:text-rose-300">Action Required: Unmarked Attendance</h3>
+            <p className="text-sm text-rose-600 dark:text-rose-400 font-medium mt-1 leading-relaxed">
+              You have <strong>{unmarkedTodayCount}</strong> supervisor{unmarkedTodayCount !== 1 ? 's' : ''} with unmarked attendance for {new Date(selectedDate).toLocaleDateString('en-IN')}. Please ensure all attendances are marked to prevent them from being permanently locked.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-4">

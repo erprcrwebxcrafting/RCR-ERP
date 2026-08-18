@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DateSelector } from "./date-selector";
 import { AttendanceForm } from "./attendance-form";
-import { Lock, Building2, Calendar, MapPin, CheckCircle2, Save, Users, Clock, MessageSquare, Edit, ClipboardCheck } from "lucide-react";
+import { Lock, Building2, Calendar, MapPin, CheckCircle2, Save, Users, Clock, MessageSquare, Edit, ClipboardCheck, AlertTriangle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 const HAJARI_OPTIONS = [
@@ -81,6 +81,11 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const hasExisting = existingAttendances.length > 0;
   const existingMap = new Map(existingAttendances.map(a => [a.labourId, a]));
 
+  const unmarkedCount = site.labourCategories.reduce(
+    (acc: number, cat: any) => acc + cat.labours.filter((l: any) => !existingMap.has(l.id)).length,
+    0
+  );
+
   const yesterday = new Date();
   yesterday.setHours(0, 0, 0, 0);
   yesterday.setDate(yesterday.getDate() - 1);
@@ -126,6 +131,20 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
           <Calendar className="h-64 w-64" />
         </div>
       </div>
+
+      {!allLocked && unmarkedCount > 0 && (
+        <div className="bg-rose-50 border border-rose-200 dark:bg-rose-950/30 dark:border-rose-900 rounded-2xl p-5 flex items-start gap-4 shadow-sm animate-in slide-in-from-top-2">
+          <div className="p-2 bg-rose-100 dark:bg-rose-900/50 rounded-xl shrink-0">
+            <AlertTriangle className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-rose-800 dark:text-rose-300">Action Required: Unmarked Attendance</h3>
+            <p className="text-sm text-rose-600 dark:text-rose-400 font-medium mt-1 leading-relaxed">
+              You have <strong>{unmarkedCount}</strong> labourer{unmarkedCount !== 1 ? 's' : ''} with unmarked attendance for this date. Please ensure all attendances are marked to prevent them from being permanently locked.
+            </p>
+          </div>
+        </div>
+      )}
 
       <AttendanceForm 
         siteId={siteId} 
