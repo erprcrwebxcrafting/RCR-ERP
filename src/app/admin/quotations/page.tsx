@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Trash2, FileText, Search, ExternalLink } from "lucide-react";
 import { QuotationSendButtons } from "../sites/[id]/quotations/send-buttons";
-import { deleteQuotationAction } from "./actions";
+import { ClientQuotationActions } from "./client-quotation-actions";
 import { getFinancialYearDates } from "@/lib/get-fy";
 import { Pagination } from "@/components/ui/pagination";
 
@@ -82,13 +82,7 @@ export default async function AllQuotationsPage({ searchParams }: { searchParams
                   </TD>
                   <TD className="py-4">
                     <div className="flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
-                      {q.status === "DRAFT" && (
-                        <Link href={`/admin/quotations/${q.id}/edit`}>
-                          <Button variant="outline" size="sm" className="h-8 font-medium hover:bg-indigo-50 hover:text-indigo-600 border-indigo-200 text-indigo-600">
-                            Edit
-                          </Button>
-                        </Link>
-                      )}
+                      <ClientQuotationActions id={q.id} status={q.status} />
                       <a href={`/api/quotations/${q.id}/pdf`} target="_blank">
                         <Button variant="outline" size="sm" className="h-8 gap-1 font-medium">
                           <ExternalLink className="h-3 w-3" /> PDF
@@ -101,11 +95,6 @@ export default async function AllQuotationsPage({ searchParams }: { searchParams
                         clientEmail={q.client?.email || q.site?.client?.email || ""}
                         clientPhone={q.client?.phone || q.site?.client?.phone || ""}
                       />
-                      <form action={deleteQuotationAction.bind(null, q.id)}>
-                        <Button type="submit" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-colors">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </form>
                     </div>
                   </TD>
                 </TR>

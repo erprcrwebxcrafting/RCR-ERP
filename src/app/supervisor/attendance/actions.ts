@@ -51,9 +51,7 @@ export async function saveAttendance(siteId: string, formData: FormData) {
     if (existing) {
       const createdAtTime = new Date(existing.createdAt).getTime();
       if (now - createdAtTime > TWENTY_FOUR_HOURS_MS) {
-        // Skip updating locked records
-        console.warn(`Skipping attendance update for labour ${labourId} because 24 hours have passed since creation.`);
-        continue;
+        throw new Error("Attendance cannot be edited after 24 hours of creation.");
       }
     }
 

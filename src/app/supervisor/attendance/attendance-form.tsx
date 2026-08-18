@@ -46,7 +46,7 @@ export function AttendanceForm({ siteId, allLocked, hasExisting, headerControls,
             {headerControls}
             
             {allLocked ? (
-              <Button type="button" disabled size="lg" className="w-full md:w-auto h-12 px-6 rounded-xl gap-2 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold opacity-80 cursor-not-allowed border border-slate-200 dark:border-slate-700">
+              <Button type="button" onClick={() => toast.error("Attendance cannot be edited after 24 hours of creation.")} size="lg" className="w-full md:w-auto h-12 px-6 rounded-xl gap-2 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold opacity-80 border border-slate-200 dark:border-slate-700">
                 <Lock className="h-4 w-4" />
                 Locked (Past 24h)
               </Button>

@@ -84,6 +84,16 @@ export async function deleteQuotationAction(quotationId: string) {
   const session = await auth();
   if (!session || (session.user as any).role !== "ADMIN") throw new Error("Unauthorized");
 
+  const existingQuotation = await prisma.quotation.findUnique({
+    where: { id: quotationId },
+  });
+
+  if (!existingQuotation) throw new Error("Quotation not found");
+
+  if (existingQuotation.status !== "DRAFT") {
+    throw new Error("Cannot delete a quotation that has already been sent.");
+  }
+
   await prisma.quotation.delete({
     where: { id: quotationId },
   });

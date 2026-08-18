@@ -36,6 +36,14 @@ export async function markSupervisorAttendanceUniversal(
   const [year, month, day] = dateStr.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
 
+  const existing = await prisma.supervisorAttendance.findUnique({
+    where: { supervisorId_date: { supervisorId, date } }
+  });
+
+  if (existing && (new Date().getTime() - new Date(existing.createdAt).getTime() > 24 * 60 * 60 * 1000)) {
+    throw new Error("Attendance cannot be edited after 24 hours of creation.");
+  }
+
   await prisma.supervisorAttendance.upsert({
     where: {
       supervisorId_date: {
@@ -81,18 +89,27 @@ export async function markAllSupervisorsAttendanceUniversal(
     select: { id: true, monthlySalary: true },
   });
 
-  const [year, month, day] = dateStr.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
 
-  const operations = supervisors.map((sup) => {
-    const monthlySalary = sup.monthlySalary || 0;
-    const dailyRate = Math.round((monthlySalary / 30) * 100) / 100;
-    let earnedAmount = 0;
-    if (status === "PRESENT") {
-      earnedAmount = dailyRate;
-    } else if (status === "HALF_DAY") {
-      earnedAmount = Math.round((dailyRate / 2) * 100) / 100;
-    }
+    const existingRecords = await prisma.supervisorAttendance.findMany({ where: { date } });
+    const existingMap = new Map(existingRecords.map(r => [r.supervisorId, r]));
+    const now = new Date().getTime();
+
+    const operations = supervisors.map((sup) => {
+      const existing = existingMap.get(sup.id);
+      if (existing && (now - new Date(existing.createdAt).getTime() > 24 * 60 * 60 * 1000)) {
+        throw new Error(`Attendance for ${sup.id} cannot be edited after 24 hours of creation.`);
+      }
+
+      const monthlySalary = sup.monthlySalary || 0;
+      const dailyRate = Math.round((monthlySalary / 30) * 100) / 100;
+      let earnedAmount = 0;
+      if (status === "PRESENT") {
+        earnedAmount = dailyRate;
+      } else if (status === "HALF_DAY") {
+        earnedAmount = Math.round((dailyRate / 2) * 100) / 100;
+      }
 
     return prisma.supervisorAttendance.upsert({
       where: {
@@ -131,6 +148,14 @@ export async function clearSupervisorAttendanceUniversal(
 ) {
   const [year, month, day] = dateStr.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+
+  const existing = await prisma.supervisorAttendance.findUnique({
+    where: { supervisorId_date: { supervisorId, date } }
+  });
+
+  if (existing && (new Date().getTime() - new Date(existing.createdAt).getTime() > 24 * 60 * 60 * 1000)) {
+    throw new Error("Attendance cannot be deleted after 24 hours of creation.");
+  }
 
   await prisma.supervisorAttendance.deleteMany({
     where: {
