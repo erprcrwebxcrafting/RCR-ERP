@@ -41,7 +41,10 @@ export async function markSupervisorAttendanceUniversal(
   });
 
   if (existing && (new Date().getTime() - new Date(existing.createdAt).getTime() > 24 * 60 * 60 * 1000)) {
-    throw new Error("Attendance cannot be edited after 24 hours of creation.");
+    if (existing.status !== status || (existing.remarks || "") !== (remarks || "")) {
+      throw new Error("Attendance cannot be edited after 24 hours of creation.");
+    }
+    return { success: true, supervisorName: supervisor.name, status, earnedAmount };
   }
 
   await prisma.supervisorAttendance.upsert({
@@ -99,7 +102,10 @@ export async function markAllSupervisorsAttendanceUniversal(
     const operations = supervisors.map((sup) => {
       const existing = existingMap.get(sup.id);
       if (existing && (now - new Date(existing.createdAt).getTime() > 24 * 60 * 60 * 1000)) {
-        throw new Error(`Attendance for ${sup.id} cannot be edited after 24 hours of creation.`);
+        if (existing.status !== status) {
+          throw new Error(`Attendance for ${sup.id} cannot be edited after 24 hours of creation.`);
+        }
+        // If it hasn't changed, we can safely allow the upsert to run without changes
       }
 
       const monthlySalary = sup.monthlySalary || 0;

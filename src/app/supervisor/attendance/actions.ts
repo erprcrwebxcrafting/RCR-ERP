@@ -51,7 +51,10 @@ export async function saveAttendance(siteId: string, formData: FormData) {
     if (existing) {
       const createdAtTime = new Date(existing.createdAt).getTime();
       if (now - createdAtTime > TWENTY_FOUR_HOURS_MS) {
-        throw new Error("Attendance cannot be edited after 24 hours of creation.");
+        if (existing.hajari !== hajari || (existing.remarks || "") !== (remarks || "")) {
+          throw new Error("Attendance cannot be edited after 24 hours of creation.");
+        }
+        continue;
       }
     }
 
