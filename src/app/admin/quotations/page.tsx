@@ -27,7 +27,7 @@ export default async function AllQuotationsPage({ searchParams }: { searchParams
       take: PAGE_SIZE,
       skip: (page - 1) * PAGE_SIZE,
       include: { site: { include: { client: true } }, client: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: { date: "desc" },
     })
   ]);
 
