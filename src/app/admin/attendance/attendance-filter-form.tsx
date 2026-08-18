@@ -62,7 +62,7 @@ export function AttendanceFilterForm({
           <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Site</label>
           <select name="siteId" defaultValue={siteId} className="h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm font-semibold focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 px-3 cursor-pointer outline-none transition-all shadow-sm w-full appearance-none">
             <option value="">All Sites</option>
-            {sites.map((s) => <option key={s.id} value={s.id}>{s.projectName}</option>)}
+            {sites.map((s) => <option key={s.id} value={s.id}>{s.projectName} (ID: {s.id.slice(-4)})</option>)}
           </select>
         </div>
 
