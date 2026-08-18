@@ -26,11 +26,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { SupervisorPaymentForm } from "./payment-form";
 import { EditSupervisorForm } from "../edit-supervisor-form";
+import { Pagination } from "@/components/ui/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function SupervisorLedgerPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function SupervisorLedgerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ payoutPage?: string; transferPage?: string }> }) {
   const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  
+  const payoutPage = Math.max(1, parseInt(resolvedSearchParams.payoutPage || "1", 10));
+  const transferPage = Math.max(1, parseInt(resolvedSearchParams.transferPage || "1", 10));
+  const PAGE_SIZE = 5;
+
   const [supervisor, allSites] = await Promise.all([
     prisma.user.findUnique({
       where: { id: resolvedParams.id, role: "SUPERVISOR" },
@@ -54,6 +61,9 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
           orderBy: { date: "desc" }
         },
         assignedSites: {
+          where: {
+            site: { active: true }
+          },
           select: {
             siteId: true,
             site: { select: { id: true, projectName: true } }
@@ -98,6 +108,12 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
   const totalEarned = attendances.reduce((sum: number, a: any) => sum + (a.earnedAmount || 0), 0);
   const totalPaid = (sv.supervisorPayments || []).reduce((sum: number, p: any) => sum + p.amount, 0);
   const balance = totalEarned - totalPaid;
+
+  const totalPayments = (sv.supervisorPayments || []).length;
+  const paginatedPayments = (sv.supervisorPayments || []).slice((payoutPage - 1) * PAGE_SIZE, payoutPage * PAGE_SIZE);
+
+  const totalTransfers = (sv.supervisorTransfers || []).length;
+  const paginatedTransfers = (sv.supervisorTransfers || []).slice((transferPage - 1) * PAGE_SIZE, transferPage * PAGE_SIZE);
 
   return (
     <div className="space-y-8 pb-10 animate-in fade-in duration-700">
@@ -319,7 +335,7 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
                   </TR>
                 </THead>
                 <TBody>
-                  {sv.supervisorPayments.map((p: any) => (
+                  {paginatedPayments.map((p: any) => (
                     <TR key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                       <TD className="whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">{formatDate(p.date)}</TD>
                       <TD className="whitespace-nowrap font-bold text-rose-600 dark:text-rose-400">- ₹{p.amount.toLocaleString("en-IN")}</TD>
@@ -329,7 +345,7 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
                       </TD>
                     </TR>
                   ))}
-                  {sv.supervisorPayments.length === 0 && (
+                  {totalPayments === 0 && (
                     <TR>
                       <TD colSpan={3} className="py-12 text-center">
                         <div className="inline-flex flex-col items-center justify-center">
@@ -343,6 +359,13 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
               </Table>
             </div>
           </Card>
+          <Pagination 
+            currentPage={payoutPage} 
+            totalPages={Math.ceil(totalPayments / PAGE_SIZE)} 
+            totalItems={totalPayments} 
+            pageSize={PAGE_SIZE} 
+            pageParam="payoutPage"
+          />
         </div>
 
         {/* Transfer History Section */}
@@ -363,7 +386,7 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
                   </TR>
                 </THead>
                 <TBody>
-                  {sv.supervisorTransfers?.map((t: any) => (
+                  {paginatedTransfers.map((t: any) => (
                     <TR key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                       <TD className="whitespace-nowrap font-medium text-slate-700 dark:text-slate-300 align-top pt-4">{formatDate(t.transferDate)}</TD>
                       <TD>
@@ -383,7 +406,7 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
                       </TD>
                     </TR>
                   ))}
-                  {(!sv.supervisorTransfers || sv.supervisorTransfers.length === 0) && (
+                  {totalTransfers === 0 && (
                     <TR>
                       <TD colSpan={2} className="py-12 text-center">
                         <div className="inline-flex flex-col items-center justify-center">
@@ -397,6 +420,13 @@ export default async function SupervisorLedgerPage({ params }: { params: Promise
               </Table>
             </div>
           </Card>
+          <Pagination 
+            currentPage={transferPage} 
+            totalPages={Math.ceil(totalTransfers / PAGE_SIZE)} 
+            totalItems={totalTransfers} 
+            pageSize={PAGE_SIZE} 
+            pageParam="transferPage"
+          />
         </div>
       </div>
     </div>

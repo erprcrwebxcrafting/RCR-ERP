@@ -9,9 +9,17 @@ import Link from "next/link";
 import { ArrowLeft, User, Phone, Calendar, CreditCard, Building, WalletCards, History, TrendingUp, IndianRupee, ArrowRightLeft, FileText, AlertCircle } from "lucide-react";
 import { LabourForm } from "../labour-form";
 import { LabourCalendar } from "./labour-calendar";
+import { Pagination } from "@/components/ui/pagination";
 
-export default async function LabourLedgerPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function LabourLedgerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ payoutPage?: string; transferPage?: string; attendancePage?: string }> }) {
   const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  
+  const payoutPage = Math.max(1, parseInt(resolvedSearchParams.payoutPage || "1", 10));
+  const transferPage = Math.max(1, parseInt(resolvedSearchParams.transferPage || "1", 10));
+  const attendancePage = Math.max(1, parseInt(resolvedSearchParams.attendancePage || "1", 10));
+  const PAGE_SIZE = 5;
+
   const labourRaw = await prisma.labour.findUnique({
     where: { id: resolvedParams.id },
     include: {
@@ -66,6 +74,15 @@ export default async function LabourLedgerPage({ params }: { params: Promise<{ i
 
   const totalPaid = labour.payments.reduce((sum: any, p: any) => sum + p.amount, 0);
   const balance = totalEarned - totalPaid;
+
+  const totalPayments = (labour.payments || []).length;
+  const paginatedPayments = (labour.payments || []).slice((payoutPage - 1) * PAGE_SIZE, payoutPage * PAGE_SIZE);
+
+  const totalTransfers = (labour.transferHistory || []).length;
+  const paginatedTransfers = (labour.transferHistory || []).slice((transferPage - 1) * PAGE_SIZE, transferPage * PAGE_SIZE);
+
+  const totalAttendances = (labour.attendances || []).length;
+  const paginatedAttendances = (labour.attendances || []).slice((attendancePage - 1) * PAGE_SIZE, attendancePage * PAGE_SIZE);
 
   return (
     <div className="space-y-8 pb-10 animate-in fade-in duration-700">
@@ -229,7 +246,7 @@ export default async function LabourLedgerPage({ params }: { params: Promise<{ i
                   </TR>
                 </THead>
                 <TBody>
-                  {labour.payments.map((p: any) => (
+                  {paginatedPayments.map((p: any) => (
                     <TR key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                       <TD className="whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">{formatDate(p.date)}</TD>
                       <TD className="whitespace-nowrap font-bold text-rose-600 dark:text-rose-400">- ₹{p.amount.toLocaleString("en-IN")}</TD>
@@ -239,7 +256,7 @@ export default async function LabourLedgerPage({ params }: { params: Promise<{ i
                       </TD>
                     </TR>
                   ))}
-                  {labour.payments.length === 0 && (
+                  {totalPayments === 0 && (
                     <TR>
                       <TD colSpan={3} className="py-12 text-center">
                         <div className="inline-flex flex-col items-center justify-center">
@@ -253,6 +270,13 @@ export default async function LabourLedgerPage({ params }: { params: Promise<{ i
               </Table>
             </div>
           </Card>
+          <Pagination 
+            currentPage={payoutPage} 
+            totalPages={Math.ceil(totalPayments / PAGE_SIZE)} 
+            totalItems={totalPayments} 
+            pageSize={PAGE_SIZE} 
+            pageParam="payoutPage"
+          />
         </div>
 
         {/* Recent Attendance Section */}
@@ -274,7 +298,7 @@ export default async function LabourLedgerPage({ params }: { params: Promise<{ i
                   </TR>
                 </THead>
                 <TBody>
-                  {labour.attendances.map((a: any) => {
+                  {paginatedAttendances.map((a: any) => {
                     const appliedRate = a.hajariRate || dailyWage;
                     const dayEarned = (a.hajari || 0) * appliedRate;
 
@@ -292,7 +316,7 @@ export default async function LabourLedgerPage({ params }: { params: Promise<{ i
                       </TR>
                     );
                   })}
-                  {labour.attendances.length === 0 && (
+                  {totalAttendances === 0 && (
                     <TR>
                       <TD colSpan={3} className="py-12 text-center">
                         <div className="inline-flex flex-col items-center justify-center">
@@ -306,6 +330,13 @@ export default async function LabourLedgerPage({ params }: { params: Promise<{ i
               </Table>
             </div>
           </Card>
+          <Pagination 
+            currentPage={attendancePage} 
+            totalPages={Math.ceil(totalAttendances / PAGE_SIZE)} 
+            totalItems={totalAttendances} 
+            pageSize={PAGE_SIZE} 
+            pageParam="attendancePage"
+          />
         </div>
       </div>
 
@@ -329,7 +360,7 @@ export default async function LabourLedgerPage({ params }: { params: Promise<{ i
                 </TR>
               </THead>
               <TBody>
-                {labour.transferHistory?.map((t: any) => (
+                {paginatedTransfers.map((t: any) => (
                   <TR key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <TD className="whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">{formatDate(t.transferDate)}</TD>
                     <TD className="font-medium text-slate-700 dark:text-slate-300">{t.fromSite?.projectName || "—"}</TD>
@@ -343,7 +374,7 @@ export default async function LabourLedgerPage({ params }: { params: Promise<{ i
                     </TD>
                   </TR>
                 ))}
-                {(!labour.transferHistory || labour.transferHistory.length === 0) && (
+                {totalTransfers === 0 && (
                   <TR>
                     <TD colSpan={4} className="py-12 text-center">
                       <div className="inline-flex flex-col items-center justify-center">
@@ -357,6 +388,13 @@ export default async function LabourLedgerPage({ params }: { params: Promise<{ i
             </Table>
           </div>
         </Card>
+        <Pagination 
+          currentPage={transferPage} 
+          totalPages={Math.ceil(totalTransfers / PAGE_SIZE)} 
+          totalItems={totalTransfers} 
+          pageSize={PAGE_SIZE} 
+          pageParam="transferPage"
+        />
       </div>
     </div>
   );

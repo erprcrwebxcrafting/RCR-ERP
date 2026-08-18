@@ -23,6 +23,7 @@ export default async function SupervisorAttendancePage({
       monthlySalary: true,
       // ✅ No passwordHash, aadharNumber etc.
       assignedSites: {
+        where: { site: { active: true } },
         select: { site: { select: { id: true, projectName: true } } }
       },
       supervisorAttendances: {

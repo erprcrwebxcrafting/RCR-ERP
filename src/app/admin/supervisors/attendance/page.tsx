@@ -21,6 +21,7 @@ export default async function SupervisorAttendanceHubPage() {
         monthlySalary: true,
         // ✅ NO passwordHash, aadharNumber, bankAccount etc.
         assignedSites: {
+          where: { site: { active: true } },
           select: { site: { select: { id: true, projectName: true } } }
         },
         supervisorPayments: {

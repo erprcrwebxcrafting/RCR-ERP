@@ -130,7 +130,7 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
                 {/* Supervisor Ledger Buttons */}
                 <div className="flex flex-wrap gap-2">
                   {site.supervisors.map((s: any) => (
-                    <Button key={s.id} variant="outline" size="sm" asChild className="h-8 rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <Button key={s.supervisor.id} variant="outline" size="sm" asChild className="h-8 rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
                       <a href={`/admin/supervisors/${s.supervisor.id}`}>
                         <BookOpen className="h-3 w-3 mr-1.5 text-indigo-500" />
                         {s.supervisor.name.split(' ')[0]} Ledger

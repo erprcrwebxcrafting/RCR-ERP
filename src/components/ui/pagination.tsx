@@ -10,9 +10,10 @@ interface PaginationProps {
   totalPages: number;
   totalItems: number;
   pageSize?: number;
+  pageParam?: string;
 }
 
-export function Pagination({ currentPage, totalPages, totalItems, pageSize = 10 }: PaginationProps) {
+export function Pagination({ currentPage, totalPages, totalItems, pageSize = 10, pageParam = "page" }: PaginationProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -22,7 +23,7 @@ export function Pagination({ currentPage, totalPages, totalItems, pageSize = 10 
 
   const createPageURL = (pageNumber: number | string) => {
     const params = new URLSearchParams(searchParams);
-    params.set("page", pageNumber.toString());
+    params.set(pageParam, pageNumber.toString());
     return `${pathname}?${params.toString()}`;
   };
 

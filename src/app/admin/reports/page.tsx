@@ -82,6 +82,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         id: true,
         name: true,
         monthlySalary: true,
+        assignedSites: {
+          where: { site: { active: true } },
+          select: { siteId: true }
+        },
         supervisorAttendances: {
           where: { date: { gte: startDate, lte: endDate } },
           select: { date: true, status: true, earnedAmount: true },
