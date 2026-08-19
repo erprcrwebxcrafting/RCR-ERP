@@ -50,26 +50,6 @@ export default async function SettingsPage() {
           <SettingsForm settings={globalSettings} />
         </Card>
 
-        {/* Security / Audit Log Planner */}
-        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-50/50 to-white dark:from-indigo-950/20 dark:to-slate-900">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-               <div className="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                  <ShieldCheck className="h-5 w-5" />
-               </div>
-               <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-100">Security & Logs</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-              Editable company-profile settings, WhatsApp/Email integrations, user roles, and a detailed system audit-log viewer are planned for <span className="font-bold text-indigo-600 dark:text-indigo-400">Phase 4</span>.
-            </p>
-            <div className="mt-6 p-4 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
-              <p className="text-xs text-center text-slate-500 font-bold uppercase tracking-widest">Update Pending</p>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Change Admin Password Card */}
         <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900">
           <CardHeader className="pb-4">
