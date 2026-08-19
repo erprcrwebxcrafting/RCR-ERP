@@ -6,9 +6,10 @@ import { EditClientForm } from "./edit-client-form";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Building2, User2, Phone, Mail, FileText } from "lucide-react";
+import { Search as SearchIcon, Building2, User2, Phone, Mail, FileText } from "lucide-react";
 
 import { Pagination } from "@/components/ui/pagination";
+import { Search } from "@/components/search";
 
 export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
   const resolvedParams = await searchParams;
@@ -99,27 +100,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
 
       {/* Search / Filter Bar */}
       <div className="relative">
-        <form method="GET" className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-            <Input
-              name="q"
-              placeholder="Search clients by name, contact, phone, email or GST..."
-              defaultValue={q}
-              className="pl-11 h-12 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-sm text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button type="submit" className="h-12 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5">
-              <Search className="h-4 w-4 mr-2" /> Search
-            </Button>
-            {q && (
-              <Button variant="outline" asChild className="h-12 px-5 rounded-xl border-slate-200 dark:border-slate-700 font-semibold transition-all hover:-translate-y-0.5">
-                <a href="/admin/clients">Clear</a>
-              </Button>
-            )}
-          </div>
-        </form>
+        <Search placeholder="Search clients by name, contact, phone, email or GST..." />
         {q && (
           <p className="mt-2.5 text-sm text-slate-500 dark:text-slate-400 font-medium">
             Showing <span className="font-bold text-blue-600">{totalClients}</span> result{totalClients !== 1 ? "s" : ""} for &quot;<span className="font-bold">{q}</span>&quot;

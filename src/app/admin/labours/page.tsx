@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { LabourForm } from "./labour-form";
 import { deleteLabour } from "./actions";
 import { Button } from "@/components/ui/button";
-import { Trash2, Search, ChevronDown, Users, MapPin, Pickaxe, Phone, FileText, FileDown, BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search } from "@/components/search";
+import { Search as SearchIcon, Trash2, ChevronDown, Users, MapPin, Pickaxe, Phone, FileText, FileDown, BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -98,18 +99,9 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
 
       {/* Search Bar */}
       <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
-        <form method="GET" className="flex items-center gap-3 w-full sm:max-w-md">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input name="q" placeholder="Search by labour name or phone..." defaultValue={q} className="pl-10 h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all" />
-          </div>
-          <Button type="submit" className="h-11 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 text-white px-5 font-semibold transition-all">Search</Button>
-          {q && (
-             <Button variant="ghost" asChild className="h-11 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
-               <a href="/admin/labours">Clear</a>
-             </Button>
-          )}
-        </form>
+        <div className="w-full sm:max-w-md">
+          <Search placeholder="Search by labour name or phone..." />
+        </div>
       </div>
 
       {/* Site Accordions */}
@@ -260,7 +252,7 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
         ))}
         {filteredSites.length === 0 && (
           <div className="text-center py-20 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
-            <Search className="h-10 w-10 text-slate-300 mx-auto mb-4" />
+            <SearchIcon className="h-10 w-10 text-slate-300 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">No results found</h3>
             <p className="text-slate-500 text-sm mt-1">
               {q ? "No labourers found matching your search criteria." : "No active sites found."}

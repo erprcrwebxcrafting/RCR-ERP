@@ -2,11 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, UserCheck, IndianRupee, MapPin, Mail, Phone, Building2, CalendarDays } from "lucide-react";
+import { Search as SearchIcon, UserCheck, IndianRupee, MapPin, Mail, Phone, Building2, CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { SupervisorForm } from "./supervisor-form";
 import { EditSupervisorForm } from "./edit-supervisor-form";
 import { Pagination } from "@/components/ui/pagination";
+import { Search } from "@/components/search";
 
 export const dynamic = 'force-dynamic';
 
@@ -129,27 +130,7 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
 
       {/* Search / Filter Bar */}
       <div className="relative">
-        <form method="GET" className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-            <Input
-              name="q"
-              placeholder="Search supervisors by name, email or phone..."
-              defaultValue={q}
-              className="pl-11 h-12 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-sm text-sm focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button type="submit" className="h-12 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5">
-              <Search className="h-4 w-4 mr-2" /> Search
-            </Button>
-            {q && (
-              <Button variant="outline" asChild className="h-12 px-5 rounded-xl border-slate-200 dark:border-slate-700 font-semibold transition-all hover:-translate-y-0.5">
-                <a href="/admin/supervisors">Clear</a>
-              </Button>
-            )}
-          </div>
-        </form>
+        <Search placeholder="Search supervisors by name, email or phone..." />
         {q && (
           <p className="mt-2.5 text-sm text-slate-500 dark:text-slate-400 font-medium">
             Showing <span className="font-bold text-blue-600">{totalSupervisors}</span> result{totalSupervisors !== 1 ? "s" : ""} for "<span className="font-bold">{q}</span>"
