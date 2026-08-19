@@ -105,14 +105,14 @@ export default async function AdminDashboard() {
           <CardHeader className="pb-2 relative z-10">
             <CardDescription className="flex items-center justify-between font-semibold text-slate-500 dark:text-slate-400">
               <span className="uppercase tracking-wider text-xs">Total Billed</span>
-              <div className="rounded-xl bg-blue-500/10 p-2.5 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-500/20 group-hover:scale-110 transition-transform duration-300">
+              <div className="rounded-xl bg-blue-500/10 p-2 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-500/20 group-hover:scale-110 transition-transform duration-300">
                 <Receipt className="h-4 w-4" />
               </div>
             </CardDescription>
           </CardHeader>
           <CardContent className="relative z-10">
             <div className="flex items-baseline gap-2">
-              <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-800 dark:text-slate-100">{formatINR(totalBilled)}</h2>
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">{formatINR(totalBilled)}</h2>
             </div>
             <div className="mt-4 flex items-center inline-flex bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-500/20">
               <ArrowUpRight className="mr-1 h-3.5 w-3.5" />
@@ -128,14 +128,14 @@ export default async function AdminDashboard() {
           <CardHeader className="pb-2 relative z-10">
             <CardDescription className="flex items-center justify-between font-semibold text-slate-500 dark:text-slate-400">
               <span className="uppercase tracking-wider text-xs">Total Received</span>
-              <div className="rounded-xl bg-emerald-500/10 p-2.5 text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-500/20 group-hover:scale-110 transition-transform duration-300">
+              <div className="rounded-xl bg-emerald-500/10 p-2 text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-500/20 group-hover:scale-110 transition-transform duration-300">
                 <Wallet className="h-4 w-4" />
               </div>
             </CardDescription>
           </CardHeader>
           <CardContent className="relative z-10">
             <div className="flex items-baseline gap-2">
-              <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-800 dark:text-slate-100">{formatINR(totalReceived)}</h2>
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">{formatINR(totalReceived)}</h2>
             </div>
             <div className="mt-4 flex items-center inline-flex bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-500/20">
               <ArrowUpRight className="mr-1 h-3.5 w-3.5" />
@@ -151,14 +151,14 @@ export default async function AdminDashboard() {
           <CardHeader className="pb-2 relative z-10">
             <CardDescription className="flex items-center justify-between font-semibold text-slate-500 dark:text-slate-400">
               <span className="uppercase tracking-wider text-xs">Outstanding Balance</span>
-              <div className="rounded-xl bg-rose-500/10 p-2.5 text-rose-600 dark:text-rose-400 shadow-sm border border-rose-500/20 group-hover:scale-110 transition-transform duration-300">
+              <div className="rounded-xl bg-rose-500/10 p-2 text-rose-600 dark:text-rose-400 shadow-sm border border-rose-500/20 group-hover:scale-110 transition-transform duration-300">
                 <Activity className="h-4 w-4" />
               </div>
             </CardDescription>
           </CardHeader>
           <CardContent className="relative z-10">
             <div className="flex items-baseline gap-2">
-              <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-rose-600 dark:text-rose-500">{formatINR(outstanding)}</h2>
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-rose-600 dark:text-rose-500">{formatINR(outstanding)}</h2>
             </div>
             <div className="mt-4 flex items-center inline-flex bg-rose-500/10 text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-full text-xs font-semibold border border-rose-500/20">
               <ArrowDownRight className="mr-1 h-3.5 w-3.5" />
@@ -176,10 +176,10 @@ export default async function AdminDashboard() {
             <CardContent className="flex items-center justify-between p-6">
               <div className="space-y-1">
                 <p className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{c.label}</p>
-                <p className="text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">{c.value}</p>
+                <p className="text-2xl font-black tracking-tight text-slate-800 dark:text-slate-100">{c.value}</p>
               </div>
-              <div className={`rounded-2xl p-3.5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 border ${c.bg} ${c.border}`}>
-                <c.icon className={`h-6 w-6 ${c.color}`} />
+              <div className={`rounded-xl p-2.5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 border ${c.bg} ${c.border}`}>
+                <c.icon className={`h-5 w-5 ${c.color}`} />
               </div>
             </CardContent>
           </Card>

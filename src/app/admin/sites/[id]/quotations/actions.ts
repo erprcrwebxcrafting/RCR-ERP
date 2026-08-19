@@ -2,9 +2,10 @@
 // TS Re-check trigger
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { headers } from "next/headers";
 import { sendEmailWithAttachment } from "@/lib/email";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
-import { generateQuotationPdf } from "@/lib/pdf/quotation";
+import { renderQuotationToBuffer } from "@/lib/pdf/components/renderPdf";
 import { formatINR } from "@/lib/utils";
 
 export async function sendQuotationEmailAction(quotationId: string) {
@@ -27,8 +28,13 @@ export async function sendQuotationEmailAction(quotationId: string) {
   if (!q) return { error: "Quotation not found" };
   if (!clientEmail) return { error: "Client email is missing. Please update the Client profile with an email address." };
 
-  const pdfBuffer = await generateQuotationPdf({
-    companyName: globalSettings?.companyName || "RCR Enterprises",
+  const headersList = await headers();
+  const protocol = headersList.get("x-forwarded-proto") || "http";
+  const host = headersList.get("host") || "localhost:3000";
+  const baseUrl = `${protocol}://${host}`;
+
+  const pdfBuffer = await renderQuotationToBuffer({
+    companyName: globalSettings?.companyName || "RCR ENTERPRISES",
     companyGst: "27CIMPR8276H1ZF",
     companyEmail: globalSettings?.email || "rcrenterprises786@gmail.com",
     companyPhone: globalSettings?.phone || "+91 9619439243",
@@ -36,12 +42,15 @@ export async function sendQuotationEmailAction(quotationId: string) {
     companyAddress: globalSettings?.address || "Office No- 04, Raipada, Nr. Anand Gaushalla, Chandansar Road, Virar (E) - 401305",
     clientName: clientName || "",
     projectAddress: projectName || "",
+    quotationNo: q.quotationNo,
     subject: q.subject,
-    date: q.date.toLocaleDateString("en-IN"),
+    date: new Date(q.date).toLocaleDateString("en-GB"),
     items: JSON.parse(q.itemsJson),
     terms: JSON.parse(q.termsJson),
-    exclusions: JSON.parse(q.exclusionsJson || "[]"),
-  });
+    exclusions: q.exclusionsJson ? JSON.parse(q.exclusionsJson) : [],
+    logoUrl: `${baseUrl}/rcr-logo.png`,
+    signUrl: `${baseUrl}/sign&logo.png`,
+  } as any);
 
   await sendEmailWithAttachment(
     clientEmail,
