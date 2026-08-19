@@ -8,5 +8,12 @@ const __dirname = path.dirname(__filename);
 const nextConfig = {
   experimental: { serverActions: { bodySizeLimit: '10mb' } },
   outputFileTracingRoot: path.join(__dirname),
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      jspdf: 'jspdf/dist/jspdf.umd.js',
+    };
+    return config;
+  },
 };
 export default nextConfig;

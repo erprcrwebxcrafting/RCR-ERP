@@ -19,13 +19,14 @@ import { TowerWorkManager } from "./components/tower-work-manager";
 import { SupplyLabourManager } from "./components/supply-labour-manager";
 import { RABillViewer } from "./components/ra-bill-viewer";
 import { SiteBalanceSheet } from "./components/site-balance-sheet";
+import { SiteExpensesTracker } from "./components/site-expenses-tracker";
 import { 
   Building2, Hammer, Users, Banknote, UserCheck, Receipt, FileText, 
   MapPin, Percent, FileCheck, CircleDollarSign, CalendarDays, Contact2, Trash2, HardHat, Edit2
 } from "lucide-react";
 
 const tabTrigger =
-  "px-4 py-2 text-sm font-medium text-muted-foreground border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground transition-colors";
+  "px-3 py-2 text-[13px] whitespace-nowrap font-medium text-muted-foreground border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground transition-colors";
 
 export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: any[] }) {
   const [isPending, startTransition] = useTransition();
@@ -62,13 +63,14 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
 
   return (
     <Tabs.Root defaultValue="towers">
-      <Tabs.List className="mb-6 flex flex-wrap gap-1 border-b border-border">
+      <Tabs.List className="mb-6 flex overflow-x-auto scrollbar-hide gap-1 border-b border-border">
         <Tabs.Trigger className={tabTrigger} value="overview">Overview</Tabs.Trigger>
         <Tabs.Trigger className={tabTrigger} value="towers">Towers & Work Items</Tabs.Trigger>
         <Tabs.Trigger className={tabTrigger} value="supply">Extra Supply Labours</Tabs.Trigger>
         <Tabs.Trigger className={tabTrigger} value="bills">RA Bills & Invoices</Tabs.Trigger>
         <Tabs.Trigger className={tabTrigger} value="balance">Balance Sheet & Payments</Tabs.Trigger>
         <Tabs.Trigger className={tabTrigger} value="internallabours">Internal Site Labours</Tabs.Trigger>
+        <Tabs.Trigger className={tabTrigger} value="expenses">Total Expenses</Tabs.Trigger>
       </Tabs.List>
 
       {/* OVERVIEW TAB */}
@@ -278,40 +280,72 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div>
               <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <HardHat className="h-5 w-5 text-indigo-500" />
-                Internal Site Labour Roster & Categories
+                <Users className="h-5 w-5 text-indigo-500" />
+                Site Labours List
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Manage site contractor workforce (Fitters, Helpers, Masons) and daily supervisor attendance.
+                View all labours on this site along with their total attendance and rates.
               </p>
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              {site.labourCategories.map((c: any) => (
-                <Card key={c.id} className="bg-muted/30">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-bold">{c.name}</CardTitle>
-                    <p className="text-xs text-muted-foreground">Daily Wage: ₹{c.dailyWage} | Labours: {c.labours?.length || 0}</p>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-1">
-                      {c.labours?.map((l: any) => (
-                        <div key={l.id} className="flex justify-between items-center text-xs py-1 border-b">
-                          <span>{l.name}</span>
-                          <span className="font-mono text-muted-foreground">{l.phone || "No phone"}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+          <CardContent>
+            <div className="rounded-md border border-slate-200 dark:border-slate-800">
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>Labour Name</TH>
+                    <TH>Category</TH>
+                    <TH>Supervisor</TH>
+                    <TH>Rate (₹)</TH>
+                    <TH>Total Hajri</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {(() => {
+                    const allLabours = site.labourCategories.flatMap((c: any) =>
+                      (c.labours || []).map((l: any) => ({
+                        id: l.id,
+                        name: l.name,
+                        categoryName: c.name,
+                        supervisorName: l.supervisor?.name || "Unassigned",
+                        rate: l.dailyWage ?? c.dailyWage,
+                        totalHajri: (l.attendances || []).reduce((sum: number, a: any) => sum + (a.hajari || 0), 0)
+                      }))
+                    );
+
+                    if (allLabours.length === 0) {
+                      return (
+                        <TR>
+                          <TD colSpan={5} className="h-24 text-center text-muted-foreground">
+                            No labours found on this site. Please add them from the Labours menu or transfer them here.
+                          </TD>
+                        </TR>
+                      );
+                    }
+
+                    return allLabours.map((l: any) => (
+                      <TR key={l.id}>
+                        <TD className="font-medium">{l.name}</TD>
+                        <TD>
+                          <Badge variant="outline" className="font-normal text-xs">{l.categoryName}</Badge>
+                        </TD>
+                        <TD className="text-muted-foreground text-xs">{l.supervisorName}</TD>
+                        <TD>{l.rate}</TD>
+                        <TD className="font-semibold text-emerald-600">{l.totalHajri}</TD>
+                      </TR>
+                    ));
+                  })()}
+                </TBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
       </Tabs.Content>
 
-
+      {/* TOTAL EXPENSES TAB */}
+      <Tabs.Content value="expenses" className="space-y-6 mt-4">
+        <SiteExpensesTracker site={site} />
+      </Tabs.Content>
 
     </Tabs.Root>
   );

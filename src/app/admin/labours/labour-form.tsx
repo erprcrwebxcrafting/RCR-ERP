@@ -91,7 +91,7 @@ export function LabourForm({
     }
 
     if (dailyWage) {
-      const wageCheck = validatePositiveNumber(dailyWage, "Daily Wage", true);
+      const wageCheck = validatePositiveNumber(dailyWage, "Hajri", true);
       if (!wageCheck.valid) {
         toast.error(wageCheck.error);
         return;
@@ -283,7 +283,7 @@ export function LabourForm({
                 </div>
 
                 <div className="space-y-2 mt-4">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Hajari Rate (₹) / Daily Wage</Label>
+                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Hajri (₹)</Label>
                   <div className="relative">
                     <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500 pointer-events-none" />
                     <Input name="dailyWage" type="number" step="0.01" defaultValue={labour?.dailyWage} placeholder="e.g. 800" className="pl-10 h-11 rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-bold text-emerald-600 dark:text-emerald-400 font-mono" />

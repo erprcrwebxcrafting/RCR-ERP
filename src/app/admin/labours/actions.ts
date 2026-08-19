@@ -51,7 +51,9 @@ export async function saveLabour(formData: FormData) {
   }
 
   if (parsed.phone && parsed.phone.trim()) {
-    const cleanedPhone = parsed.phone.replace(/\s+/g, "").replace(/^(\+91|91)/, "");
+    let cleanedPhone = parsed.phone.replace(/\s+/g, "");
+    if (cleanedPhone.startsWith("+91")) cleanedPhone = cleanedPhone.slice(3);
+    else if (cleanedPhone.length === 12 && cleanedPhone.startsWith("91")) cleanedPhone = cleanedPhone.slice(2);
     if (!/^[6-9]\d{9}$/.test(cleanedPhone)) {
       throw new Error("Please enter a valid 10-digit Indian mobile number.");
     }

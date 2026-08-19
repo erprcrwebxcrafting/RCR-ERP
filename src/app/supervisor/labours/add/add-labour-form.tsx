@@ -27,28 +27,15 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
   const selectedSite = availableSites.find((s) => s.id === selectedSiteId) || availableSites[0];
   const categories = selectedSite?.labourCategories || [];
 
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(categories[0]?.id || "");
-  const [dailyWage, setDailyWage] = useState<string>(categories[0]?.dailyWage?.toString() || "");
+  const [selectedCategoryName, setSelectedCategoryName] = useState<string>("");
+  const [dailyWage, setDailyWage] = useState<string>("");
 
-  const handleCategoryChange = (catId: string) => {
-    setSelectedCategoryId(catId);
-    const cat = categories.find((c) => c.id === catId);
-    if (cat) {
-      setDailyWage(cat.dailyWage.toString());
-    }
+  const handleCategoryChange = (catName: string) => {
+    setSelectedCategoryName(catName);
   };
 
   const handleSiteChange = (siteId: string) => {
     setSelectedSiteId(siteId);
-    const site = availableSites.find((s) => s.id === siteId);
-    const firstCat = site?.labourCategories[0];
-    if (firstCat) {
-      setSelectedCategoryId(firstCat.id);
-      setDailyWage(firstCat.dailyWage.toString());
-    } else {
-      setSelectedCategoryId("");
-      setDailyWage("");
-    }
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -59,7 +46,7 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
     const phone = (formData.get("phone") as string)?.trim();
     const aadharNumber = (formData.get("aadharNumber") as string)?.trim();
     const ifscCode = (formData.get("ifscCode") as string)?.trim();
-    const categoryId = (formData.get("labourCategoryId") as string)?.trim();
+    const categoryName = (formData.get("labourCategoryName") as string)?.trim();
     const wageStr = (formData.get("dailyWage") as string)?.trim();
 
     // Client-side validations
@@ -73,7 +60,7 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
       return;
     }
 
-    if (!categoryId) {
+    if (!categoryName) {
       toast.error("Please select a labour trade / category.");
       return;
     }
@@ -97,7 +84,7 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
     }
 
     if (wageStr) {
-      const wageCheck = validatePositiveNumber(wageStr, "Daily Wage Rate");
+      const wageCheck = validatePositiveNumber(wageStr, "Hajri");
       if (!wageCheck.valid) {
         toast.error(wageCheck.error);
         return;
@@ -271,28 +258,28 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="labourCategoryId" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <Label htmlFor="labourCategoryName" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Trade / Category *
                 </Label>
                 <select
-                  id="labourCategoryId"
-                  name="labourCategoryId"
+                  id="labourCategoryName"
+                  name="labourCategoryName"
                   required
-                  value={selectedCategoryId}
+                  value={selectedCategoryName}
                   onChange={(e) => handleCategoryChange(e.target.value)}
                   className="flex h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm cursor-pointer"
                 >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
-                      {c.name} (Base: ₹{c.dailyWage})
-                    </option>
-                  ))}
+                  <option value="">Select Category...</option>
+                  <option value="Fitter" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">Fitter</option>
+                  <option value="Helper" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">Helper</option>
+                  <option value="Mason" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">Mason</option>
+                  <option value="Carpenter" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">Carpenter</option>
                 </select>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="dailyWage" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Daily Wage Rate (₹) *
+                  Hajri (₹) *
                 </Label>
                 <Input
                   id="dailyWage"

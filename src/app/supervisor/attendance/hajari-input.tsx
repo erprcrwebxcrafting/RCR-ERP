@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
+import { ChevronDown, Check } from "lucide-react";
 
 const HAJARI_OPTIONS = [
   { value: "0", label: "Absent (0 Hajari)" },
@@ -41,24 +42,38 @@ export function HajariInput({
   const [isCustom, setIsCustom] = useState(() => {
     return !HAJARI_OPTIONS.some((o) => o.value === defaultValStr);
   });
+  
+  const [currentValue, setCurrentValue] = useState(defaultValStr);
 
-  const selectClassName = "h-11 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-bold text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all shadow-sm cursor-pointer hover:border-indigo-400";
-  const disabledSelectClassName = "h-11 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium text-sm cursor-not-allowed opacity-80";
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectClassName = "flex items-center justify-between h-11 w-full px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-bold text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all shadow-sm cursor-pointer hover:border-indigo-400";
+  const disabledSelectClassName = "flex items-center justify-between h-11 w-full px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium text-sm cursor-not-allowed opacity-80";
   const inputClassName = "h-11 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold text-sm focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500/20 transition-all shadow-sm hover:border-indigo-400";
+
+  const selectedLabel = HAJARI_OPTIONS.find((o) => o.value === currentValue)?.label || `${currentValue} Hajari (Custom)`;
 
   if (isLocked) {
     return (
-      <>
-        <input type="hidden" name={`hajari__${labourId}`} value={defaultValStr} />
-        <select className={disabledSelectClassName} disabled value={isCustom ? "custom" : defaultValStr}>
-          {HAJARI_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-          {isCustom && <option value="custom">{defaultValStr} Hajari (Custom)</option>}
-        </select>
-      </>
+      <div className="relative">
+        <input type="hidden" name={`hajari__${labourId}`} value={currentValue} />
+        <div className={disabledSelectClassName}>
+          <span className="truncate">{selectedLabel}</span>
+          <ChevronDown className="h-4 w-4 opacity-50" />
+        </div>
+      </div>
     );
   }
 
@@ -71,7 +86,7 @@ export function HajariInput({
           min="0"
           max="10"
           name={`hajari__${labourId}`}
-          defaultValue={defaultValStr}
+          defaultValue={currentValue}
           className={inputClassName}
           placeholder="e.g. 1.25"
           autoFocus
@@ -89,24 +104,58 @@ export function HajariInput({
   }
 
   return (
-    <select
-      name={`hajari__${labourId}`}
-      className={selectClassName}
-      defaultValue={defaultValStr}
-      onChange={(e) => {
-        if (e.target.value === "custom") {
-          setIsCustom(true);
-        }
-      }}
-    >
-      {HAJARI_OPTIONS.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-      <option value="custom" className="font-bold text-indigo-600">
-        + Custom Value...
-      </option>
-    </select>
+    <div className="relative" ref={dropdownRef}>
+      <input type="hidden" name={`hajari__${labourId}`} value={currentValue} />
+      
+      <div
+        className={`${selectClassName} ${isOpen ? "ring-2 ring-indigo-500/20 border-indigo-500" : ""}`}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className="truncate">{selectedLabel}</span>
+        <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? "rotate-180 text-indigo-500" : ""}`} />
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl py-2 max-h-64 overflow-y-auto overflow-x-hidden origin-top animate-in fade-in zoom-in-95">
+          {HAJARI_OPTIONS.map((opt) => {
+            const isSelected = opt.value === currentValue;
+            return (
+              <div
+                key={opt.value}
+                className={`flex items-center justify-between px-4 py-2.5 cursor-pointer transition-colors text-sm font-semibold
+                  ${isSelected ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400" : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50"}
+                `}
+                onClick={() => {
+                  const inputElement = document.querySelector(`input[name="hajari__${labourId}"]`) as HTMLInputElement;
+                  if (inputElement) {
+                    inputElement.value = opt.value;
+                    // Trigger a change event so the form knows about it (optional but good practice)
+                    inputElement.dispatchEvent(new Event("change", { bubbles: true }));
+                  }
+                  setCurrentValue(opt.value);
+                  setIsOpen(false);
+                  setIsCustom(false);
+                }}
+              >
+                {opt.label}
+                {isSelected && <Check className="h-4 w-4" />}
+              </div>
+            );
+          })}
+          
+          <div className="h-px w-full bg-slate-100 dark:bg-slate-800 my-1"></div>
+          
+          <div
+            className="flex items-center px-4 py-2.5 cursor-pointer transition-colors text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+            onClick={() => {
+              setIsOpen(false);
+              setIsCustom(true);
+            }}
+          >
+            + Custom Hajari Value...
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

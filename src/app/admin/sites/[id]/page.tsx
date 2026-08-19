@@ -20,7 +20,7 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
         buildings: { orderBy: [{ order: "asc" }, { createdAt: "asc" }], include: { workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] } } },
         workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
         supplyLabourEntries: { orderBy: { date: "asc" } },
-        labourCategories: { orderBy: { order: "asc" }, include: { labours: true } },
+        labourCategories: { orderBy: { order: "asc" }, include: { labours: { include: { payments: { orderBy: { date: "desc" } }, attendances: { select: { hajari: true } }, supervisor: { select: { name: true } } } } } },
         supervisors: { 
           select: { 
             supervisor: { select: { id: true, name: true, email: true, phone: true } }
@@ -30,6 +30,7 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
         quotations: { orderBy: { createdAt: "desc" } },
         payments: { orderBy: { date: "desc" } },
         labourEntries: { orderBy: { createdAt: "desc" } },
+        expenses: { orderBy: { date: "desc" } },
       },
     }),
     // ✅ Only safe fields - no passwordHash, aadharNumber etc.

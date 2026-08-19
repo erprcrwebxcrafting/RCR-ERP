@@ -16,7 +16,6 @@ model User {
   role                  Role
   phone                 String?
   active                Boolean                     @default(true)
-  passwordVersion       Int                         @default(0)
   createdAt             DateTime                    @default(now())
   updatedAt             DateTime                    @updatedAt
   monthlySalary         Float?
@@ -27,6 +26,7 @@ model User {
   bankName              String?
   dateOfJoining         DateTime?
   ifscCode              String?
+  passwordVersion       Int                         @default(0)
   labours               Labour[]
   assignedSites         SiteSupervisor[]
   supervisorAttendances SupervisorAttendance[]      @relation("SupervisorAttendanceRecords")
@@ -83,6 +83,7 @@ model Site {
   supervisorTransfersTo   SupervisorTransferHistory[] @relation("SupervisorTransferToSite")
   supplyLabourEntries     SupplyLabourEntry[]
   workItems               WorkItem[]
+  expenses                SiteExpense[]
 
   @@index([clientId])
 }
@@ -400,14 +401,14 @@ model SupervisorTransferHistory {
 }
 
 model GlobalSettings {
-  id          String   @id @default("global")
-  companyName String   @default("RCR ENTERPRISES")
-  phone       String?
+  id                     String   @id @default("global")
+  companyName            String   @default("RCR ENTERPRISES")
+  phone                  String?
   email                  String?
   website                String?
   address                String?
-  notifySupervisorLogins Boolean  @default(true)
   updatedAt              DateTime @updatedAt
+  notifySupervisorLogins Boolean  @default(true)
 }
 
 model SupervisorAttendance {
@@ -426,11 +427,6 @@ model SupervisorAttendance {
   @@index([supervisorId, date])
 }
 
-enum Role {
-  ADMIN
-  SUPERVISOR
-}
-
 model OtpToken {
   id        String   @id @default(cuid())
   email     String
@@ -445,10 +441,29 @@ model OtpToken {
 model ShareLink {
   id        String   @id @default(cuid())
   code      String   @unique
-  type      String   // "BILL" | "QUOTATION"
-  refId     String   // billId or quotationId
+  type      String
+  refId     String
   expiresAt DateTime
   createdAt DateTime @default(now())
 
   @@index([code])
+}
+
+model SiteExpense {
+  id          String   @id @default(cuid())
+  siteId      String
+  date        DateTime
+  amount      Float
+  paidTo      String
+  description String
+  createdAt   DateTime @default(now())
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([date])
+}
+
+enum Role {
+  ADMIN
+  SUPERVISOR
 }

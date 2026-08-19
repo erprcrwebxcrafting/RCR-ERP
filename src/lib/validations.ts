@@ -10,7 +10,12 @@ export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function validatePhone(phone?: string | null): { valid: boolean; error?: string } {
   if (!phone || !phone.trim()) return { valid: true }; // optional
-  const cleaned = phone.replace(/\s+/g, "").replace(/^(\+91|91)/, "");
+  let cleaned = phone.replace(/\s+/g, "");
+  if (cleaned.startsWith("+91")) {
+    cleaned = cleaned.slice(3);
+  } else if (cleaned.length === 12 && cleaned.startsWith("91")) {
+    cleaned = cleaned.slice(2);
+  }
   if (!INDIAN_PHONE_REGEX.test(cleaned)) {
     return { valid: false, error: "Please enter a valid 10-digit Indian mobile number (starts with 6, 7, 8, or 9)." };
   }
