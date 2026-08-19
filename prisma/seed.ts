@@ -23,29 +23,52 @@ async function main() {
     },
   });
 
-  // Create or Update Admin User
+  // Check if an Admin already exists
+  const existingAdmin = await prisma.user.findFirst({
+    where: { role: "ADMIN" }
+  });
+
   const pepper = process.env.PASSWORD_PEPPER;
   if (!pepper) {
     throw new Error("PASSWORD_PEPPER must be provided in the environment variables.");
   }
   
   const hashedPassword = await bcrypt.hash(adminPassword + pepper, 10);
-  const admin = await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: {
-      passwordHash: hashedPassword,
-      role: "ADMIN",
-    },
-    create: {
-      email: adminEmail,
-      name: "System Admin",
-      passwordHash: hashedPassword,
-      role: "ADMIN",
-      active: true,
-    },
-  });
 
-  console.log(`Admin user seeded successfully with email: ${admin.email}`);
+  if (existingAdmin) {
+    // Admin already exists! Prevent accidental overwrite unless explicitly allowed
+    if (process.env.FORCE_ADMIN_UPDATE !== "true") {
+      console.log("⚠️ An Admin already exists in the system.");
+      console.log("   To update the admin's email or reset their password via seed,");
+      console.log("   you must set FORCE_ADMIN_UPDATE=\"true\" in your .env file.");
+      console.log("   Seeding aborted safely. No data was changed.");
+      return; // Exit safely
+    }
+
+    // Force update the existing admin (ensuring there's only ever ONE admin)
+    await prisma.user.update({
+      where: { id: existingAdmin.id },
+      data: {
+        email: adminEmail,
+        passwordHash: hashedPassword,
+        passwordVersion: { increment: 1 } // Log out old sessions
+      }
+    });
+    console.log(`✅ Existing Admin updated successfully to use email: ${adminEmail}`);
+
+  } else {
+    // No admin exists, create the first one
+    await prisma.user.create({
+      data: {
+        email: adminEmail,
+        name: "System Admin",
+        passwordHash: hashedPassword,
+        role: "ADMIN",
+        active: true,
+      }
+    });
+    console.log(`✅ New Admin user created successfully with email: ${adminEmail}`);
+  }
   console.log("Seeding finished.");
 }
 
