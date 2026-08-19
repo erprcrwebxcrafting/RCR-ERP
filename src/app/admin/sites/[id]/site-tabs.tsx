@@ -227,14 +227,14 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
                 <p className="text-xs text-muted-foreground py-2 text-center">No supervisors assigned to this site yet.</p>
               ) : (
                 site.supervisors.map((s: any) => (
-                  <div key={s.id} className="flex justify-between items-center text-sm py-2 border-b border-slate-200/60 dark:border-slate-800 last:border-0">
+                  <div key={s.supervisor.id} className="flex justify-between items-center text-sm py-2 border-b border-slate-200/60 dark:border-slate-800 last:border-0">
                     <div>
                       <Link href={`/admin/supervisors/${s.supervisor.id}`} className="font-semibold hover:text-blue-600 transition-colors">
                         {s.supervisor.name}
                       </Link>
                       <p className="text-xs text-muted-foreground">{s.supervisor.email} {s.supervisor.phone ? `• ${s.supervisor.phone}` : ""}</p>
                     </div>
-                    <form action={unassignSupervisorAction.bind(null, site.id, s.supervisorId)}>
+                    <form action={unassignSupervisorAction.bind(null, site.id, s.supervisor.id)}>
                       <Button
                         type="submit"
                         variant="ghost"
