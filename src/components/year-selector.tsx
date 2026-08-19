@@ -26,8 +26,9 @@ export function YearSelector({ earliestYear }: { earliestYear?: number }) {
 
   const currentYear = new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1;
 
-  // Generate all years from earliestYear to currentYear (or last 15 years if no earliestYear)
-  const startYear = earliestYear ?? currentYear - 14;
+  // Only show years that have data — from earliestYear to currentYear
+  // If no earliestYear (no data), only show the current FY
+  const startYear = earliestYear ?? currentYear;
   const years: number[] = [];
   for (let y = currentYear; y >= startYear; y--) {
     years.push(y);
