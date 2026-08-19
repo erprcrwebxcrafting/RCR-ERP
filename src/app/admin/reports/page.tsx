@@ -1,19 +1,23 @@
 import { prisma } from "@/lib/prisma";
 import { ReportsDashboard } from "./reports-dashboard";
 import { getFinancialYearDates } from "@/lib/get-fy";
+import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
   const resolvedParams = await searchParams;
-  const range = resolvedParams.range || "30d";
+  const range = resolvedParams.range || "1d";
 
   const { startDate: fyStart, endDate: fyEnd, isAllTime } = await getFinancialYearDates();
   
   let startDate = fyStart;
   let endDate = fyEnd;
 
-  if (range === "30d") {
+  if (range === "1d") {
+    startDate = new Date();
+    startDate.setDate(startDate.getDate() - 1);
+  } else if (range === "30d") {
     startDate = new Date();
     startDate.setDate(startDate.getDate() - 30);
   } else if (range === "90d") {
@@ -132,17 +136,19 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
 
   return (
-    <ReportsDashboard
-      initialRange={range}
-      initialSites={JSON.parse(JSON.stringify(sites))}
-      initialBills={JSON.parse(JSON.stringify(bills))}
-      initialPayments={JSON.parse(JSON.stringify(payments))}
-      initialLabours={JSON.parse(JSON.stringify(labours))}
-      initialSupervisors={JSON.parse(JSON.stringify(supervisors))}
-      initialAttendances={JSON.parse(JSON.stringify(attendances))}
-      initialSupplyEntries={JSON.parse(JSON.stringify(supplyEntries))}
-      fyStart={fyStart.toISOString()}
-      fyEnd={fyEnd.toISOString()}
-    />
+    <Suspense fallback={<div className="flex h-[400px] items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>
+      <ReportsDashboard
+        initialRange={range}
+        initialSites={JSON.parse(JSON.stringify(sites))}
+        initialBills={JSON.parse(JSON.stringify(bills))}
+        initialPayments={JSON.parse(JSON.stringify(payments))}
+        initialLabours={JSON.parse(JSON.stringify(labours))}
+        initialSupervisors={JSON.parse(JSON.stringify(supervisors))}
+        initialAttendances={JSON.parse(JSON.stringify(attendances))}
+        initialSupplyEntries={JSON.parse(JSON.stringify(supplyEntries))}
+        fyStart={fyStart.toISOString()}
+        fyEnd={fyEnd.toISOString()}
+      />
+    </Suspense>
   );
 }

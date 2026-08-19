@@ -84,7 +84,7 @@ export function ReportsDashboard({
   const searchParams = useSearchParams();
   
   const [selectedSiteId, setSelectedSiteId] = useState<string>("all");
-  const [timeRange, setTimeRange] = useState<"30d" | "90d" | "custom">(initialRange as any || "30d");
+  const [timeRange, setTimeRange] = useState<"1d" | "30d" | "90d" | "custom">(initialRange as any || "1d");
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"financial" | "labour" | "supervisor" | "billing">("financial");
@@ -140,7 +140,10 @@ export function ReportsDashboard({
     let start: Date | null = null;
     let end: Date | null = null;
 
-    if (timeRange === "30d") {
+    if (timeRange === "1d") {
+      start = new Date();
+      start.setDate(start.getDate() - 1);
+    } else if (timeRange === "30d") {
       start = new Date();
       start.setDate(start.getDate() - 30);
     } else if (timeRange === "90d") {
@@ -1171,6 +1174,22 @@ export function ReportsDashboard({
             {/* Time Presets */}
             <div className="flex items-center rounded-xl bg-slate-900/80 p-1 border border-indigo-500/30 text-xs">
               <button
+                onClick={() => handleTimeRangeChange("1d")}
+                className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
+                  timeRange === "1d" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                1 Day
+              </button>
+              <button
+                onClick={() => handleTimeRangeChange("30d")}
+                className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
+                  timeRange === "30d" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                30 Days
+              </button>
+              <button
                 onClick={() => handleTimeRangeChange("90d")}
                 className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
                   timeRange === "90d" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
@@ -1179,16 +1198,8 @@ export function ReportsDashboard({
                 90 Days
               </button>
               <button
-                onClick={() => handleTimeRangeChange("30d")}
-                className={`px-3 py-1 rounded-lg font-bold transition-all ${
-                  timeRange === "30d" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                30 Days
-              </button>
-              <button
                 onClick={() => handleTimeRangeChange("custom")}
-                className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
                   timeRange === "custom" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
                 }`}
               >
