@@ -22,6 +22,19 @@ export default function LoginPage() {
     }
   }, [state?.error]);
 
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get("logout") === "stale") {
+      // Clear next-auth cookies from the client
+      import("next-auth/react").then(({ signOut }) => {
+        signOut({ redirect: false }).then(() => {
+          toast.warning("Session Expired", { description: "Your password was changed on another device. Please log in again." });
+          router.replace("/login");
+        });
+      });
+    }
+  }, [router]);
+
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-950 selection:bg-indigo-500/30">
       {/* Dynamic Background Elements */}

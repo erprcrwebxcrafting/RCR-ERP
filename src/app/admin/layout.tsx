@@ -5,8 +5,19 @@ import { LogOut } from "lucide-react";
 import { AdminSidebar } from "./sidebar";
 import { prisma } from "@/lib/prisma";
 
+import { redirect } from "next/navigation";
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
+  if (session?.user) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: (session.user as any).id },
+      select: { passwordVersion: true },
+    });
+    if (!dbUser || dbUser.passwordVersion !== (session.user as any).passwordVersion) {
+      redirect("/login?logout=stale");
+    }
+  }
 
   // Get the earliest attendance year dynamically
   const earliest = await prisma.attendance.findFirst({

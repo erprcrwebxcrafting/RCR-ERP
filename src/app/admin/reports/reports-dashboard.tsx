@@ -61,6 +61,8 @@ interface ReportsDashboardProps {
   initialAttendances: any[];
   initialSupplyEntries: any[];
   initialRange: string;
+  fyStart?: string;
+  fyEnd?: string;
 }
 
 const COLORS = ["#4f46e5", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
@@ -74,6 +76,8 @@ export function ReportsDashboard({
   initialAttendances,
   initialSupplyEntries,
   initialRange,
+  fyStart,
+  fyEnd,
 }: ReportsDashboardProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -96,6 +100,20 @@ export function ReportsDashboard({
   const handleCustomDateChange = (type: "start" | "end", value: string) => {
     const newStart = type === "start" ? value : customStartDate;
     const newEnd = type === "end" ? value : customEndDate;
+
+    if (newStart && newEnd && new Date(newStart) > new Date(newEnd)) {
+      toast.error("Start date cannot be after end date");
+      return;
+    }
+
+    if (fyStart || fyEnd) {
+      if (newStart && fyStart && new Date(newStart) < new Date(fyStart)) {
+        toast.warning("Start date is before active Financial Year.", { duration: 4000 });
+      }
+      if (newEnd && fyEnd && new Date(newEnd) > new Date(fyEnd)) {
+        toast.warning("End date is after active Financial Year.", { duration: 4000 });
+      }
+    }
 
     if (newStart && newEnd) {
       const diffTime = new Date(newEnd).getTime() - new Date(newStart).getTime();

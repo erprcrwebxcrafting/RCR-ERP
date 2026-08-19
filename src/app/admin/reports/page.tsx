@@ -141,6 +141,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       initialSupervisors={JSON.parse(JSON.stringify(supervisors))}
       initialAttendances={JSON.parse(JSON.stringify(attendances))}
       initialSupplyEntries={JSON.parse(JSON.stringify(supplyEntries))}
+      fyStart={fyStart.toISOString()}
+      fyEnd={fyEnd.toISOString()}
     />
   );
 }

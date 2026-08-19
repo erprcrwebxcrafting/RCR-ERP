@@ -16,6 +16,7 @@ model User {
   role                  Role
   phone                 String?
   active                Boolean                     @default(true)
+  passwordVersion       Int                         @default(0)
   createdAt             DateTime                    @default(now())
   updatedAt             DateTime                    @updatedAt
   monthlySalary         Float?
@@ -402,10 +403,11 @@ model GlobalSettings {
   id          String   @id @default("global")
   companyName String   @default("RCR ENTERPRISES")
   phone       String?
-  email       String?
-  website     String?
-  address     String?
-  updatedAt   DateTime @updatedAt
+  email                  String?
+  website                String?
+  address                String?
+  notifySupervisorLogins Boolean  @default(true)
+  updatedAt              DateTime @updatedAt
 }
 
 model SupervisorAttendance {

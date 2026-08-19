@@ -39,12 +39,18 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
   // Note: Attendance page has its own date filter, which is fine, but we can constrain it to FY if needed.
   // Actually, since it defaults to `today`, it usually doesn't load much anyway.
   // We'll enforce that `startDate` cannot be before `fyStart`
+  let wasClamped = false;
   if (startDate < fyStart) {
     startDate.setTime(fyStart.getTime());
+    wasClamped = true;
   }
   if (endDate > fyEnd) {
     endDate.setTime(fyEnd.getTime());
+    wasClamped = true;
   }
+
+  const clampedStartDateStr = format(startDate, 'yyyy-MM-dd');
+  const clampedEndDateStr = format(endDate, 'yyyy-MM-dd');
 
   const sites = await prisma.site.findMany({
     where: { active: true },
@@ -178,11 +184,12 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
 
       {/* Filters Bar */}
       <AttendanceFilterForm
-        startDateStr={startDateStr}
-        endDateStr={endDateStr}
+        startDateStr={clampedStartDateStr}
+        endDateStr={clampedEndDateStr}
         siteId={siteId}
         q={q}
         sites={sites}
+        wasClamped={wasClamped}
       />
 
       {/* KPI Cards — powered by DB aggregates, not JS loops */}

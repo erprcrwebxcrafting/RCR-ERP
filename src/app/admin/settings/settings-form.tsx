@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { CardContent } from "@/components/ui/card";
-import { Building2, MapPin, Mail, Phone, Globe, Save } from "lucide-react";
+import { Building2, MapPin, Mail, Phone, Globe, Save, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { validatePhone, validateEmail } from "@/lib/validations";
 
@@ -25,16 +25,20 @@ export function SettingsForm({ settings }: { settings: any }) {
       return;
     }
 
-    const phoneCheck = validatePhone(phone);
-    if (!phoneCheck.valid) {
-      toast.error(phoneCheck.error);
-      return;
+    if (phone) {
+      const phoneCheck = validatePhone(phone);
+      if (!phoneCheck.valid) {
+        toast.error(phoneCheck.error);
+        return;
+      }
     }
 
-    const emailCheck = validateEmail(email, false);
-    if (!emailCheck.valid) {
-      toast.error(emailCheck.error);
-      return;
+    if (email) {
+      const emailCheck = validateEmail(email, false);
+      if (!emailCheck.valid) {
+        toast.error(emailCheck.error);
+        return;
+      }
     }
 
     startTransition(async () => {
@@ -43,7 +47,7 @@ export function SettingsForm({ settings }: { settings: any }) {
         toast.error("Failed to update settings", { description: res.error });
       } else {
         toast.success("Settings updated successfully!", {
-          description: "Company details and letterhead profile updated.",
+          description: "System preferences and details updated.",
         });
       }
     });
@@ -51,7 +55,7 @@ export function SettingsForm({ settings }: { settings: any }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label htmlFor="companyName" className="flex items-center gap-2">
@@ -86,6 +90,25 @@ export function SettingsForm({ settings }: { settings: any }) {
               <MapPin className="h-4 w-4" /> Registered Address
             </Label>
             <Input id="address" name="address" defaultValue={settings?.address || ""} placeholder="Office No- 04, Raipada..." />
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 text-slate-800 dark:text-slate-200">
+            <Bell className="h-4 w-4 text-indigo-500" /> Notifications
+          </h3>
+          <div className="flex items-center space-x-3 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+            <input 
+              type="checkbox" 
+              id="notifySupervisorLogins" 
+              name="notifySupervisorLogins" 
+              defaultChecked={settings?.notifySupervisorLogins ?? true}
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
+            />
+            <Label htmlFor="notifySupervisorLogins" className="font-medium cursor-pointer flex-1">
+              Receive Supervisor Login Alerts
+              <p className="text-xs text-slate-500 font-normal mt-0.5">Send me an email whenever a supervisor successfully logs into the system.</p>
+            </Label>
           </div>
         </div>
         <div className="flex justify-end pt-4">

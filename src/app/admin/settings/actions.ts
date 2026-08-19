@@ -11,6 +11,8 @@ export async function updateGlobalSettings(formData: FormData) {
     const website = (formData.get("website") as string || "").trim();
     const address = (formData.get("address") as string || "").trim();
 
+    const notifySupervisorLogins = formData.get("notifySupervisorLogins") === "on";
+
     if (!companyName || companyName.length < 2) {
       throw new Error("Company name is required (minimum 2 characters).");
     }
@@ -30,6 +32,7 @@ export async function updateGlobalSettings(formData: FormData) {
         email,
         website,
         address,
+        notifySupervisorLogins,
       },
       create: {
         id: "global",
@@ -38,6 +41,7 @@ export async function updateGlobalSettings(formData: FormData) {
         email,
         website,
         address,
+        notifySupervisorLogins,
       },
     });
 

@@ -28,11 +28,29 @@ export async function requestOtpAction(email: string) {
     data: { email: user.email, otp, expiresAt },
   });
 
-  // ========================================================
-  // TODO: Replace console.log with real email sending when 
-  // SMTP is configured in .env
-  // ========================================================
-  console.log(`\n🔐 OTP for ${user.email}: ${otp} (expires in 15 min)\n`);
+  // Send OTP via Email
+  const transporter = (await import("@/lib/email")).transporter;
+  
+  if (process.env.SMTP_HOST) {
+    try {
+      await transporter.sendMail({
+        from: `"RCR ERP Security" <${process.env.SMTP_USER}>`,
+        to: user.email,
+        subject: "Your Admin Password Reset OTP",
+        text: `Your OTP for admin password reset is: ${otp}. It is valid for 15 minutes.`,
+        html: `<p>Your OTP for admin password reset is: <strong>${otp}</strong>.</p><p>It is valid for 15 minutes. Do not share this with anyone.</p>`,
+      });
+    } catch (err) {
+      console.error("Failed to send OTP email:", err);
+      // We still return success: true so the user doesn't know if email exists or not,
+      // but in a real scenario you might handle this differently.
+    }
+  } else {
+    // Fallback or warning if SMTP not configured, but we shouldn't log it in production
+    if (process.env.NODE_ENV === "development") {
+      console.log(`\n🔐 OTP for ${user.email}: ${otp} (expires in 15 min)\n`);
+    }
+  }
 
   return { success: true };
 }
@@ -74,11 +92,14 @@ export async function verifyOtpAndChangePasswordAction(
     data: { used: true },
   });
 
-  // Update password with pepper hash
+  // Update password with pepper hash and increment passwordVersion
   const newHash = await hashPassword(newPassword);
   await prisma.user.update({
     where: { email: normalizedEmail },
-    data: { passwordHash: newHash },
+    data: { 
+      passwordHash: newHash,
+      passwordVersion: { increment: 1 } 
+    },
   });
 
   revalidatePath("/admin/settings");

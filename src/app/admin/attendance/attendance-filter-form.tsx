@@ -11,13 +11,23 @@ export function AttendanceFilterForm({
   siteId,
   q,
   sites,
+  wasClamped,
 }: {
   startDateStr: string;
   endDateStr: string;
   siteId: string;
   q: string;
   sites: { id: string; projectName: string }[];
+  wasClamped?: boolean;
 }) {
+  React.useEffect(() => {
+    if (wasClamped) {
+      toast.warning("Date range was automatically restricted to the active Financial Year.", {
+        duration: 5000,
+      });
+    }
+  }, [wasClamped]);
+
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     const formData = new FormData(e.currentTarget);
     const start = formData.get("startDate") as string;

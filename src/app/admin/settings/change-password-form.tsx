@@ -103,14 +103,18 @@ export function ChangePasswordForm({ adminEmail }: { adminEmail: string }) {
               required
               placeholder="Min 8 chars, A-Z, a-z, 0-9, !@#"
               className="h-11 rounded-xl"
+              autoComplete="new-password"
             />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Confirm Password</Label>
-            <Input
-              value={confirmPass} onChange={(e) => setConfirmPass(e.target.value)}
-              type="password" placeholder="Repeat new password"
+            <PasswordInput
+              value={confirmPass} 
+              onChange={(e) => setConfirmPass(e.target.value)}
+              required
+              placeholder="Repeat new password"
               className="h-11 rounded-xl"
+              autoComplete="new-password"
             />
           </div>
           <div className="flex gap-2">
