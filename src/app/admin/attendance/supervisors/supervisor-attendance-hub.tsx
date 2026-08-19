@@ -25,6 +25,9 @@ import {
   ShieldCheck,
   TrendingUp,
   AlertTriangle,
+  Users,
+  FileSpreadsheet,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -219,19 +222,44 @@ export function SupervisorAttendanceHub({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2 shrink-0">
-            <Link href="/admin/supervisors">
-              <Button variant="outline" className="bg-white/10 hover:bg-white/20 text-white border-white/30 rounded-xl font-bold">
-                Supervisor Directory
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <Button
+                variant="outline"
+                asChild
+                disabled={!siteFilter}
+                className={!siteFilter ? "cursor-not-allowed pointer-events-none bg-white/20 border-white/30 text-white shadow-none font-medium h-10 rounded-xl px-5" : "border-transparent bg-white hover:bg-white/90 text-emerald-600 shadow-xl shadow-emerald-900/10 transition-all font-bold h-10 rounded-xl px-5"}
+              >
+                <a href={`#`} target="_blank" rel="noreferrer">
+                  <FileSpreadsheet className={`w-4 h-4 mr-2 ${!siteFilter ? "text-white/70" : ""}`} /> Excel
+                </a>
               </Button>
-            </Link>
-            <Link href="/admin/attendance">
-              <Button variant="outline" className="bg-white/10 hover:bg-white/20 text-white border-white/30 rounded-xl font-bold">
-                Labour Attendance
+              <Button
+                variant="outline"
+                asChild
+                disabled={!siteFilter}
+                className={!siteFilter ? "cursor-not-allowed pointer-events-none bg-white/20 border-white/30 text-white shadow-none font-medium h-10 rounded-xl px-5" : "border-transparent bg-white hover:bg-white/90 text-rose-600 shadow-xl shadow-rose-900/10 transition-all font-bold h-10 rounded-xl px-5"}
+              >
+                <a href={`#`} target="_blank" rel="noreferrer">
+                  <FileText className={`w-4 h-4 mr-2 ${!siteFilter ? "text-white/70" : ""}`} /> PDF
+                </a>
               </Button>
-            </Link>
+            </div>
+            {!siteFilter && <span className="text-[11px] text-white/90 font-bold px-3 py-1.5 bg-black/20 rounded-full backdrop-blur-md border border-white/10 shadow-inner">Select a site to enable export</span>}
           </div>
         </div>
+      </div>
+
+      {/* Top Switcher Tabs */}
+      <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl w-fit border border-slate-200 dark:border-slate-700">
+        <Link href="/admin/attendance/labours" className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+          <Users className="h-4 w-4" />
+          Labour Attendance Explorer
+        </Link>
+        <Link href="/admin/attendance/supervisors" className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm">
+          <UserCheck className="h-4 w-4" />
+          Supervisor Attendance Hub
+        </Link>
       </div>
 
       {selectedTab === "daily" && !isLocked && unmarkedTodayCount > 0 && (

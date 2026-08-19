@@ -91,12 +91,6 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <Link href="/admin/supervisors/attendance">
-              <Button className="bg-white hover:bg-white/90 text-blue-700 font-black rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 gap-2 border border-white">
-                <CalendarDays className="h-4 w-4" />
-                Attendance Hub
-              </Button>
-            </Link>
             <SupervisorForm allSites={allSites} />
           </div>
         </div>

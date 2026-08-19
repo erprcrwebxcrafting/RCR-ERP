@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
+import { AttendanceCalendar } from "./attendance-calendar";
 import {
   ArrowLeft,
   Wallet,
@@ -140,16 +141,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button
-            asChild
-            className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/20"
-          >
-            <Link href={`/admin/supervisors/${sv.id}/attendance`}>
-              <CalendarDays className="h-4 w-4" />
-              Attendance Calendar
-            </Link>
-          </Button>
-          <EditSupervisorForm supervisor={sv} allSites={allSites} />
+            <EditSupervisorForm supervisor={sv} allSites={allSites} />
         </div>
       </div>
 
@@ -311,6 +303,8 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
           </CardContent>
         </Card>
       </div>
+
+      <AttendanceCalendar supervisor={sv} initialAttendances={attendances} />
 
       <div className="grid gap-8 md:grid-cols-2">
         {/* Payment History Section */}

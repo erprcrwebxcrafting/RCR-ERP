@@ -16,7 +16,7 @@ import {
   Sparkles,
   Info,
 } from "lucide-react";
-import { markSupervisorAttendanceAction, deleteSupervisorAttendanceAction } from "../actions";
+import { markSupervisorAttendanceAction, deleteSupervisorAttendanceAction } from "./actions";
 
 type AttendanceRecord = {
   id: string;
