@@ -9,7 +9,7 @@ const labourSchema = z.object({
   phone: z.string().optional(),
   address: z.string().optional(),
   siteId: z.string().min(1, "Site is required"),
-  labourCategoryId: z.string().min(1, "Category is required"),
+  labourCategoryName: z.string().min(1, "Category is required"),
   joiningDate: z.string().optional(),
   aadharNumber: z.string().optional(),
   accountNumber: z.string().optional(),
@@ -31,8 +31,23 @@ export async function saveLabour(formData: FormData) {
     throw new Error("Please select a construction site.");
   }
 
-  if (!parsed.labourCategoryId) {
+  if (!parsed.labourCategoryName) {
     throw new Error("Please select a labour category / trade.");
+  }
+
+  // Find or create the category for this specific site
+  let category = await prisma.labourCategory.findFirst({
+    where: { siteId: parsed.siteId, name: parsed.labourCategoryName }
+  });
+
+  if (!category) {
+    category = await prisma.labourCategory.create({
+      data: {
+        siteId: parsed.siteId,
+        name: parsed.labourCategoryName,
+        dailyWage: parsed.dailyWage ? parseFloat(parsed.dailyWage) : 800, // Default fallback
+      }
+    });
   }
 
   if (parsed.phone && parsed.phone.trim()) {
@@ -61,7 +76,7 @@ export async function saveLabour(formData: FormData) {
     phone: parsed.phone || null,
     address: parsed.address || null,
     siteId: parsed.siteId,
-    labourCategoryId: parsed.labourCategoryId,
+    labourCategoryId: category.id,
     joiningDate: parsed.joiningDate ? new Date(parsed.joiningDate) : null,
     aadharNumber: parsed.aadharNumber || null,
     accountNumber: parsed.accountNumber || null,

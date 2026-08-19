@@ -16,7 +16,7 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
   const page = Math.max(1, parseInt(resolvedParams.page || "1", 10));
   const PAGE_SIZE = 10;
 
-  const [totalSites, sites] = await Promise.all([
+  const [totalSites, sites, allSites, allCategories, allSupervisors] = await Promise.all([
     prisma.site.count({ where: { active: true } }),
     prisma.site.findMany({
       where: { active: true },
@@ -55,7 +55,20 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
       }
     },
     orderBy: { projectName: "asc" },
-  })]);
+  }),
+  prisma.site.findMany({
+    where: { active: true },
+    select: {
+      id: true,
+      projectName: true,
+      labourCategories: { select: { id: true, name: true, order: true } },
+      supervisors: { select: { supervisor: { select: { id: true, name: true } } } }
+    },
+    orderBy: { projectName: "asc" }
+  }),
+  prisma.labourCategory.findMany({ orderBy: { name: "asc" } }),
+  prisma.user.findMany({ where: { role: "SUPERVISOR", active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } })
+  ]);
 
   const filteredSites = q ? (sites as any[]).filter(s => s.labours.length > 0) : (sites as any[]);
 
@@ -78,7 +91,7 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
             </p>
           </div>
           <div className="shrink-0 flex items-center gap-3">
-             <LabourForm sites={sites as any} />
+             <LabourForm sites={allSites as any} supervisors={allSupervisors} />
           </div>
         </div>
       </div>
@@ -209,7 +222,7 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
                                 <FileDown className="h-4 w-4" />
                               </a>
                             </Button>
-                            <LabourForm sites={sites as any} labour={l as any} />
+                            <LabourForm sites={allSites as any} supervisors={allSupervisors} labour={l as any} />
                             <form
                               action={async () => {
                                 "use server";

@@ -239,8 +239,8 @@ export function TransferResourcesModal({
                   required
                 >
                   <option value="">Select...</option>
-                  {currentSupervisors.map(s => (
-                    <option key={s.supervisorId} value={s.supervisorId}>{s.supervisor.name}</option>
+                  {currentSupervisors.map((s, idx) => (
+                    <option key={`${s.supervisorId}-${idx}`} value={s.supervisorId}>{s.supervisor.name}</option>
                   ))}
                 </select>
               </div>

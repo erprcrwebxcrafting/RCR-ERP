@@ -1,5 +1,5 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,21 +18,40 @@ type SiteData = {
 
 export function LabourForm({
   sites,
+  supervisors,
   labour = null,
 }: {
   sites: SiteData[];
+  supervisors: any[];
   labour?: any;
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [selectedSiteId, setSelectedSiteId] = useState(labour?.siteId || "");
+  const [selectedSupervisorId, setSelectedSupervisorId] = useState(labour?.supervisorId || "");
+
+  // Auto-select supervisor if the chosen site has one
+  useEffect(() => {
+    // If we are editing and the site hasn't changed, preserve the original supervisor
+    if (labour && selectedSiteId === labour.siteId) {
+      setSelectedSupervisorId(labour.supervisorId || "");
+      return;
+    }
+
+    const site = sites.find(s => s.id === selectedSiteId);
+    if (site && site.supervisors && site.supervisors.length > 0) {
+      setSelectedSupervisorId(site.supervisors[0].supervisor.id);
+    } else {
+      setSelectedSupervisorId("");
+    }
+  }, [selectedSiteId, sites, labour?.siteId, labour?.supervisorId]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const name = (formData.get("name") as string)?.trim();
     const siteId = (formData.get("siteId") as string)?.trim();
-    const categoryId = (formData.get("labourCategoryId") as string)?.trim();
+    const categoryName = (formData.get("labourCategoryName") as string)?.trim();
     const phone = (formData.get("phone") as string)?.trim();
     const aadhar = (formData.get("aadharNumber") as string)?.trim();
     const ifsc = (formData.get("ifscCode") as string)?.trim();
@@ -48,7 +67,7 @@ export function LabourForm({
       return;
     }
 
-    if (!categoryId) {
+    if (!categoryName) {
       toast.error("Please select a labour category / trade.");
       return;
     }
@@ -93,8 +112,6 @@ export function LabourForm({
       }
     });
   }
-
-  const selectedSite = sites.find((s) => s.id === selectedSiteId);
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -148,10 +165,10 @@ export function LabourForm({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Phone (10 Digits)</Label>
+                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Phone Number</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input name="phone" maxLength={10} defaultValue={labour?.phone} placeholder="9876543210" className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-mono" />
+                    <Input name="phone" maxLength={10} defaultValue={labour?.phone} placeholder="10-digit number" className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-mono" />
                   </div>
                 </div>
               </div>
@@ -166,35 +183,30 @@ export function LabourForm({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Aadhar Number (12 Digits)</Label>
+                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Aadhar Number</Label>
                   <div className="relative">
-                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input name="aadharNumber" maxLength={12} defaultValue={labour?.aadharNumber} placeholder="12-digit UID" className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-mono" />
+                    <WalletCards className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                    <Input name="aadharNumber" maxLength={12} defaultValue={labour?.aadharNumber} placeholder="12-digit number" className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-mono tracking-wider" />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Joining Date</Label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input
-                      name="joiningDate"
-                      type="date"
-                      defaultValue={labour?.joiningDate ? new Date(labour.joiningDate).toISOString().split("T")[0] : ""}
-                      className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all cursor-pointer"
-                    />
+                    <Input name="joiningDate" type="date" defaultValue={labour?.joiningDate ? new Date(labour.joiningDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]} className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all" />
                   </div>
                 </div>
               </div>
 
               {/* Bank Details Panel */}
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/50 space-y-4">
-                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-2">
-                  <Building className="h-4 w-4 text-emerald-500" /> Bank Details
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 mb-2">
+                  <CreditCard className="h-4 w-4 text-slate-400" /> Bank Details
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Bank Name</Label>
-                    <Input name="bankName" defaultValue={labour?.bankName} placeholder="e.g. SBI" className="h-11 rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all" />
+                    <Input name="bankName" defaultValue={labour?.bankName} placeholder="e.g. State Bank of India" className="h-11 rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Account Number</Label>
@@ -239,17 +251,16 @@ export function LabourForm({
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Labour Category <span className="text-rose-500">*</span></Label>
                     <select
-                      name="labourCategoryId"
+                      name="labourCategoryName"
                       required
-                      defaultValue={labour?.labourCategoryId || ""}
+                      defaultValue={labour?.labourCategory?.name || ""}
                       className="flex h-11 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 font-medium cursor-pointer"
                     >
                       <option value="">Select Category...</option>
-                      {selectedSite?.labourCategories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
+                      <option value="Fitter">Fitter</option>
+                      <option value="Helper">Helper</option>
+                      <option value="Mason">Mason</option>
+                      <option value="Carpenter">Carpenter</option>
                     </select>
                   </div>
                   
@@ -257,13 +268,14 @@ export function LabourForm({
                     <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Reporting Supervisor</Label>
                     <select
                       name="supervisorId"
-                      defaultValue={labour?.supervisorId || ""}
+                      value={selectedSupervisorId}
+                      onChange={(e) => setSelectedSupervisorId(e.target.value)}
                       className="flex h-11 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 font-medium cursor-pointer"
                     >
                       <option value="">No Supervisor (Direct)</option>
-                      {selectedSite?.supervisors.map((s) => (
-                        <option key={s.supervisor.id} value={s.supervisor.id}>
-                          {s.supervisor.name}
+                      {supervisors.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
                         </option>
                       ))}
                     </select>

@@ -608,7 +608,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
                                 <Input
                                   type="number"
                                   step="0.1"
-                                  value={st.fitterQty}
+                                  value={st.fitterQty ?? ""}
                                   onChange={(ev) => handleFieldChange(e.id, "fitterQty", parseFloat(ev.target.value) || 0)}
                                   className="h-8 text-xs font-mono w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
@@ -618,7 +618,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
                                 <Input
                                   type="number"
                                   step="0.5"
-                                  value={st.fitterHours}
+                                  value={st.fitterHours ?? ""}
                                   onChange={(ev) => handleFieldChange(e.id, "fitterHours", parseFloat(ev.target.value) || 0)}
                                   className="h-8 text-xs font-mono w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
@@ -628,7 +628,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
                                 <Input
                                   type="number"
                                   step="1"
-                                  value={st.fitterRate}
+                                  value={st.fitterRate ?? ""}
                                   onChange={(ev) => handleFieldChange(e.id, "fitterRate", parseFloat(ev.target.value) || 0)}
                                   className="h-8 text-xs font-mono w-20 text-center text-blue-600 font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
@@ -646,7 +646,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
                                 <Input
                                   type="number"
                                   step="0.1"
-                                  value={st.helperQty}
+                                  value={st.helperQty ?? ""}
                                   onChange={(ev) => handleFieldChange(e.id, "helperQty", parseFloat(ev.target.value) || 0)}
                                   className="h-8 text-xs font-mono w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
@@ -656,7 +656,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
                                 <Input
                                   type="number"
                                   step="0.5"
-                                  value={st.helperHours}
+                                  value={st.helperHours ?? ""}
                                   onChange={(ev) => handleFieldChange(e.id, "helperHours", parseFloat(ev.target.value) || 0)}
                                   className="h-8 text-xs font-mono w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
@@ -666,7 +666,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
                                 <Input
                                   type="number"
                                   step="1"
-                                  value={st.helperRate}
+                                  value={st.helperRate ?? ""}
                                   onChange={(ev) => handleFieldChange(e.id, "helperRate", parseFloat(ev.target.value) || 0)}
                                   className="h-8 text-xs font-mono w-20 text-center text-purple-600 font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />

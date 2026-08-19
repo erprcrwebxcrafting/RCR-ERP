@@ -10,7 +10,7 @@ import { Plus, Trash2, Building2, Pickaxe, HardHat, FileText, UserCheck, Chevron
 import { toast } from "sonner";
 import { validateGST } from "@/lib/validations";
 
-type Client = { id: string; name: string };
+type Client = { id: string; name: string; gstNo?: string | null; address?: string | null; };
 type SupervisorOption = { id: string; name: string };
 
 export function SiteForm({ clients, allSupervisors = [] }: { clients: Client[]; allSupervisors?: SupervisorOption[] }) {
@@ -20,6 +20,8 @@ export function SiteForm({ clients, allSupervisors = [] }: { clients: Client[]; 
   const [selectedSupervisors, setSelectedSupervisors] = useState<string[]>([]);
   const [supervisorDropdownOpen, setSupervisorDropdownOpen] = useState(false);
   const [supervisorSearch, setSupervisorSearch] = useState("");
+  const [address, setAddress] = useState("");
+  const [gstNo, setGstNo] = useState("");
   const [isPending, startTransition] = useTransition();
 
   function toggleSupervisor(supervisorId: string) {
@@ -84,18 +86,29 @@ export function SiteForm({ clients, allSupervisors = [] }: { clients: Client[]; 
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Client *</Label>
-              <select name="clientId" required className="flex h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 text-sm font-medium text-slate-700 dark:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 shadow-sm transition-all cursor-pointer">
+              <select 
+                name="clientId" 
+                required 
+                onChange={(e) => {
+                  const selectedClient = clients.find(c => c.id === e.target.value);
+                  if (selectedClient) {
+                    if (selectedClient.address) setAddress(selectedClient.address);
+                    if (selectedClient.gstNo) setGstNo(selectedClient.gstNo);
+                  }
+                }}
+                className="flex h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 text-sm font-medium text-slate-700 dark:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 shadow-sm transition-all cursor-pointer"
+              >
                 <option value="" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">Select client…</option>
                 {clients.map((c) => <option key={c.id} value={c.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">{c.name}</option>)}
               </select>
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Address</Label>
-              <Input name="address" placeholder="Site address" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 shadow-sm transition-all" />
+              <Input name="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Site address" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 shadow-sm transition-all" />
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">GST No.</Label>
-              <Input name="gstNo" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 shadow-sm transition-all" />
+              <Input name="gstNo" value={gstNo} onChange={(e) => setGstNo(e.target.value)} className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 shadow-sm transition-all" />
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Retention %</Label>

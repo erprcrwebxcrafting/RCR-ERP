@@ -35,18 +35,24 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
 
   if (!labour) return notFound();
 
-  const sites = await prisma.site.findMany({
-    where: { active: true },
-    select: {
-      id: true,
-      projectName: true,
-      labourCategories: { select: { id: true, name: true } },
-      // ✅ Only safe supervisor fields
-      supervisors: {
-        select: { supervisor: { select: { id: true, name: true } } }
-      },
-    }
-  });
+  const [sites, allSupervisors] = await Promise.all([
+    prisma.site.findMany({
+      where: { active: true },
+      select: {
+        id: true,
+        projectName: true,
+        labourCategories: { select: { id: true, name: true } },
+        supervisors: {
+          select: { supervisor: { select: { id: true, name: true } } }
+        },
+      }
+    }),
+    prisma.user.findMany({
+      where: { role: "SUPERVISOR", active: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" }
+    })
+  ]);
 
   const dailyWage = labour.dailyWage || 0;
   const overtimeRate = labour.overtimeRate || 0;
@@ -154,7 +160,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
             </div>
             
             <div className="shrink-0 flex items-center md:items-start justify-end w-full md:w-auto border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800 pt-6 md:pt-0 md:pl-6">
-               <LabourForm sites={sites as any} labour={labour} />
+               <LabourForm sites={sites as any} supervisors={allSupervisors} labour={labour} />
             </div>
           </div>
         </CardContent>
