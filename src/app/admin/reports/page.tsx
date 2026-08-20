@@ -19,8 +19,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     orderBy: { projectName: "asc" },
   });
 
-  // Fetch the aggregated data for the initial render
-  const initialData = await fetchReportsDataAction(range, "all");
+  const initialSiteId = sites.length > 0 ? sites[0].id : "";
+  const initialData = initialSiteId ? await fetchReportsDataAction(range, initialSiteId) : null;
 
   return (
     <Suspense fallback={<div className="flex h-[400px] items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>}>

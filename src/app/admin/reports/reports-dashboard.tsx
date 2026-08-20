@@ -71,7 +71,7 @@ export function ReportsDashboard({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  const [selectedSiteId, setSelectedSiteId] = useState<string>("all");
+  const [selectedSiteId, setSelectedSiteId] = useState<string>(sites?.[0]?.id || "");
   const [timeRange, setTimeRange] = useState<string>(initialRange || "1d");
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
@@ -677,9 +677,8 @@ export function ReportsDashboard({
               <select
                 value={selectedSiteId}
                 onChange={(e) => setSelectedSiteId(e.target.value)}
-                className="bg-transparent text-slate-200 font-semibold focus:outline-none cursor-pointer"
+                className="bg-transparent text-slate-200 font-semibold focus:outline-none cursor-pointer w-48 truncate"
               >
-                <option value="all" className="bg-slate-900 text-white">All Sites ({sites?.length || 0})</option>
                 {(sites || []).map((s) => (
                   <option key={s.id} value={s.id} className="bg-slate-900 text-white">
                     {s.projectName}
@@ -788,7 +787,7 @@ export function ReportsDashboard({
               <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Total Invoiced (Gross)</span>
               <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 border-0">{exportBills.length} Bills</Badge>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
+            <div className="text-lg lg:text-xl font-bold text-slate-900 dark:text-white font-mono tracking-tight">
               {formatINR(totalBilledGross)}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 font-medium">
@@ -807,7 +806,7 @@ export function ReportsDashboard({
               <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Collected Realization</span>
               <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border-0">{collectionPercentage}% Realized</Badge>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+            <div className="text-lg lg:text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
               {formatINR(totalPaymentsReceived)}
             </div>
             <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden mt-2">
@@ -826,7 +825,7 @@ export function ReportsDashboard({
               <span className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">Outstanding Dues</span>
               <Badge className="bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300 border-0">Pending</Badge>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 font-mono">
+            <div className="text-lg lg:text-xl font-bold text-rose-600 dark:text-rose-400 font-mono tracking-tight">
               {formatINR(totalOutstandingReceivable)}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
@@ -845,7 +844,7 @@ export function ReportsDashboard({
               <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Operational Balance</span>
               <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 border-0">Net Realized</Badge>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
+            <div className="text-lg lg:text-xl font-bold text-slate-900 dark:text-white font-mono tracking-tight">
               {formatINR(grossMargin)}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
