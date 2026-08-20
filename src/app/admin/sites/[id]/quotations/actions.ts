@@ -81,15 +81,24 @@ export async function sendQuotationWhatsAppAction(quotationId: string) {
   if (!q) return { error: "Quotation not found" };
   if (!clientPhone) return { error: "Client phone is missing. Please update the Client profile with a phone number." };
 
-  const message = `Hello Sir,\n\nPlease find the quotation ${q.quotationNo} for ${projectName}. (PDF sent via email).\n\nRegards,\nConstruction ERP`;
-  await sendWhatsAppMessage(clientPhone, message);
+  const headersList = await headers();
+  const protocol = headersList.get("x-forwarded-proto") || "http";
+  const host = headersList.get("host") || "localhost:3000";
+  const baseUrl = `${protocol}://${host}`;
+  const pdfUrl = `${baseUrl}/api/quotations/${quotationId}/pdf`;
+
+  const message = `Hello Sir,\n\nPlease find the quotation ${q.quotationNo} for ${projectName}.\n\nYou can view and download the PDF directly from this link:\n${pdfUrl}\n\nRegards,\nRCR Enterprises`;
+  
+  // Format phone number for wa.me (remove spaces, +, etc.)
+  const formattedPhone = clientPhone.replace(/\D/g, "");
+  const waUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
 
   await prisma.quotation.update({
     where: { id: quotationId },
     data: { status: "SENT" },
   });
 
-  return { success: true };
+  return { success: true, url: waUrl };
 }
 
 export async function updateContactAndSendEmailAction(quotationId: string, clientId: string, newEmail: string) {

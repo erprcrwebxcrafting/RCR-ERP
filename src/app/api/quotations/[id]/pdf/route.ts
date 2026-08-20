@@ -15,9 +15,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   ]);
   if (!quotation) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const items = JSON.parse(quotation.itemsJson);
-  const terms = JSON.parse(quotation.termsJson);
-  const exclusions = quotation.exclusionsJson ? JSON.parse(quotation.exclusionsJson) : [];
+  const items = JSON.parse(quotation.itemsJson || "[]");
+  
+  let terms = [];
+  try {
+    const parsedTerms = JSON.parse(quotation.termsJson || "[]");
+    terms = Array.isArray(parsedTerms) ? parsedTerms : typeof parsedTerms === 'string' ? parsedTerms.split('\n') : [];
+  } catch (e) {
+    terms = [];
+  }
+
+  let exclusions = [];
+  try {
+    const parsedExclusions = JSON.parse(quotation.exclusionsJson || "[]");
+    exclusions = Array.isArray(parsedExclusions) ? parsedExclusions : typeof parsedExclusions === 'string' ? parsedExclusions.split('\n') : [];
+  } catch (e) {
+    exclusions = [];
+  }
 
   const protocol = req.headers.get("x-forwarded-proto") || "http";
   const host = req.headers.get("host") || "localhost:3000";

@@ -39,6 +39,9 @@ export function QuotationSendButtons({ quotationId, clientId, clientEmail, clien
         toast.success(type === "EMAIL" ? "Quotation PDF emailed successfully!" : "WhatsApp dispatch prepared!", { id: toastId });
         setEmailModalOpen(false);
         setWhatsappModalOpen(false);
+        if ((res as any).url) {
+          window.open((res as any).url, "_blank");
+        }
         router.refresh();
       }
     } catch (e: any) {

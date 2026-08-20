@@ -23,7 +23,10 @@ export async function GET(
     }
 
     // 3. Redirect to the internal API route that serves the PDF
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://rcr-erp.vercel.app";
+    const baseUrl = process.env.AUTH_URL;
+    if (!baseUrl) {
+      return new NextResponse("AUTH_URL is not defined in the .env file.", { status: 500 });
+    }
     
     if (link.type === "BILL") {
       return NextResponse.redirect(`${baseUrl}/api/bills/${link.refId}/pdf`);

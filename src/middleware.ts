@@ -9,7 +9,13 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const role = (req.auth?.user as any)?.role as string | undefined;
 
-  const isPublic = pathname === "/login" || pathname.startsWith("/api/auth");
+  const isPublic = 
+    pathname === "/login" || 
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/dl/") ||
+    pathname.startsWith("/api/quotations/") ||
+    pathname.startsWith("/api/bills/");
+    
   if (isPublic) return NextResponse.next();
 
   if (!isLoggedIn) {

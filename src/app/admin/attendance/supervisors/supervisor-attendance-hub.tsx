@@ -230,7 +230,7 @@ export function SupervisorAttendanceHub({
                 disabled={!siteFilter}
                 className={!siteFilter ? "cursor-not-allowed pointer-events-none bg-white/20 border-white/30 text-white shadow-none font-medium h-10 rounded-xl px-5" : "border-transparent bg-white hover:bg-white/90 text-emerald-600 shadow-xl shadow-emerald-900/10 transition-all font-bold h-10 rounded-xl px-5"}
               >
-                <a href={`#`} target="_blank" rel="noreferrer">
+                <a href={siteFilter ? `/api/attendance/supervisor/export?format=excel&siteId=${siteFilter}&month=${selectedMonth}&year=${selectedYear}` : "#"} target="_blank" rel="noreferrer">
                   <FileSpreadsheet className={`w-4 h-4 mr-2 ${!siteFilter ? "text-white/70" : ""}`} /> Excel
                 </a>
               </Button>
@@ -240,7 +240,7 @@ export function SupervisorAttendanceHub({
                 disabled={!siteFilter}
                 className={!siteFilter ? "cursor-not-allowed pointer-events-none bg-white/20 border-white/30 text-white shadow-none font-medium h-10 rounded-xl px-5" : "border-transparent bg-white hover:bg-white/90 text-rose-600 shadow-xl shadow-rose-900/10 transition-all font-bold h-10 rounded-xl px-5"}
               >
-                <a href={`#`} target="_blank" rel="noreferrer">
+                <a href={siteFilter ? `/api/attendance/supervisor/export?format=pdf&siteId=${siteFilter}&month=${selectedMonth}&year=${selectedYear}` : "#"} target="_blank" rel="noreferrer">
                   <FileText className={`w-4 h-4 mr-2 ${!siteFilter ? "text-white/70" : ""}`} /> PDF
                 </a>
               </Button>

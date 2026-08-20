@@ -43,6 +43,9 @@ export async function createShareLink(
 
 /** Build the full public download URL */
 export function buildShareUrl(code: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://rcr-erp.vercel.app";
+  const baseUrl = process.env.AUTH_URL;
+  if (!baseUrl) {
+    throw new Error("AUTH_URL is not defined in the .env file.");
+  }
   return `${baseUrl.replace(/\/$/, "")}/dl/${code}`;
 }
