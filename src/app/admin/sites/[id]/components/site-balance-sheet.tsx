@@ -325,22 +325,22 @@ export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any,
           {/* Full 12-Column Statement Table matching Excel & PDF */}
           {displayRows.length > 0 ? (
             <div className="overflow-x-auto border rounded-md">
-              <Table className="text-xs table-fixed w-full">
+              <Table className="text-[11px] min-w-[1300px] w-full">
                 <THead className="bg-muted/70">
                   <TR>
                     <TH className="py-2.5 font-bold w-12 text-center">SR.</TH>
                     <TH className="py-2.5 font-bold w-24">DATE</TH>
-                    <TH className="py-2.5 font-bold w-48">PARTICULARS</TH>
-                    <TH className="py-2.5 font-bold text-right w-24">BILL GROSS</TH>
-                    <TH className="py-2.5 font-bold text-right w-20">RET.</TH>
-                    <TH className="py-2.5 font-bold text-right w-24">NET BILL</TH>
-                    <TH className="py-2.5 font-bold text-left w-32">MODE & REF</TH>
-                    <TH className="py-2.5 font-bold text-right w-24">A/C CREDITED</TH>
-                    <TH className="py-2.5 font-bold text-right w-20">1% TDS</TH>
-                    <TH className="py-2.5 font-bold text-right w-24">ADVANCE</TH>
-                    <TH className="py-2.5 font-bold text-right w-24">BALANCE</TH>
-                    <TH className="py-2.5 font-bold text-right w-20">GST</TH>
-                    <TH className="py-2.5 font-bold text-right w-24">BAL+GST</TH>
+                    <TH className="py-2.5 font-bold w-64">PARTICULARS</TH>
+                    <TH className="py-2.5 font-bold text-right w-28">BILL GROSS</TH>
+                    <TH className="py-2.5 font-bold text-right w-28">RET.</TH>
+                    <TH className="py-2.5 font-bold text-right w-32">NET BILL</TH>
+                    <TH className="py-2.5 font-bold text-left w-40">MODE & REF</TH>
+                    <TH className="py-2.5 font-bold text-right w-32">A/C CREDITED</TH>
+                    <TH className="py-2.5 font-bold text-right w-24">1% TDS</TH>
+                    <TH className="py-2.5 font-bold text-right w-28">ADVANCE</TH>
+                    <TH className="py-2.5 font-bold text-right w-32">BALANCE</TH>
+                    <TH className="py-2.5 font-bold text-right w-28">GST</TH>
+                    <TH className="py-2.5 font-bold text-right w-32">BAL+GST</TH>
                   </TR>
                 </THead>
                 <TBody>

@@ -843,19 +843,19 @@ function LedgerPage({ data, logoStr, signStr }: any) {
       <PageHeader title="CLIENT LEDGER & BALANCE SHEET" site={site} bill={runningBill} logoStr={logoStr} settings={data.settings} />
       
       <View style={styles.table}>
-        <View style={styles.tr} fixed>
-          <Text style={[styles.th, { width: "3%", backgroundColor: "#f1f5f9" }]}>Sr.</Text>
-          <Text style={[styles.th, { width: "8%", backgroundColor: "#f1f5f9" }]}>Date</Text>
-          <Text style={[styles.th, { width: "18%", backgroundColor: "#f1f5f9" }]}>Particulars</Text>
-          <Text style={[styles.th, { width: "8%", textAlign: "right", backgroundColor: "#f8fafc" }]}>Bill Gross</Text>
-          <Text style={[styles.th, { width: "6%", textAlign: "right", backgroundColor: "#ffedd5", color: "#c2410c" }]}>Ret.</Text>
-          <Text style={[styles.th, { width: "8%", textAlign: "right", backgroundColor: "#e0e7ff", color: "#3730a3" }]}>Net Bill</Text>
-          <Text style={[styles.th, { width: "14%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d" }]}>A/c Credited</Text>
-          <Text style={[styles.th, { width: "5%", textAlign: "right", backgroundColor: "#fee2e2", color: "#b91c1c" }]}>1% TDS</Text>
-          <Text style={[styles.th, { width: "8%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d" }]}>Advance</Text>
-          <Text style={[styles.th, { width: "8%", textAlign: "right", backgroundColor: "#fee2e2", color: "#b91c1c" }]}>Balance</Text>
-          <Text style={[styles.th, { width: "6%", textAlign: "right", backgroundColor: "#ccfbf1", color: "#0f766e" }]}>GST</Text>
-          <Text style={[styles.th, { width: "8%", textAlign: "right", backgroundColor: "#fee2e2", color: "#b91c1c" }]}>Bal+GST</Text>
+        <View style={styles.towerTr} fixed>
+          <Text style={[styles.towerTh, { width: "3%", backgroundColor: "#f1f5f9" }]}>Sr.</Text>
+          <Text style={[styles.towerTh, { width: "8%", backgroundColor: "#f1f5f9" }]}>Date</Text>
+          <Text style={[styles.towerTh, { width: "18%", backgroundColor: "#f1f5f9" }]}>Particulars</Text>
+          <Text style={[styles.towerTh, { width: "8%", textAlign: "right", backgroundColor: "#f8fafc" }]}>Bill Gross</Text>
+          <Text style={[styles.towerTh, { width: "6%", textAlign: "right", backgroundColor: "#ffedd5", color: "#c2410c" }]}>Ret.</Text>
+          <Text style={[styles.towerTh, { width: "8%", textAlign: "right", backgroundColor: "#e0e7ff", color: "#3730a3" }]}>Net Bill</Text>
+          <Text style={[styles.towerTh, { width: "14%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d" }]}>A/c Credited</Text>
+          <Text style={[styles.towerTh, { width: "5%", textAlign: "right", backgroundColor: "#fee2e2", color: "#b91c1c" }]}>1% TDS</Text>
+          <Text style={[styles.towerTh, { width: "8%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d" }]}>Advance</Text>
+          <Text style={[styles.towerTh, { width: "8%", textAlign: "right", backgroundColor: "#fee2e2", color: "#b91c1c" }]}>Balance</Text>
+          <Text style={[styles.towerTh, { width: "6%", textAlign: "right", backgroundColor: "#ccfbf1", color: "#0f766e" }]}>GST</Text>
+          <Text style={[styles.towerTh, { width: "8%", textAlign: "right", backgroundColor: "#fee2e2", color: "#b91c1c" }]}>Bal+GST</Text>
         </View>
 
         {ledger.map((item: any, idx: number) => {
@@ -874,36 +874,36 @@ function LedgerPage({ data, logoStr, signStr }: any) {
           const balWithGst = runBal + runCumGst;
 
           return (
-            <View style={styles.tr} key={idx} wrap={false}>
-              <Text style={[styles.td, { width: "3%" }]}>{idx + 1}</Text>
-              <Text style={[styles.td, { width: "8%" }]}>{item.date.toLocaleDateString("en-IN")}</Text>
-              <Text style={[styles.td, { width: "18%", fontFamily: "Helvetica-Bold" }]}>{item.refName.slice(0, 30)}</Text>
-              <Text style={[styles.td, { width: "8%", textAlign: "right", color: "#475569" }]}>{item.type === "BILL" ? formatINR(item.grossAmount) : "-"}</Text>
-              <Text style={[styles.td, { width: "6%", textAlign: "right", backgroundColor: "#fff7ed", color: "#c2410c" }]}>{item.type === "BILL" ? formatINR(item.retentionAmt) : "-"}</Text>
-              <Text style={[styles.td, { width: "8%", textAlign: "right", backgroundColor: "#eef2ff", color: "#3730a3", fontFamily: "Helvetica-Bold" }]}>{item.type === "BILL" ? formatINR(item.netBilledAmt) : "-"}</Text>
-              <View style={[styles.td, { width: "14%", alignItems: "flex-end", justifyContent: "center", backgroundColor: "#f0fdf4" }]}>
+            <View style={styles.towerTr} key={idx} wrap={false}>
+              <Text style={[styles.towerTd, { width: "3%" }]}>{idx + 1}</Text>
+              <Text style={[styles.towerTd, { width: "8%" }]}>{item.date.toLocaleDateString("en-IN")}</Text>
+              <Text style={[styles.towerTd, { width: "18%", fontFamily: "Helvetica-Bold" }]}>{item.refName.slice(0, 30)}</Text>
+              <Text style={[styles.towerTd, { width: "8%", textAlign: "right", color: "#475569" }]}>{item.type === "BILL" ? formatINR(item.grossAmount) : "-"}</Text>
+              <Text style={[styles.towerTd, { width: "6%", textAlign: "right", backgroundColor: "#fff7ed", color: "#c2410c" }]}>{item.type === "BILL" ? formatINR(item.retentionAmt) : "-"}</Text>
+              <Text style={[styles.towerTd, { width: "8%", textAlign: "right", backgroundColor: "#eef2ff", color: "#3730a3", fontFamily: "Helvetica-Bold" }]}>{item.type === "BILL" ? formatINR(item.netBilledAmt) : "-"}</Text>
+              <View style={[styles.towerTd, { width: "14%", alignItems: "flex-end", justifyContent: "center", backgroundColor: "#f0fdf4" }]}>
                 <Text style={{ color: "#15803d", fontFamily: "Helvetica-Bold" }}>{item.type === "PAYMENT" ? formatINR(item.paymentRecd) : "-"}</Text>
                 {item.type === "PAYMENT" && <Text style={{ color: "#6b7280", fontSize: 5.5, marginTop: 1 }}>{[item.paymentMode, item.paymentRef].filter(Boolean).join(" | ").slice(0, 35)}</Text>}
               </View>
-              <Text style={[styles.td, { width: "5%", textAlign: "right", backgroundColor: "#fef2f2", color: "#b91c1c" }]}>{item.type === "BILL" ? formatINR(item.tdsAmt) : "-"}</Text>
-              <Text style={[styles.td, { width: "8%", textAlign: "right", backgroundColor: "#f0fdf4", color: "#15803d" }]}>{formatINR(cumAdv)}</Text>
-              <Text style={[styles.td, { width: "8%", textAlign: "right", fontFamily: "Helvetica-Bold", backgroundColor: runBal > 0 ? "#fef2f2" : "#f0fdf4", color: runBal > 0 ? "#dc2626" : "#16a34a" }]}>{formatINR(runBal)}</Text>
-              <Text style={[styles.td, { width: "6%", textAlign: "right", backgroundColor: "#f0fdfa", color: "#0f766e" }]}>{item.type === "BILL" ? formatINR(item.gstAmt) : "-"}</Text>
-              <Text style={[styles.td, { width: "8%", textAlign: "right", fontFamily: "Helvetica-Bold", backgroundColor: balWithGst > 0 ? "#fef2f2" : "#f0fdf4", color: balWithGst > 0 ? "#dc2626" : "#16a34a" }]}>{formatINR(balWithGst)}</Text>
+              <Text style={[styles.towerTd, { width: "5%", textAlign: "right", backgroundColor: "#fef2f2", color: "#b91c1c" }]}>{item.type === "BILL" ? formatINR(item.tdsAmt) : "-"}</Text>
+              <Text style={[styles.towerTd, { width: "8%", textAlign: "right", backgroundColor: "#f0fdf4", color: "#15803d" }]}>{formatINR(cumAdv)}</Text>
+              <Text style={[styles.towerTd, { width: "8%", textAlign: "right", fontFamily: "Helvetica-Bold", backgroundColor: runBal > 0 ? "#fef2f2" : "#f0fdf4", color: runBal > 0 ? "#dc2626" : "#16a34a" }]}>{formatINR(runBal)}</Text>
+              <Text style={[styles.towerTd, { width: "6%", textAlign: "right", backgroundColor: "#f0fdfa", color: "#0f766e" }]}>{item.type === "BILL" ? formatINR(item.gstAmt) : "-"}</Text>
+              <Text style={[styles.towerTd, { width: "8%", textAlign: "right", fontFamily: "Helvetica-Bold", backgroundColor: balWithGst > 0 ? "#fef2f2" : "#f0fdf4", color: balWithGst > 0 ? "#dc2626" : "#16a34a" }]}>{formatINR(balWithGst)}</Text>
             </View>
           );
         })}
-        <View style={[styles.tr, styles.trTotal, { borderBottomWidth: 0 }]} wrap={false}>
-          <Text style={[styles.td, { width: "29%", textAlign: "right", fontFamily: "Helvetica-Bold" }]}>TOTALS</Text>
-          <Text style={[styles.td, { width: "8%", textAlign: "right" }]}>{formatINR(totGross)}</Text>
-          <Text style={[styles.td, { width: "6%", textAlign: "right", backgroundColor: "#ffedd5", color: "#c2410c", fontFamily: "Helvetica-Bold" }]}>{formatINR(totRet)}</Text>
-          <Text style={[styles.td, { width: "8%", textAlign: "right", backgroundColor: "#e0e7ff", color: "#3730a3", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumNet)}</Text>
-          <Text style={[styles.td, { width: "14%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumRecd)}</Text>
-          <Text style={[styles.td, { width: "5%", textAlign: "right", backgroundColor: "#fee2e2", color: "#b91c1c", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumTds)}</Text>
-          <Text style={[styles.td, { width: "8%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumRecd + runCumTds)}</Text>
-          <Text style={[styles.td, { width: "8%", textAlign: "right" }]}></Text>
-          <Text style={[styles.td, { width: "6%", textAlign: "right", backgroundColor: "#ccfbf1", color: "#0f766e", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumGst)}</Text>
-          <Text style={[styles.td, { width: "8%", textAlign: "right" }]}></Text>
+        <View style={[styles.towerTr, styles.trTotal, { borderBottomWidth: 0 }]} wrap={false}>
+          <Text style={[styles.towerTd, { width: "29%", textAlign: "right", fontFamily: "Helvetica-Bold" }]}>TOTALS</Text>
+          <Text style={[styles.towerTd, { width: "8%", textAlign: "right" }]}>{formatINR(totGross)}</Text>
+          <Text style={[styles.towerTd, { width: "6%", textAlign: "right", backgroundColor: "#ffedd5", color: "#c2410c", fontFamily: "Helvetica-Bold" }]}>{formatINR(totRet)}</Text>
+          <Text style={[styles.towerTd, { width: "8%", textAlign: "right", backgroundColor: "#e0e7ff", color: "#3730a3", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumNet)}</Text>
+          <Text style={[styles.towerTd, { width: "14%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumRecd)}</Text>
+          <Text style={[styles.towerTd, { width: "5%", textAlign: "right", backgroundColor: "#fee2e2", color: "#b91c1c", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumTds)}</Text>
+          <Text style={[styles.towerTd, { width: "8%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumRecd + runCumTds)}</Text>
+          <Text style={[styles.towerTd, { width: "8%", textAlign: "right" }]}></Text>
+          <Text style={[styles.towerTd, { width: "6%", textAlign: "right", backgroundColor: "#ccfbf1", color: "#0f766e", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumGst)}</Text>
+          <Text style={[styles.towerTd, { width: "8%", textAlign: "right" }]}></Text>
         </View>
       </View>
       <LegendFooter
