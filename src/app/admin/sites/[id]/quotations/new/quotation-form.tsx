@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createQuotation } from "./actions";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,7 +67,7 @@ export function QuotationForm({
         </CardContent>
       </Card>
 
-      <Button type="submit" size="lg">Create Quotation</Button>
+      <SubmitButton size="lg" loadingText="Creating Quotation...">Create Quotation</SubmitButton>
     </form>
   );
 }

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { generateRunningBill } from "./actions";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,7 +77,7 @@ export default async function NewRunningBillPage({ params }: { params: Promise<{
           </CardContent>
         </Card>
 
-        <Button type="submit" size="lg">Generate Bill</Button>
+        <SubmitButton size="lg" loadingText="Generating Bill...">Generate Bill</SubmitButton>
       </form>
     </div>
   );
