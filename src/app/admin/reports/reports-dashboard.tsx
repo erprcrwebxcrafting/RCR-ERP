@@ -52,42 +52,56 @@ import {
 
 import ExcelJS from "exceljs";
 
+import { fetchReportsDataAction } from "./actions";
+
 interface ReportsDashboardProps {
-  initialSites: any[];
-  initialBills: any[];
-  initialPayments: any[];
-  initialLabours: any[];
-  initialSupervisors: any[];
-  initialAttendances: any[];
-  initialSupplyEntries: any[];
+  sites: any[];
+  initialData: any;
   initialRange: string;
-  fyStart?: string;
-  fyEnd?: string;
 }
 
 const COLORS = ["#4f46e5", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
 export function ReportsDashboard({
-  initialSites,
-  initialBills,
-  initialPayments,
-  initialLabours,
-  initialSupervisors,
-  initialAttendances,
-  initialSupplyEntries,
+  sites,
+  initialData,
   initialRange,
-  fyStart,
-  fyEnd,
 }: ReportsDashboardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
   const [selectedSiteId, setSelectedSiteId] = useState<string>("all");
-  const [timeRange, setTimeRange] = useState<"1d" | "30d" | "90d" | "custom">(initialRange as any || "1d");
+  const [timeRange, setTimeRange] = useState<string>(initialRange || "1d");
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"financial" | "labour" | "supervisor" | "billing">("financial");
+
+  const [dashboardData, setDashboardData] = useState<any>(initialData);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    // Only fetch if it's not the initial render (initialData is used)
+    // Or if timeRange is custom but dates are missing, don't fetch yet
+    if (timeRange === "custom" && (!customStartDate || !customEndDate)) return;
+
+    let isMounted = true;
+    setIsLoading(true);
+    
+    fetchReportsDataAction(timeRange, selectedSiteId, customStartDate, customEndDate)
+      .then((data) => {
+        if (isMounted) setDashboardData(data);
+      })
+      .catch((err) => {
+        console.error("Error fetching reports data:", err);
+        toast.error("Failed to fetch report data");
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [timeRange, selectedSiteId, customStartDate, customEndDate]);
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
   const PAGE_SIZE = 10;
@@ -106,320 +120,35 @@ export function ReportsDashboard({
       return;
     }
 
-    if (fyStart || fyEnd) {
-      if (newStart && fyStart && new Date(newStart) < new Date(fyStart)) {
-        toast.warning("Start date is before active Financial Year.", { duration: 4000 });
-      }
-      if (newEnd && fyEnd && new Date(newEnd) > new Date(fyEnd)) {
-        toast.warning("End date is after active Financial Year.", { duration: 4000 });
-      }
-    }
-
-    if (newStart && newEnd) {
-      const diffTime = new Date(newEnd).getTime() - new Date(newStart).getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays > 90) {
-        toast.error("Maximum 90 days allowed for custom range to ensure fast loading.");
-        return;
-      }
-      
-      if (diffDays < 0) {
-        toast.error("End date cannot be before start date.");
-        return;
-      }
-    }
-
     if (type === "start") setCustomStartDate(value);
     else setCustomEndDate(value);
   };
 
-  // Date filtering logic
-  const { effectiveStartDate, effectiveEndDate } = useMemo(() => {
-    const now = new Date();
-    let start: Date | null = null;
-    let end: Date | null = null;
+  const {
+    totalBilledGross = 0,
+    totalBilledTaxable = 0,
+    totalPaymentsReceived = 0,
+    totalOutstandingReceivable = 0,
+    collectionPercentage = 0,
+    totalLabourWagesEarned = 0,
+    totalLabourPaymentsMade = 0,
+    totalSupervisorEarned = 0,
+    totalSupervisorPaid = 0,
+    grossMargin = 0
+  } = dashboardData?.kpi || {};
 
-    if (timeRange === "1d") {
-      start = new Date();
-      start.setDate(start.getDate() - 1);
-    } else if (timeRange === "30d") {
-      start = new Date();
-      start.setDate(start.getDate() - 30);
-    } else if (timeRange === "90d") {
-      start = new Date();
-      start.setDate(start.getDate() - 90);
-    } else if (timeRange === "custom") {
-      if (customStartDate) start = new Date(customStartDate);
-      if (customEndDate) {
-        end = new Date(customEndDate);
-        end.setHours(23, 59, 59, 999);
-      }
-    }
-    return { effectiveStartDate: start, effectiveEndDate: end };
-  }, [timeRange, customStartDate, customEndDate]);
+  const {
+    siteFinancialChartData = [],
+    clientRevenueData = [],
+    labourCategoryExpenseData = [],
+    dailyHajariTrendData = [],
+    topEarningLabours = [],
+    supplyEntriesAggregated = []
+  } = dashboardData?.charts || {};
 
-  // Filtered Datasets based on Site and Date
-  const filteredSites = useMemo(() => {
-    if (selectedSiteId === "all") return initialSites;
-    return initialSites.filter((s) => s.id === selectedSiteId);
-  }, [selectedSiteId, initialSites]);
-
-  const filteredBills = useMemo(() => {
-    return initialBills.filter((b) => {
-      const matchSite = selectedSiteId === "all" || b.siteId === selectedSiteId;
-      const itemDate = new Date(b.billDate || b.createdAt);
-      const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
-      const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
-      return matchSite && matchStart && matchEnd;
-    });
-  }, [initialBills, selectedSiteId, effectiveStartDate, effectiveEndDate]);
-
-  const filteredPayments = useMemo(() => {
-    return initialPayments.filter((p) => {
-      const matchSite = selectedSiteId === "all" || p.siteId === selectedSiteId;
-      const itemDate = new Date(p.date);
-      const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
-      const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
-      return matchSite && matchStart && matchEnd;
-    });
-  }, [initialPayments, selectedSiteId, effectiveStartDate, effectiveEndDate]);
-
-  const filteredLabours = useMemo(() => {
-    if (selectedSiteId === "all") return initialLabours;
-    return initialLabours.filter((l) => l.siteId === selectedSiteId);
-  }, [initialLabours, selectedSiteId]);
-
-  const filteredSupervisors = useMemo(() => {
-    return initialSupervisors.filter((sup) => {
-      if (selectedSiteId === "all") return true;
-      return sup.assignedSites?.some((as: any) => as.siteId === selectedSiteId);
-    });
-  }, [initialSupervisors, selectedSiteId]);
-
-  const filteredAttendances = useMemo(() => {
-    return initialAttendances.filter((a) => {
-      const matchSite = selectedSiteId === "all" || a.siteId === selectedSiteId;
-      const itemDate = new Date(a.date);
-      const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
-      const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
-      return matchSite && matchStart && matchEnd;
-    });
-  }, [initialAttendances, selectedSiteId, effectiveStartDate, effectiveEndDate]);
-
-  // ==========================================
-  // TOP EXECUTIVE KPI AGGREGATIONS
-  // ==========================================
-  const totalBilledGross = useMemo(() => {
-    return filteredBills.reduce((sum, b) => {
-      const lineSum = (b.lines || []).reduce((s: number, l: any) => s + (Number(l.currentAmount) || 0), 0);
-      const cgst = lineSum * ((b.cgstPct ?? 9) / 100);
-      const sgst = lineSum * ((b.sgstPct ?? 9) / 100);
-      return sum + (lineSum + cgst + sgst);
-    }, 0);
-  }, [filteredBills]);
-
-  const totalBilledTaxable = useMemo(() => {
-    return filteredBills.reduce((sum, b) => {
-      const lineSum = (b.lines || []).reduce((s: number, l: any) => s + (Number(l.currentAmount) || 0), 0);
-      return sum + lineSum;
-    }, 0);
-  }, [filteredBills]);
-
-  const totalPaymentsReceived = useMemo(() => {
-    return filteredPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-  }, [filteredPayments]);
-
-  const totalOutstandingReceivable = Math.max(0, totalBilledGross - totalPaymentsReceived);
-  const collectionPercentage = totalBilledGross > 0 ? Math.min(100, Math.round((totalPaymentsReceived / totalBilledGross) * 100)) : 0;
-
-  // Labour Wage Liability
-  const totalLabourWagesEarned = useMemo(() => {
-    return filteredAttendances.reduce((sum, a) => {
-      const hajari = Number(a.hajari) || 0;
-      const rate = Number(a.hajariRate) || (a.labour?.dailyWage) || 800;
-      return sum + (hajari * rate);
-    }, 0);
-  }, [filteredAttendances]);
-
-  const totalLabourPaymentsMade = useMemo(() => {
-    return filteredLabours.reduce((sum, l) => {
-      const paySum = (l.payments || []).reduce((s: number, p: any) => {
-        const itemDate = new Date(p.date);
-        const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
-        const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
-        return (matchStart && matchEnd) ? s + (Number(p.amount) || 0) : s;
-      }, 0);
-      return sum + paySum;
-    }, 0);
-  }, [filteredLabours, effectiveStartDate, effectiveEndDate]);
-
-  // Supervisor Salaries
-  const totalSupervisorEarned = useMemo(() => {
-    return filteredSupervisors.reduce((sum, s) => {
-      const atts = (s.supervisorAttendances || []).filter((a: any) => {
-        const itemDate = new Date(a.date);
-        const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
-        const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
-        return matchStart && matchEnd;
-      });
-      const supSum = atts.reduce((aSum: number, a: any) => aSum + (Number(a.earnedAmount) || 0), 0);
-      return sum + supSum;
-    }, 0);
-  }, [filteredSupervisors, effectiveStartDate, effectiveEndDate]);
-
-  const totalSupervisorPaid = useMemo(() => {
-    return filteredSupervisors.reduce((sum, s) => {
-      const pays = (s.supervisorPayments || []).filter((p: any) => {
-        const itemDate = new Date(p.date);
-        const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
-        const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
-        return matchStart && matchEnd;
-      });
-      const supPay = pays.reduce((pSum: number, p: any) => pSum + (Number(p.amount) || 0), 0);
-      return sum + supPay;
-    }, 0);
-  }, [filteredSupervisors, effectiveStartDate, effectiveEndDate]);
-
-  const grossMargin = totalBilledTaxable - totalLabourWagesEarned - totalSupervisorEarned;
-
-  // ==========================================
-  // CHART DATA: FINANCIALS PER SITE
-  // ==========================================
-  const siteFinancialChartData = useMemo(() => {
-    return filteredSites.map((site) => {
-      const sBills = filteredBills.filter((b) => b.siteId === site.id);
-      const sPayments = filteredPayments.filter((p) => p.siteId === site.id);
-
-      const billed = sBills.reduce((sum, b) => {
-        const lSum = (b.lines || []).reduce((s: number, l: any) => s + (Number(l.currentAmount) || 0), 0);
-        return sum + lSum;
-      }, 0);
-
-      const received = sPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-      const balance = Math.max(0, billed - received);
-
-      return {
-        name: site.projectName.length > 18 ? site.projectName.slice(0, 16) + "..." : site.projectName,
-        fullName: site.projectName,
-        client: site.client?.name || "Client",
-        Billed: billed,
-        Received: received,
-        Outstanding: balance,
-      };
-    });
-  }, [filteredSites, filteredBills, filteredPayments]);
-
-  // Client Revenue Share Donut Data
-  const clientRevenueData = useMemo(() => {
-    const clientMap = new Map<string, number>();
-    for (const b of filteredBills) {
-      const cName = b.site?.client?.name || "Other Client";
-      const amt = (b.lines || []).reduce((s: number, l: any) => s + (Number(l.currentAmount) || 0), 0);
-      clientMap.set(cName, (clientMap.get(cName) || 0) + amt);
-    }
-    return Array.from(clientMap.entries()).map(([name, value]) => ({ name, value }));
-  }, [filteredBills]);
-
-  // ==========================================
-  // CHART DATA: LABOUR CATEGORY & DAILY HAJARI
-  // ==========================================
-  const labourCategoryExpenseData = useMemo(() => {
-    const catMap = new Map<string, { name: string; count: number; wages: number }>();
-    for (const a of filteredAttendances) {
-      const catName = a.labour?.labourCategory?.name || "General Labour";
-      const hajari = Number(a.hajari) || 0;
-      const rate = Number(a.hajariRate) || (a.labour?.dailyWage) || 800;
-      const cur = catMap.get(catName) || { name: catName, count: 0, wages: 0 };
-      cur.count += hajari > 0 ? 1 : 0;
-      cur.wages += hajari * rate;
-      catMap.set(catName, cur);
-    }
-    return Array.from(catMap.values());
-  }, [filteredAttendances]);
-
-  const dailyHajariTrendData = useMemo(() => {
-    const dateMap = new Map<string, { date: string; present: number; halfDay: number; absent: number; totalShifts: number }>();
-    
-    // Sort attendances ascending by date
-    const sortedAtts = [...filteredAttendances].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    
-    for (const a of sortedAtts) {
-      const dStr = new Date(a.date).toLocaleDateString("en-IN", { month: "short", day: "numeric" });
-      const cur = dateMap.get(dStr) || { date: dStr, present: 0, halfDay: 0, absent: 0, totalShifts: 0 };
-      const haj = Number(a.hajari) || 0;
-      if (haj >= 1.0) cur.present++;
-      else if (haj > 0) cur.halfDay++;
-      else cur.absent++;
-      cur.totalShifts += haj;
-      dateMap.set(dStr, cur);
-    }
-    return Array.from(dateMap.values()).slice(-14); // Last 14 days recorded
-  }, [filteredAttendances]);
-
-  // Labour Matrix Table
-  const labourMatrixList = useMemo(() => {
-    return filteredLabours.map((l) => {
-      const lAtts = filteredAttendances.filter((a) => a.labourId === l.id);
-      const totalHaj = lAtts.reduce((s, a) => s + (Number(a.hajari) || 0), 0);
-      const rate = Number(l.dailyWage) || 800;
-      const grossEarned = totalHaj * rate;
-      const advancePaid = (l.payments || []).reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
-      const balance = grossEarned - advancePaid;
-
-      return {
-        id: l.id,
-        name: l.name,
-        category: l.labourCategory?.name || "Helper",
-        site: l.site?.projectName || "—",
-        totalHajari: totalHaj,
-        dailyWage: rate,
-        grossEarned,
-        advancePaid,
-        balance,
-      };
-    }).sort((a, b) => b.grossEarned - a.grossEarned);
-  }, [filteredLabours, filteredAttendances]);
-
-  // ==========================================
-  // CHART DATA: SUPERVISOR PAYROLL
-  // ==========================================
-  const supervisorPayrollData = useMemo(() => {
-    return filteredSupervisors.map((sup) => {
-      const atts = (sup.supervisorAttendances || []).filter((a: any) => {
-        const itemDate = new Date(a.date);
-        const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
-        const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
-        return matchStart && matchEnd;
-      });
-      const presentCount = atts.filter((a: any) => a.status === "PRESENT").length;
-      const halfCount = atts.filter((a: any) => a.status === "HALF_DAY").length;
-      const absentCount = atts.filter((a: any) => a.status === "ABSENT").length;
-      const grossEarned = atts.reduce((sum: number, a: any) => sum + (Number(a.earnedAmount) || 0), 0);
-      
-      const pays = (sup.supervisorPayments || []).filter((p: any) => {
-        const itemDate = new Date(p.date);
-        const matchStart = !effectiveStartDate || itemDate >= effectiveStartDate;
-        const matchEnd = !effectiveEndDate || itemDate <= effectiveEndDate;
-        return matchStart && matchEnd;
-      });
-      const totalPaid = pays.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
-      const balanceDue = Math.max(0, grossEarned - totalPaid);
-
-      return {
-        id: sup.id,
-        name: sup.name,
-        monthlySalary: sup.monthlySalary || 30000,
-        dailyRate: Math.round(((sup.monthlySalary || 30000) / 30) * 100) / 100,
-        presentCount,
-        halfCount,
-        absentCount,
-        grossEarned,
-        totalPaid,
-        balanceDue,
-      };
-    });
-  }, [filteredSupervisors, effectiveStartDate, effectiveEndDate]);
+  const labourMatrixList = dashboardData?.tables?.labourMatrixList || [];
+  const supervisorPayrollData = dashboardData?.tables?.supervisorPayrollData || [];
+  const exportBills = dashboardData?.tables?.bills || [];
 
   // Export Utilities
   const exportFinancialsToExcel = async () => {
@@ -435,11 +164,10 @@ export function ReportsDashboard({
       { header: "Collection %", key: "collection", width: 15 },
     ];
 
-    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
     worksheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4F46E5" } };
-    worksheet.getRow(1).font = { color: { argb: "FFFFFFFF" }, bold: true };
 
-    siteFinancialChartData.forEach((s) => {
+    siteFinancialChartData.forEach((s: any) => {
       worksheet.addRow({
         project: s.fullName,
         client: s.client,
@@ -500,7 +228,7 @@ export function ReportsDashboard({
             <tbody>
     `;
     
-    siteFinancialChartData.forEach(s => {
+    siteFinancialChartData.forEach((s: any) => {
       const pct = s.Billed > 0 ? Math.round((s.Received / s.Billed) * 100) : 0;
       html += `
         <tr>
@@ -547,7 +275,7 @@ export function ReportsDashboard({
     summarySheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4F46E5" } };
     summarySheet.getRow(1).font = { color: { argb: "FFFFFFFF" }, bold: true };
 
-    labourMatrixList.forEach((l) => {
+    labourMatrixList.forEach((l: any) => {
       summarySheet.addRow({
         name: l.name,
         category: l.category,
@@ -557,47 +285,6 @@ export function ReportsDashboard({
         earned: l.grossEarned,
         advance: l.advancePaid,
         payable: l.balance
-      });
-    });
-
-    // --- Sheet 2: Detailed Ledger ---
-    const ledgerSheet = workbook.addWorksheet("Detailed Ledger");
-    ledgerSheet.columns = [
-      { header: "Date", key: "date", width: 15 },
-      { header: "Labourer Name", key: "name", width: 25 },
-      { header: "Type", key: "type", width: 15 },
-      { header: "Details", key: "details", width: 35 },
-      { header: "Earned (₹)", key: "earned", width: 15 },
-      { header: "Paid (₹)", key: "paid", width: 15 },
-    ];
-    ledgerSheet.getRow(1).font = { bold: true };
-    ledgerSheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3B82F6" } };
-    ledgerSheet.getRow(1).font = { color: { argb: "FFFFFFFF" }, bold: true };
-
-    const labourLedger: any[] = [];
-    filteredLabours.forEach(l => {
-      const lAtts = filteredAttendances.filter(a => a.labourId === l.id);
-      const lPays = (l.payments || []).filter((p: any) => {
-        const itemDate = new Date(p.date);
-        return (!effectiveStartDate || itemDate >= effectiveStartDate) && (!effectiveEndDate || itemDate <= effectiveEndDate);
-      });
-      
-      lAtts.forEach(a => {
-        const rate = Number(a.hajariRate) || Number(l.dailyWage) || 800;
-        const haj = Number(a.hajari) || 0;
-        labourLedger.push({ date: a.date, name: l.name, type: "Attendance", details: `Site: ${a.site?.projectName||"—"} | Shift: ${haj}`, earned: haj * rate, paid: 0 });
-      });
-      lPays.forEach((p: any) => labourLedger.push({ date: p.date, name: l.name, type: "Payment", details: p.reason || "Advance", earned: 0, paid: Number(p.amount)||0 }));
-    });
-
-    labourLedger.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).forEach(row => {
-      ledgerSheet.addRow({
-        date: formatDate(row.date),
-        name: row.name,
-        type: row.type,
-        details: row.details,
-        earned: row.earned > 0 ? row.earned : "-",
-        paid: row.paid > 0 ? row.paid : "-"
       });
     });
 
@@ -631,7 +318,7 @@ export function ReportsDashboard({
     summarySheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4F46E5" } };
     summarySheet.getRow(1).font = { color: { argb: "FFFFFFFF" }, bold: true };
 
-    supervisorPayrollData.forEach((s) => {
+    supervisorPayrollData.forEach((s: any) => {
       summarySheet.addRow({
         name: s.name,
         monthly: s.monthlySalary,
@@ -642,46 +329,6 @@ export function ReportsDashboard({
         earned: s.grossEarned,
         advance: s.totalPaid,
         payable: s.balanceDue
-      });
-    });
-
-    // --- Sheet 2: Detailed Ledger ---
-    const ledgerSheet = workbook.addWorksheet("Detailed Ledger");
-    ledgerSheet.columns = [
-      { header: "Date", key: "date", width: 15 },
-      { header: "Supervisor Name", key: "name", width: 25 },
-      { header: "Type", key: "type", width: 15 },
-      { header: "Details", key: "details", width: 35 },
-      { header: "Earned (₹)", key: "earned", width: 15 },
-      { header: "Paid (₹)", key: "paid", width: 15 },
-    ];
-    ledgerSheet.getRow(1).font = { bold: true };
-    ledgerSheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3B82F6" } };
-    ledgerSheet.getRow(1).font = { color: { argb: "FFFFFFFF" }, bold: true };
-
-    const supLedger: any[] = [];
-    filteredSupervisors.forEach(sup => {
-      const atts = (sup.supervisorAttendances || []).filter((a: any) => {
-        const itemDate = new Date(a.date);
-        return (!effectiveStartDate || itemDate >= effectiveStartDate) && (!effectiveEndDate || itemDate <= effectiveEndDate);
-      });
-      const pays = (sup.supervisorPayments || []).filter((p: any) => {
-        const itemDate = new Date(p.date);
-        return (!effectiveStartDate || itemDate >= effectiveStartDate) && (!effectiveEndDate || itemDate <= effectiveEndDate);
-      });
-      
-      atts.forEach((a: any) => supLedger.push({ date: a.date, name: sup.name, type: "Attendance", details: a.status, earned: Number(a.earnedAmount)||0, paid: 0 }));
-      pays.forEach((p: any) => supLedger.push({ date: p.date, name: sup.name, type: "Payment", details: p.reason || "Advance", earned: 0, paid: Number(p.amount)||0 }));
-    });
-
-    supLedger.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).forEach(row => {
-      ledgerSheet.addRow({
-        date: formatDate(row.date),
-        name: row.name,
-        type: row.type,
-        details: row.details,
-        earned: row.earned > 0 ? row.earned : "-",
-        paid: row.paid > 0 ? row.paid : "-"
       });
     });
 
@@ -738,7 +385,7 @@ export function ReportsDashboard({
             <tbody>
     `;
     
-    supervisorPayrollData.forEach(s => {
+    supervisorPayrollData.forEach((s: any) => {
       html += `
         <tr>
           <td>${s.name}</td>
@@ -756,70 +403,6 @@ export function ReportsDashboard({
     html += `
             </tbody>
           </table>
-    `;
-
-    html += `<h3 style="margin-top: 40px; color: #4f46e5;">Detailed Ledger (Date-wise Attendance & Advances)</h3>`;
-    
-    filteredSupervisors.forEach(sup => {
-      const atts = (sup.supervisorAttendances || []).filter((a: any) => {
-        const itemDate = new Date(a.date);
-        return (!effectiveStartDate || itemDate >= effectiveStartDate) && (!effectiveEndDate || itemDate <= effectiveEndDate);
-      });
-      const pays = (sup.supervisorPayments || []).filter((p: any) => {
-        const itemDate = new Date(p.date);
-        return (!effectiveStartDate || itemDate >= effectiveStartDate) && (!effectiveEndDate || itemDate <= effectiveEndDate);
-      });
-      
-      if (atts.length === 0 && pays.length === 0) return;
-
-      const ledger: any[] = [];
-      atts.forEach((a: any) => ledger.push({ date: a.date, type: "Attendance", details: a.status, earned: Number(a.earnedAmount)||0, paid: 0 }));
-      pays.forEach((p: any) => ledger.push({ date: p.date, type: "Payment", details: p.reason || "Advance", earned: 0, paid: Number(p.amount)||0 }));
-      ledger.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-      html += `
-        <div style="margin-top: 20px; page-break-inside: avoid;">
-          <h4 style="margin-bottom: 5px; color: #333;">Supervisor: ${sup.name}</h4>
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 15%">Date</th>
-                <th style="width: 15%">Type</th>
-                <th style="width: 40%">Details</th>
-                <th class="right" style="width: 15%">Salary Earned</th>
-                <th class="right" style="width: 15%">Advance Paid</th>
-              </tr>
-            </thead>
-            <tbody>
-      `;
-      let runEarn = 0;
-      let runPaid = 0;
-      ledger.forEach(row => {
-        runEarn += row.earned;
-        runPaid += row.paid;
-        html += `
-          <tr>
-            <td>${new Date(row.date).toLocaleDateString("en-IN")}</td>
-            <td>${row.type}</td>
-            <td>${row.details}</td>
-            <td class="right">${row.earned > 0 ? row.earned.toLocaleString("en-IN", { style: "currency", currency: "INR" }) : '-'}</td>
-            <td class="right advance">${row.paid > 0 ? row.paid.toLocaleString("en-IN", { style: "currency", currency: "INR" }) : '-'}</td>
-          </tr>
-        `;
-      });
-      html += `
-              <tr style="background-color: #f8fafc; font-weight: bold;">
-                <td colspan="3" class="right">Totals</td>
-                <td class="right">${runEarn.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
-                <td class="right advance">${runPaid.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      `;
-    });
-
-    html += `
           <script>
             window.onload = function() { window.print(); window.close(); }
           </script>
@@ -857,7 +440,7 @@ export function ReportsDashboard({
           <div class="header-info">
             <p>Generated on: ${new Date().toLocaleDateString()}</p>
             <p>Date Range: ${timeRange === "custom" ? (customStartDate || "Start") + " to " + (customEndDate || "End") : timeRange}</p>
-            <p>Site: ${selectedSiteId === "all" ? "All Sites" : initialSites.find(s => s.id === selectedSiteId)?.projectName || "All Sites"}</p>
+            <p>Site: ${selectedSiteId === "all" ? "All Sites" : sites?.find((s: any) => s.id === selectedSiteId)?.projectName || "All Sites"}</p>
           </div>
           <table>
             <thead>
@@ -875,7 +458,7 @@ export function ReportsDashboard({
             <tbody>
     `;
     
-    labourMatrixList.forEach(l => {
+    labourMatrixList.forEach((l: any) => {
       html += `
         <tr>
           <td>${l.name}</td>
@@ -893,71 +476,6 @@ export function ReportsDashboard({
     html += `
             </tbody>
           </table>
-    `;
-
-    html += `<h3 style="margin-top: 40px; color: #4f46e5;">Detailed Ledger (Date-wise Attendance & Advances)</h3>`;
-    
-    filteredLabours.forEach(l => {
-      const lAtts = filteredAttendances.filter(a => a.labourId === l.id);
-      const lPays = (l.payments || []).filter((p: any) => {
-        const itemDate = new Date(p.date);
-        return (!effectiveStartDate || itemDate >= effectiveStartDate) && (!effectiveEndDate || itemDate <= effectiveEndDate);
-      });
-      
-      if (lAtts.length === 0 && lPays.length === 0) return;
-      
-      const ledger: any[] = [];
-      lAtts.forEach(a => {
-        const rate = Number(a.hajariRate) || Number(l.dailyWage) || 800;
-        const haj = Number(a.hajari) || 0;
-        ledger.push({ date: a.date, type: "Attendance", details: `Site: ${a.site?.projectName||"—"} | Shift: ${haj}`, earned: haj * rate, paid: 0 });
-      });
-      lPays.forEach((p: any) => ledger.push({ date: p.date, type: "Payment", details: p.reason || "Advance", earned: 0, paid: Number(p.amount)||0 }));
-      ledger.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-      html += `
-        <div style="margin-top: 20px; page-break-inside: avoid;">
-          <h4 style="margin-bottom: 5px; color: #333;">Labourer: ${l.name}</h4>
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 15%">Date</th>
-                <th style="width: 15%">Type</th>
-                <th style="width: 40%">Details</th>
-                <th class="right" style="width: 15%">Wages Earned</th>
-                <th class="right" style="width: 15%">Advance Paid</th>
-              </tr>
-            </thead>
-            <tbody>
-      `;
-      let runEarn = 0;
-      let runPaid = 0;
-      ledger.forEach(row => {
-        runEarn += row.earned;
-        runPaid += row.paid;
-        html += `
-          <tr>
-            <td>${new Date(row.date).toLocaleDateString("en-IN")}</td>
-            <td>${row.type}</td>
-            <td>${row.details}</td>
-            <td class="right">${row.earned > 0 ? row.earned.toLocaleString("en-IN", { style: "currency", currency: "INR" }) : '-'}</td>
-            <td class="right advance">${row.paid > 0 ? row.paid.toLocaleString("en-IN", { style: "currency", currency: "INR" }) : '-'}</td>
-          </tr>
-        `;
-      });
-      html += `
-              <tr style="background-color: #f8fafc; font-weight: bold;">
-                <td colspan="3" class="right">Totals</td>
-                <td class="right">${runEarn.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
-                <td class="right advance">${runPaid.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      `;
-    });
-
-    html += `
           <script>
             window.onload = function() { window.print(); window.close(); }
           </script>
@@ -989,7 +507,7 @@ export function ReportsDashboard({
     summarySheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4F46E5" } };
     summarySheet.getRow(1).font = { color: { argb: "FFFFFFFF" }, bold: true };
 
-    filteredBills.forEach(b => {
+    exportBills.forEach((b: any) => {
       const taxable = (b.lines || []).reduce((s: number, l: any) => s + (Number(l.currentAmount) || 0), 0);
       const cgst = taxable * ((b.cgstPct ?? 9) / 100);
       const sgst = taxable * ((b.sgstPct ?? 9) / 100);
@@ -1026,7 +544,7 @@ export function ReportsDashboard({
     linesSheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF10B981" } };
     linesSheet.getRow(1).font = { color: { argb: "FFFFFFFF" }, bold: true };
 
-    filteredBills.forEach(b => {
+    exportBills.forEach((b: any) => {
       (b.lines || []).forEach((l: any) => {
         linesSheet.addRow({
           billNo: b.billNo,
@@ -1077,7 +595,7 @@ export function ReportsDashboard({
           <div class="header-info">
             <p>Generated on: ${new Date().toLocaleDateString()}</p>
             <p>Date Range: ${timeRange === "custom" ? (customStartDate || "Start") + " to " + (customEndDate || "End") : timeRange}</p>
-            <p>Site: ${selectedSiteId === "all" ? "All Sites" : initialSites.find(s => s.id === selectedSiteId)?.projectName || "All Sites"}</p>
+            <p>Site: ${selectedSiteId === "all" ? "All Sites" : sites?.find((s: any) => s.id === selectedSiteId)?.projectName || "All Sites"}</p>
           </div>
           <table>
             <thead>
@@ -1096,7 +614,7 @@ export function ReportsDashboard({
             <tbody>
     `;
     
-    filteredBills.forEach(b => {
+    exportBills.forEach((b: any) => {
       const taxable = (b.lines || []).reduce((s: number, l: any) => s + (Number(l.currentAmount) || 0), 0);
       const cgst = taxable * ((b.cgstPct ?? 9) / 100);
       const sgst = taxable * ((b.sgstPct ?? 9) / 100);
@@ -1154,7 +672,6 @@ export function ReportsDashboard({
 
           {/* Quick Filters */}
           <div className="flex flex-wrap items-center gap-3 bg-white/10 dark:bg-black/30 p-2 rounded-2xl backdrop-blur-md border border-white/10">
-            {/* Site Dropdown */}
             <div className="flex items-center gap-2 bg-slate-900/80 px-3 py-2 rounded-xl border border-indigo-500/30 text-xs">
               <Building2 className="h-3.5 w-3.5 text-indigo-400" />
               <select
@@ -1162,8 +679,8 @@ export function ReportsDashboard({
                 onChange={(e) => setSelectedSiteId(e.target.value)}
                 className="bg-transparent text-slate-200 font-semibold focus:outline-none cursor-pointer"
               >
-                <option value="all" className="bg-slate-900 text-white">All Sites ({initialSites.length})</option>
-                {initialSites.map((s) => (
+                <option value="all" className="bg-slate-900 text-white">All Sites ({sites?.length || 0})</option>
+                {(sites || []).map((s) => (
                   <option key={s.id} value={s.id} className="bg-slate-900 text-white">
                     {s.projectName}
                   </option>
@@ -1171,11 +688,10 @@ export function ReportsDashboard({
               </select>
             </div>
 
-            {/* Time Presets */}
-            <div className="flex items-center rounded-xl bg-slate-900/80 p-1 border border-indigo-500/30 text-xs">
+            <div className="flex flex-wrap items-center rounded-xl bg-slate-900/80 p-1 border border-indigo-500/30 text-xs gap-1">
               <button
                 onClick={() => handleTimeRangeChange("1d")}
-                className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
+                className={`px-4 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
                   timeRange === "1d" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
                 }`}
               >
@@ -1183,7 +699,7 @@ export function ReportsDashboard({
               </button>
               <button
                 onClick={() => handleTimeRangeChange("30d")}
-                className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
+                className={`px-4 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
                   timeRange === "30d" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
                 }`}
               >
@@ -1191,19 +707,43 @@ export function ReportsDashboard({
               </button>
               <button
                 onClick={() => handleTimeRangeChange("90d")}
-                className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
+                className={`px-4 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
                   timeRange === "90d" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
                 }`}
               >
                 90 Days
               </button>
               <button
+                onClick={() => handleTimeRangeChange("this_year")}
+                className={`px-4 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
+                  timeRange === "this_year" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                This Year
+              </button>
+              <button
+                onClick={() => handleTimeRangeChange("last_year")}
+                className={`px-4 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
+                  timeRange === "last_year" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                Last Year
+              </button>
+              <button
+                onClick={() => handleTimeRangeChange("all_time")}
+                className={`px-4 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
+                  timeRange === "all_time" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                All Time
+              </button>
+              <button
                 onClick={() => handleTimeRangeChange("custom")}
-                className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
+                className={`px-4 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all duration-300 ${
                   timeRange === "custom" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:text-white"
                 }`}
               >
-                Custom Date
+                Custom Range
               </button>
             </div>
           </div>
@@ -1246,7 +786,7 @@ export function ReportsDashboard({
           <CardContent className="p-6 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Total Invoiced (Gross)</span>
-              <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 border-0">{filteredBills.length} Bills</Badge>
+              <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 border-0">{exportBills.length} Bills</Badge>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
               {formatINR(totalBilledGross)}
@@ -1290,7 +830,7 @@ export function ReportsDashboard({
               {formatINR(totalOutstandingReceivable)}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              From {filteredSites.length} active construction sites
+              From {siteFinancialChartData.length} active construction sites
             </p>
           </CardContent>
         </Card>
@@ -1417,7 +957,7 @@ export function ReportsDashboard({
                             paddingAngle={5}
                             dataKey="value"
                           >
-                            {clientRevenueData.map((entry, index) => (
+                            {clientRevenueData.map((entry: any, index: number) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
@@ -1463,7 +1003,7 @@ export function ReportsDashboard({
                         </TR>
                       </THead>
                       <TBody>
-                        {siteFinancialChartData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((s, idx) => {
+                        {siteFinancialChartData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((s: any, idx: number) => {
                           const pct = s.Billed > 0 ? Math.min(100, Math.round((s.Received / s.Billed) * 100)) : 0;
                           return (
                             <TR key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
@@ -1588,7 +1128,7 @@ export function ReportsDashboard({
                         </TR>
                       </THead>
                       <TBody>
-                        {labourMatrixList.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((lab) => (
+                        {labourMatrixList.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((lab: any) => (
                           <TR key={lab.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
                             <TD className="font-bold text-slate-900 dark:text-slate-100">{lab.name}</TD>
                             <TD><Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800">{lab.category}</Badge></TD>
@@ -1703,7 +1243,7 @@ export function ReportsDashboard({
                         </TR>
                       </THead>
                       <TBody>
-                        {supervisorPayrollData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((sup) => (
+                        {supervisorPayrollData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((sup: any) => (
                           <TR key={sup.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
                             <TD className="font-bold text-slate-900 dark:text-slate-100">{sup.name}</TD>
                             <TD className="text-right font-mono text-slate-700 dark:text-slate-300 font-semibold">{formatINR(sup.monthlySalary)}</TD>
@@ -1747,7 +1287,7 @@ export function ReportsDashboard({
                   </div>
                   <div className="flex items-center gap-3">
                     <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 border-0 font-mono">
-                      {filteredBills.length} Invoices
+                      {exportBills.length} Invoices
                     </Badge>
                     <Button variant="outline" size="sm" onClick={exportBillingToExcel} className="h-8 gap-1.5 bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 hover:text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:hover:bg-emerald-900/50">
                       <FileSpreadsheet className="h-4 w-4" />
@@ -1776,7 +1316,7 @@ export function ReportsDashboard({
                         </TR>
                       </THead>
                       <TBody>
-                        {filteredBills.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((b) => {
+                        {exportBills.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((b: any) => {
                           const taxable = (b.lines || []).reduce((s: number, l: any) => s + (Number(l.currentAmount) || 0), 0);
                           const cgst = taxable * ((b.cgstPct ?? 9) / 100);
                           const sgst = taxable * ((b.sgstPct ?? 9) / 100);
@@ -1808,8 +1348,8 @@ export function ReportsDashboard({
               </Card>
               <Pagination 
                 currentPage={page} 
-                totalPages={Math.ceil(filteredBills.length / PAGE_SIZE)} 
-                totalItems={filteredBills.length} 
+                totalPages={Math.ceil(exportBills.length / PAGE_SIZE)} 
+                totalItems={exportBills.length} 
                 pageSize={PAGE_SIZE} 
               />
             </div>

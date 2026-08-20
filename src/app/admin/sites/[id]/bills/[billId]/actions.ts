@@ -80,15 +80,18 @@ export async function sendBillEmailAction(billId: string, customEmail?: string):
     </div>
   `;
 
-  await sendEmailWithAttachment(
-    targetEmail,
-    `Running Bill ${bill.billNo} - ${bill.site.projectName}`,
-    `Dear Sir/Madam,\n\nPlease find attached the finalized Running Bill ${bill.billNo} for the project ${bill.site.projectName}.\n\nSecure Download Link: ${downloadUrl}\n\nRegards,\nRCR Enterprises`,
-    [{ filename: `${site.projectName.replace(/[^a-zA-Z0-9]/g, "_")}_${bill.billNo.replace(/[^a-zA-Z0-9]/g, "_")}_RA_BILL.pdf`, content: Buffer.from(pdfBuffer) }],
-    html
-  );
-
-  return { success: true };
+  try {
+    await sendEmailWithAttachment(
+      targetEmail,
+      `Running Bill ${bill.billNo} - ${bill.site.projectName}`,
+      `Dear Sir/Madam,\n\nPlease find attached the finalized Running Bill ${bill.billNo} for the project ${bill.site.projectName}.\n\nSecure Download Link: ${downloadUrl}\n\nRegards,\nRCR Enterprises`,
+      [{ filename: `${site.projectName.replace(/[^a-zA-Z0-9]/g, "_")}_${bill.billNo.replace(/[^a-zA-Z0-9]/g, "_")}_RA_BILL.pdf`, content: Buffer.from(pdfBuffer) }],
+      html
+    );
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message || "Failed to send email. Check SMTP settings." };
+  }
 }
 
 export async function sendBillWhatsAppAction(billId: string): Promise<{ error?: string; url?: string }> {

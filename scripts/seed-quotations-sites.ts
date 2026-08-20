@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 const generateRealisticSitesAndQuotations = async () => {
   console.log("Fetching existing clients...");
   const clients = await prisma.client.findMany();
-  
+
   if (clients.length === 0) {
     console.error("No clients found. Please run the client seed script first.");
     return;
@@ -80,7 +80,7 @@ const generateRealisticSitesAndQuotations = async () => {
   for (let i = 0; i < 10; i++) {
     const client = clients[i % clients.length];
     const projectName = projectNames[i];
-    
+
     // Determine how many items this project should have (Some small, some large 18-20)
     const numItems = i % 3 === 0 ? 20 : (i % 2 === 0 ? 12 : 5);
     // Shuffle allWorkItemsTemplates to make them random for each project
@@ -121,7 +121,7 @@ const generateRealisticSitesAndQuotations = async () => {
         "3. Electricity and water to be provided free of cost at site."
       ]
     ];
-    
+
     // Create Quotation
     const quotation = await prisma.quotation.create({
       data: {

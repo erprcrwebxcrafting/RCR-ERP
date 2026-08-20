@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, MapPin, ClipboardList, HardHat, User, Menu, X } from "lucide-react";
-import { YearSelector } from "@/components/year-selector";
 import { useState, useEffect } from "react";
 
 const nav = [
@@ -96,9 +95,6 @@ export function SupervisorSidebar({
         </div>
         
         <div className="flex flex-col gap-2 mt-auto pt-4 border-t border-slate-800">
-          <div className="px-3 pb-2">
-            <YearSelector earliestYear={earliestYear} />
-          </div>
           {logoutButton}
         </div>
       </div>
