@@ -8,6 +8,7 @@ import { formatINR, formatDate } from "@/lib/utils";
 import { SiteBalanceSheet } from "../../components/site-balance-sheet";
 import { sendBillEmailAction, sendBillWhatsAppAction } from "./actions";
 import { Receipt, FileSpreadsheet, Download, Mail, MessageCircle, Lock } from "lucide-react";
+import { toast } from "sonner";
 
 function BillHeaderBanner({ site, bill, sheetTitle }: { site: any; bill: any; sheetTitle?: string }) {
   return (
@@ -67,6 +68,28 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
   const { site, lines = [], supplyLabourEntries = [] } = bill;
   const [activeSheetTab, setActiveSheetTab] = useState<"sheet1" | "sheet2" | "towers" | "supply" | "balance">("sheet1");
   const [selectedTowerId, setSelectedTowerId] = useState<string>(site.buildings[0]?.id || "");
+  const [loading, setLoading] = useState(false);
+
+  const handleSend = async (type: "EMAIL" | "WHATSAPP") => {
+    const toastId = toast.loading(type === "EMAIL" ? "Sending bill via email..." : "Preparing WhatsApp...");
+    setLoading(true);
+    try {
+      const res = type === "EMAIL" ? await sendBillEmailAction(bill.id) : await sendBillWhatsAppAction(bill.id);
+      
+      if (res?.error) {
+        toast.error(res.error, { id: toastId });
+      } else {
+        toast.success(type === "EMAIL" ? "Bill emailed successfully!" : "WhatsApp ready!", { id: toastId });
+        if (type === "WHATSAPP" && (res as any)?.url) {
+          window.open((res as any).url, "_blank");
+        }
+      }
+    } catch (e) {
+      toast.error("An error occurred. Please try again.", { id: toastId });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const taxPcts = {
     cgstPct: bill.cgstPct ?? site.cgstPct ?? 9,
@@ -246,13 +269,13 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
             <Download className="h-4 w-4" /> Download Official PDF Package (.pdf)
           </Button>
 
-          <form action={sendBillEmailAction.bind(null, bill.id)}>
-            <Button variant="secondary" className="gap-2 border"><Mail className="h-4 w-4" /> Email</Button>
-          </form>
+          <Button variant="secondary" className="gap-2 border" onClick={() => handleSend("EMAIL")} disabled={loading}>
+            <Mail className="h-4 w-4" /> Email
+          </Button>
 
-          <form action={sendBillWhatsAppAction.bind(null, bill.id)}>
-            <Button variant="secondary" className="gap-2 text-green-600 border-green-600"><MessageCircle className="h-4 w-4" /> WhatsApp</Button>
-          </form>
+          <Button variant="secondary" className="gap-2 text-green-600 border-green-600" onClick={() => handleSend("WHATSAPP")} disabled={loading}>
+            <MessageCircle className="h-4 w-4" /> WhatsApp
+          </Button>
         </div>
       </div>
 

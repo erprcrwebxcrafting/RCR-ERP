@@ -7,9 +7,9 @@ import { sendEmailWithAttachment } from "@/lib/email";
 import { createShareLink, buildShareUrl } from "@/lib/share-link";
 import { redirect } from "next/navigation";
 
-export async function sendBillEmailAction(billId: string): Promise<void> {
+export async function sendBillEmailAction(billId: string, customEmail?: string): Promise<{ error?: string; success?: boolean }> {
   const session = await auth();
-  if (!session || (session.user as any).role !== "ADMIN") return;
+  if (!session || (session.user as any).role !== "ADMIN") return { error: "Unauthorized" };
 
   const bill = await prisma.runningBill.findUnique({
     where: { id: billId },
@@ -21,9 +21,10 @@ export async function sendBillEmailAction(billId: string): Promise<void> {
       supplyLabourEntries: { orderBy: { date: "asc" } },
     },
   });
-  if (!bill || !bill.site.client.email) {
-    console.warn("Bill or client email not found for billId:", billId);
-    return;
+  
+  const targetEmail = customEmail || bill?.site.client.email;
+  if (!bill || !targetEmail) {
+    return { error: "Client email is missing. Please provide an email address." };
   }
 
   const { site, lines, supplyLabourEntries } = bill;
@@ -80,25 +81,26 @@ export async function sendBillEmailAction(billId: string): Promise<void> {
   `;
 
   await sendEmailWithAttachment(
-    bill.site.client.email,
+    targetEmail,
     `Running Bill ${bill.billNo} - ${bill.site.projectName}`,
     `Dear Sir/Madam,\n\nPlease find attached the finalized Running Bill ${bill.billNo} for the project ${bill.site.projectName}.\n\nSecure Download Link: ${downloadUrl}\n\nRegards,\nRCR Enterprises`,
     [{ filename: `${site.projectName.replace(/[^a-zA-Z0-9]/g, "_")}_${bill.billNo.replace(/[^a-zA-Z0-9]/g, "_")}_RA_BILL.pdf`, content: Buffer.from(pdfBuffer) }],
     html
   );
+
+  return { success: true };
 }
 
-export async function sendBillWhatsAppAction(billId: string): Promise<void> {
+export async function sendBillWhatsAppAction(billId: string): Promise<{ error?: string; url?: string }> {
   const session = await auth();
-  if (!session || (session.user as any).role !== "ADMIN") return;
+  if (!session || (session.user as any).role !== "ADMIN") return { error: "Unauthorized" };
 
   const bill = await prisma.runningBill.findUnique({
     where: { id: billId },
     include: { site: { include: { client: true } } },
   });
   if (!bill || !bill.site.client.phone) {
-    console.warn("Bill or client phone not found for billId:", billId);
-    return;
+    return { error: "Client phone number is missing." };
   }
 
   const code = await createShareLink("BILL", bill.id);
@@ -107,5 +109,5 @@ export async function sendBillWhatsAppAction(billId: string): Promise<void> {
   const message = `Dear Sir/Madam,\n\nPlease find the generated Running Bill ${bill.billNo} for the project ${bill.site.projectName}.\n\n📄 View/Download Bill PDF:\n${downloadUrl}\n\n(This secure link will expire in 72 hours)\n\nRegards,\nRCR Enterprises`;
   const phone = bill.site.client.phone.replace(/[^0-9]/g, "");
   
-  redirect(`https://wa.me/${phone.length === 10 ? '91' + phone : phone}?text=${encodeURIComponent(message)}`);
+  return { url: `https://wa.me/${phone.length === 10 ? '91' + phone : phone}?text=${encodeURIComponent(message)}` };
 }
