@@ -1,9 +1,10 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { Mail, MessageCircle, FileArchive } from "lucide-react";
+import { Mail, FileArchive } from "lucide-react";
 import { sendBillEmailAction, sendBillWhatsAppAction } from "./actions";
 import { toast } from "sonner";
 import { useState } from "react";
+import { WhatsAppIcon } from "@/components/icons";
 
 export function SendButtons({ billId }: { billId: string }) {
   const [loading, setLoading] = useState(false);
@@ -38,7 +39,7 @@ export function SendButtons({ billId }: { billId: string }) {
         <Mail className="h-4 w-4" /> Send Email
       </Button>
       <Button variant="secondary" className="gap-2 text-green-600 border-green-600" onClick={() => handleSend("WHATSAPP")} disabled={loading}>
-        <MessageCircle className="h-4 w-4" /> Send WhatsApp
+        <WhatsAppIcon className="h-4 w-4" /> Send WhatsApp
       </Button>
     </div>
   );

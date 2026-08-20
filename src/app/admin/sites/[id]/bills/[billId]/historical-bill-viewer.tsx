@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { formatINR, formatDate } from "@/lib/utils";
 import { SiteBalanceSheet } from "../../components/site-balance-sheet";
 import { sendBillEmailAction, sendBillWhatsAppAction } from "./actions";
-import { Receipt, FileSpreadsheet, Download, Mail, MessageCircle, Lock } from "lucide-react";
+import { Receipt, FileSpreadsheet, Download, Mail, Lock } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons";
 import { toast } from "sonner";
 
 function BillHeaderBanner({ site, bill, sheetTitle }: { site: any; bill: any; sheetTitle?: string }) {
@@ -274,7 +275,7 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
           </Button>
 
           <Button variant="secondary" className="gap-2 text-green-600 border-green-600" onClick={() => handleSend("WHATSAPP")} disabled={loading}>
-            <MessageCircle className="h-4 w-4" /> WhatsApp
+            <WhatsAppIcon className="h-4 w-4" /> WhatsApp
           </Button>
         </div>
       </div>
