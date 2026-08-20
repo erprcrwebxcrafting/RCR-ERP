@@ -45,20 +45,6 @@ export function HajariInput({
   
   const [currentValue, setCurrentValue] = useState(defaultValStr);
 
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Close dropdown on click outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const selectClassName = "flex items-center justify-between h-11 w-full px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-bold text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all shadow-sm cursor-pointer hover:border-indigo-400";
   const disabledSelectClassName = "flex items-center justify-between h-11 w-full px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium text-sm cursor-not-allowed opacity-80";
   const inputClassName = "h-11 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold text-sm focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500/20 transition-all shadow-sm hover:border-indigo-400";
