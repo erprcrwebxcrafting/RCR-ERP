@@ -52,8 +52,8 @@ export function QuotationSendButtons({ quotationId, clientId, clientEmail, clien
         <Button variant="outline" size="sm" className="gap-2" onClick={() => { setEditEmail(clientEmail || ""); setEmailModalOpen(true); }} disabled={loading}>
           <Mail className="h-4 w-4" />
         </Button>
-        <Button variant="outline" size="sm" className="gap-2 text-green-600 border-green-600" onClick={() => { setEditPhone(clientPhone || ""); setWhatsappModalOpen(true); }} disabled={loading}>
-          <WhatsAppIcon className="h-4 w-4" />
+        <Button size="sm" className="gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white shadow-md border-none" onClick={() => { setEditPhone(clientPhone || ""); setWhatsappModalOpen(true); }} disabled={loading}>
+          <WhatsAppIcon className="h-4 w-4" /> Send WhatsApp
         </Button>
       </div>
 

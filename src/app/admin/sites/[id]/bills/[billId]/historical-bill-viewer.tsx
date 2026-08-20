@@ -274,7 +274,7 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
             <Mail className="h-4 w-4" /> Email
           </Button>
 
-          <Button variant="secondary" className="gap-2 text-green-600 border-green-600" onClick={() => handleSend("WHATSAPP")} disabled={loading}>
+          <Button className="gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white shadow-md border-none" onClick={() => handleSend("WHATSAPP")} disabled={loading}>
             <WhatsAppIcon className="h-4 w-4" /> WhatsApp
           </Button>
         </div>

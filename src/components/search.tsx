@@ -32,7 +32,7 @@ export function Search({ placeholder = "Search..." }: { placeholder?: string }) 
       startTransition(() => {
         replace(`${pathname}?${params.toString()}`);
       });
-    }, 250);
+    }, 100);
 
     return () => clearTimeout(handler);
   }, [searchTerm, pathname, replace, searchParams]);
