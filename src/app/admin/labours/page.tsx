@@ -21,8 +21,8 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
     prisma.site.count({ where: { active: true } }),
     prisma.site.findMany({
       where: { active: true },
-      take: PAGE_SIZE,
-      skip: (page - 1) * PAGE_SIZE,
+      take: q ? undefined : PAGE_SIZE,
+      skip: q ? undefined : (page - 1) * PAGE_SIZE,
       select: {
       id: true,
       projectName: true,

@@ -1,7 +1,6 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { auth } from "@/auth";
 
@@ -93,5 +92,4 @@ export async function saveSupervisorLabour(formData: FormData) {
   }
   
   revalidatePath("/supervisor/labours");
-  redirect("/supervisor/labours");
 }
