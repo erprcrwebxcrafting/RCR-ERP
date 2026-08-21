@@ -56,7 +56,8 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
         accountNumber: true,
         ifscCode: true,
         bankBranch: true,
-        // ✅ NO passwordHash, NO aadharNumber sent to browser
+        aadharNumber: true,
+        // ✅ NO passwordHash sent to browser
         supervisorPayments: {
           select: { id: true, amount: true, date: true, transactionId: true, reason: true },
           orderBy: { date: "desc" }

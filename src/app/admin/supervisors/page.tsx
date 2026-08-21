@@ -47,7 +47,13 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
         createdAt: true,
         monthlySalary: true,
         dateOfJoining: true,
-        // ✅ NO passwordHash, aadharNumber, accountNumber, ifscCode, bankName etc.
+        address: true,
+        aadharNumber: true,
+        accountNumber: true,
+        ifscCode: true,
+        bankName: true,
+        bankBranch: true,
+        // ✅ NO passwordHash
         // ✅ Only show currently ACTIVE site assignments
         assignedSites: {
           where: { site: { active: true } },
