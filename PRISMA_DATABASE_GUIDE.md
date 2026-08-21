@@ -39,9 +39,11 @@ Production par hum kabhi bhi `migrate dev` ya `db:push` run nahi karte kyunki in
   **Kyu karein?** Yeh command database ko kabhi reset (delete) nahi karti. Yeh sirf un safe SQL files ko run karti hai jo aapne local par bana kar Git par push ki thi. Isse client ka data 100% safe rehta hai.
 
 - **Pehli Baar Production DB Setup Karte Waqt (First Deployment):**
-  Agar aap naya production server set kar rahe hain aur database khali hai:
-  1. `npx prisma migrate deploy` (Database mein saari tables bananane ke liye)
-  2. `npm run db:seed` (Agar kuch default/initial data jaise settings ya admin user insert karna ho)
+  Aam taur par hum production pe `npx prisma migrate deploy` chalate hain. Lekin agar aapke project mein **`prisma/migrations` folder abhi tak bana hi nahi hai** (jaise ki bilkul fresh project) aur aap seedha naye khali production DB par setup kar rahe hain, toh yeh **SPECIAL CASE** follow karein:
+  1. `npx prisma migrate dev --name init` (Yeh sirf ek baar chalega, migration folder banayega aur khali production DB mein tables banayega).
+  2. `npm run db:seed` (Initial/Default data insert karne ke liye).
+  3. Jo naya `prisma/migrations` folder banega, use turant Git par commit karke push karein.
+  *(Note: Yeh exception SIRF ek baar first setup ke time apply hota hai. Uske baad zindagi bhar `npx prisma migrate deploy` hi use karna hai).*
 
 ---
 
