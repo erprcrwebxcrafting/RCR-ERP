@@ -16,6 +16,22 @@ export function AttendanceForm({ siteId, allLocked, hasExisting, headerControls,
     if (allLocked) return;
     
     const formData = new FormData(e.currentTarget);
+
+    // Custom Validation for Hajari Input
+    for (const [key, value] of Array.from(formData.entries())) {
+      if (key.startsWith("hajari__")) {
+        const numValue = parseFloat(value as string);
+        if (numValue < 0) {
+          toast.warning("Invalid Hajari", { description: "Hajari value cannot be negative." });
+          return;
+        }
+        if (numValue > 10) {
+          toast.warning("Invalid Hajari", { description: "Hajari value cannot be greater than 10." });
+          return;
+        }
+      }
+    }
+
     startTransition(async () => {
       try {
         await saveAttendance(siteId, formData);

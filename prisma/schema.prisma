@@ -292,6 +292,9 @@ model SupplyLabourEntry {
   helperQty     Float        @default(0)
   helperHours   Float        @default(0)
   helperRate    Float        @default(800)
+  fitterForemanQty   Float   @default(0)
+  fitterForemanHours Float   @default(0)
+  fitterForemanRate  Float   @default(1500)
   totalAmount   Float        @default(0)
   runningBillId String?
   createdAt     DateTime     @default(now())

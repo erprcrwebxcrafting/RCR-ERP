@@ -11,7 +11,7 @@ export async function saveAttendance(siteId: string, formData: FormData) {
   const date = new Date(dateStr); 
   const buildingId = (formData.get("buildingId") as string) || null;
 
-  // 1. Future and Past date validation
+  // 1. Future date validation (Applies to all)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
@@ -25,10 +25,6 @@ export async function saveAttendance(siteId: string, formData: FormData) {
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
-  if (targetDate.getTime() < yesterday.getTime()) {
-    throw new Error("Attendance cannot be marked or edited for dates older than 24 hours (yesterday).");
-  }
-
   const labourIds = formData.getAll("labourId[]") as string[];
 
   const existingRecords = await prisma.attendance.findMany({
@@ -39,15 +35,14 @@ export async function saveAttendance(siteId: string, formData: FormData) {
   });
   
   const existingMap = new Map(existingRecords.map(r => [r.labourId, r]));
-  const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
-  const now = new Date().getTime();
 
-  // Fetch all current labour rates so we can snapshot them
+  // Fetch all current labour rates and joining dates
   const currentLabours = await prisma.labour.findMany({
     where: { id: { in: labourIds } },
     include: { labourCategory: true }
   });
   const rateMap = new Map(currentLabours.map(l => [l.id, l.dailyWage || l.labourCategory.dailyWage]));
+  const labourMap = new Map(currentLabours.map(l => [l.id, l]));
 
   for (const labourId of labourIds) {
     const hajariInput = formData.get(`hajari__${labourId}`) as string;
@@ -55,19 +50,35 @@ export async function saveAttendance(siteId: string, formData: FormData) {
     
     let hajari = parseFloat(hajariInput) || 0;
     if (hajari < 0) hajari = 0;
-    if (hajari > 10) hajari = 10; // Cap at max 10 shifts per day
+    if (hajari > 10) hajari = 10;
     const status = hajari > 0 ? "PRESENT" : "ABSENT";
     const remarks = formData.get(`remarks__${labourId}`) as string;
 
     const existing = existingMap.get(labourId);
-    // createdAt check removed as per new rule (using attendance date instead)
+    const labour = labourMap.get(labourId);
+    
+    if (!labour) continue;
 
-    const currentRate = rateMap.get(labourId) || 0;
+    // 2. Joining Date Validation (Cannot mark attendance before joining date)
+    const joiningDate = new Date(labour.joiningDate || labour.createdAt);
+    joiningDate.setHours(0, 0, 0, 0);
+    if (targetDate.getTime() < joiningDate.getTime()) {
+      throw new Error(`Cannot mark attendance for ${labour.name} before their joining date (${joiningDate.toLocaleDateString()}).`);
+    }
+
+    // 3. 24-Hour Edit Lock (Cannot edit an EXISTING record if it's older than yesterday)
+    if (existing && targetDate.getTime() < yesterday.getTime()) {
+      throw new Error(`Cannot edit existing attendance for ${labour.name} older than 24 hours.`);
+    }
+
+    // 4. Rate Snapshot Protection
+    // If it's an existing record, keep its original saved rate. Otherwise use the current rate.
+    const appliedRate = existing ? existing.hajariRate : (rateMap.get(labourId) || 0);
 
     await prisma.attendance.upsert({
       where: { labourId_date: { labourId, date } },
-      create: { siteId, buildingId, labourId, date, status, hajari, hajariRate: currentRate, remarks, markedById },
-      update: { buildingId, status, hajari, hajariRate: currentRate, remarks },
+      create: { siteId, buildingId, labourId, date, status, hajari, hajariRate: appliedRate, remarks, markedById },
+      update: { buildingId, status, hajari, hajariRate: appliedRate, remarks },
     });
   }
 

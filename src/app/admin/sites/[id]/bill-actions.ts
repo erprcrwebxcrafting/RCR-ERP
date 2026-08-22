@@ -71,6 +71,7 @@ export async function addSupplyLabourEntryAction(siteId: string, formData: FormD
   const challanNo = (formData.get("challanNo") as string || "").trim();
   const description = (formData.get("description") as string || "").trim();
   const dateStr = formData.get("date") as string;
+  
   const fitterQty = parseFloat((formData.get("fitterQty") as string) || "0");
   const fitterHours = parseFloat((formData.get("fitterHours") as string) || "0");
   const fitterRate = parseFloat((formData.get("fitterRate") as string) || "1100");
@@ -79,19 +80,23 @@ export async function addSupplyLabourEntryAction(siteId: string, formData: FormD
   const helperHours = parseFloat((formData.get("helperHours") as string) || "0");
   const helperRate = parseFloat((formData.get("helperRate") as string) || "800");
 
+  const fitterForemanQty = parseFloat((formData.get("fitterForemanQty") as string) || "0");
+  const fitterForemanHours = parseFloat((formData.get("fitterForemanHours") as string) || "0");
+  const fitterForemanRate = parseFloat((formData.get("fitterForemanRate") as string) || "1500");
+
   if (!description) {
     throw new Error("Description is required for Labour Supply entry.");
   }
 
   // 1. Negative & sanity validation
-  if (fitterQty < 0 || helperQty < 0 || fitterHours < 0 || helperHours < 0 || fitterRate < 0 || helperRate < 0) {
+  if (fitterQty < 0 || helperQty < 0 || fitterForemanQty < 0 || fitterHours < 0 || helperHours < 0 || fitterForemanHours < 0 || fitterRate < 0 || helperRate < 0 || fitterForemanRate < 0) {
     throw new Error("INVALID VALUE ERROR: Quantities, hours, and rates cannot be negative.");
   }
-  if (fitterHours > 24 || helperHours > 24) {
+  if (fitterHours > 24 || helperHours > 24 || fitterForemanHours > 24) {
     throw new Error("INVALID HOURS ERROR: Daily shift hours cannot exceed 24 hours per shift.");
   }
-  if (fitterQty === 0 && helperQty === 0) {
-    throw new Error("EMPTY ENTRY ERROR: Please enter at least 1 Fitter or Helper count.");
+  if (fitterQty === 0 && helperQty === 0 && fitterForemanQty === 0) {
+    throw new Error("EMPTY ENTRY ERROR: Please enter at least 1 Fitter, Helper, or Foreman count.");
   }
 
   const date = dateStr ? new Date(dateStr) : new Date();
@@ -113,8 +118,8 @@ export async function addSupplyLabourEntryAction(siteId: string, formData: FormD
   }
 
   // Amount calculation based on Excel sheet formulas:
-  // If hours provided: (fitterQty * fitterHours / 8) * rate + (helperQty * helperHours / 8) * rate
-  // If count/nos provided: fitterQty * rate + helperQty * rate
+  // If hours provided: (qty * hours / 8) * rate
+  // If count/nos provided: qty * rate
   let fitterAmt = 0;
   if (fitterHours > 0) {
     fitterAmt = (fitterQty * fitterHours / 8) * fitterRate;
@@ -129,7 +134,14 @@ export async function addSupplyLabourEntryAction(siteId: string, formData: FormD
     helperAmt = helperQty * helperRate;
   }
 
-  const totalAmount = fitterAmt + helperAmt;
+  let foremanAmt = 0;
+  if (fitterForemanHours > 0) {
+    foremanAmt = (fitterForemanQty * fitterForemanHours / 8) * fitterForemanRate;
+  } else {
+    foremanAmt = fitterForemanQty * fitterForemanRate;
+  }
+
+  const totalAmount = fitterAmt + helperAmt + foremanAmt;
 
   await prisma.supplyLabourEntry.create({
     data: {
@@ -143,6 +155,9 @@ export async function addSupplyLabourEntryAction(siteId: string, formData: FormD
       helperQty,
       helperHours,
       helperRate,
+      fitterForemanQty,
+      fitterForemanHours,
+      fitterForemanRate,
       totalAmount,
     },
   });
@@ -179,6 +194,9 @@ export async function updateSupplyLabourEntriesAction(
     helperQty?: number;
     helperHours?: number;
     helperRate?: number;
+    fitterForemanQty?: number;
+    fitterForemanHours?: number;
+    fitterForemanRate?: number;
     totalAmount?: number;
   }[]
 ) {
@@ -200,12 +218,14 @@ export async function updateSupplyLabourEntriesAction(
     if (
       (entry.fitterQty !== undefined && entry.fitterQty < 0) ||
       (entry.helperQty !== undefined && entry.helperQty < 0) ||
+      (entry.fitterForemanQty !== undefined && entry.fitterForemanQty < 0) ||
       (entry.fitterHours !== undefined && entry.fitterHours < 0) ||
-      (entry.helperHours !== undefined && entry.helperHours < 0)
+      (entry.helperHours !== undefined && entry.helperHours < 0) ||
+      (entry.fitterForemanHours !== undefined && entry.fitterForemanHours < 0)
     ) {
       throw new Error("INVALID VALUE ERROR: Quantities and hours cannot be negative.");
     }
-    if ((entry.fitterHours && entry.fitterHours > 24) || (entry.helperHours && entry.helperHours > 24)) {
+    if ((entry.fitterHours && entry.fitterHours > 24) || (entry.helperHours && entry.helperHours > 24) || (entry.fitterForemanHours && entry.fitterForemanHours > 24)) {
       throw new Error("INVALID HOURS ERROR: Daily shift hours cannot exceed 24 hours per shift.");
     }
   }
@@ -224,6 +244,9 @@ export async function updateSupplyLabourEntriesAction(
         helperQty: entry.helperQty ?? 0,
         helperHours: entry.helperHours ?? 0,
         helperRate: entry.helperRate ?? 800,
+        fitterForemanQty: entry.fitterForemanQty ?? 0,
+        fitterForemanHours: entry.fitterForemanHours ?? 0,
+        fitterForemanRate: entry.fitterForemanRate ?? 1500,
         totalAmount: entry.totalAmount ?? 0,
       },
     });

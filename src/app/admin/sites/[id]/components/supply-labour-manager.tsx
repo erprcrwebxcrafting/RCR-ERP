@@ -48,7 +48,6 @@ export function SupplyLabourManager({ site }: { site: any }) {
     return map;
   }, [bills]);
 
-  // Local state for editable table rows
   const [entriesState, setEntriesState] = useState<
     Record<
       string,
@@ -62,6 +61,9 @@ export function SupplyLabourManager({ site }: { site: any }) {
         helperQty: number;
         helperHours: number;
         helperRate: number;
+        fitterForemanQty: number;
+        fitterForemanHours: number;
+        fitterForemanRate: number;
         totalAmount: number;
       }
     >
@@ -78,6 +80,9 @@ export function SupplyLabourManager({ site }: { site: any }) {
         helperQty: e.helperQty || 0,
         helperHours: e.helperHours || 0,
         helperRate: e.helperRate || 800,
+        fitterForemanQty: e.fitterForemanQty || 0,
+        fitterForemanHours: e.fitterForemanHours || 0,
+        fitterForemanRate: e.fitterForemanRate || 1500,
         totalAmount: e.totalAmount || 0,
       };
     });
@@ -98,6 +103,9 @@ export function SupplyLabourManager({ site }: { site: any }) {
         helperQty: e.helperQty || 0,
         helperHours: e.helperHours || 0,
         helperRate: e.helperRate || 800,
+        fitterForemanQty: e.fitterForemanQty || 0,
+        fitterForemanHours: e.fitterForemanHours || 0,
+        fitterForemanRate: e.fitterForemanRate || 1500,
         totalAmount: e.totalAmount || 0,
       };
     });
@@ -111,12 +119,9 @@ export function SupplyLabourManager({ site }: { site: any }) {
 
       // Auto-recalculate totalAmount if quantities, hours or rates are edited
       if (
-        field === "fitterQty" ||
-        field === "fitterHours" ||
-        field === "fitterRate" ||
-        field === "helperQty" ||
-        field === "helperHours" ||
-        field === "helperRate"
+        field === "fitterQty" || field === "fitterHours" || field === "fitterRate" ||
+        field === "helperQty" || field === "helperHours" || field === "helperRate" ||
+        field === "fitterForemanQty" || field === "fitterForemanHours" || field === "fitterForemanRate"
       ) {
         const fQty = updated.fitterQty || 0;
         const fHrs = updated.fitterHours || 0;
@@ -128,7 +133,12 @@ export function SupplyLabourManager({ site }: { site: any }) {
         const hRate = updated.helperRate || 800;
         const hTotal = hHrs > 0 ? ((hQty * hHrs) / 8) * hRate : hQty * hRate;
 
-        updated.totalAmount = Math.round((fTotal + hTotal) * 100) / 100;
+        const ffQty = updated.fitterForemanQty || 0;
+        const ffHrs = updated.fitterForemanHours || 0;
+        const ffRate = updated.fitterForemanRate || 1500;
+        const ffTotal = ffHrs > 0 ? ((ffQty * ffHrs) / 8) * ffRate : ffQty * ffRate;
+
+        updated.totalAmount = Math.round((fTotal + hTotal + ffTotal) * 100) / 100;
       }
 
       return {
@@ -187,6 +197,9 @@ export function SupplyLabourManager({ site }: { site: any }) {
           helperQty: state.helperQty,
           helperHours: state.helperHours,
           helperRate: state.helperRate,
+          fitterForemanQty: state.fitterForemanQty,
+          fitterForemanHours: state.fitterForemanHours,
+          fitterForemanRate: state.fitterForemanRate,
           totalAmount: state.totalAmount,
         };
       });
@@ -212,35 +225,43 @@ export function SupplyLabourManager({ site }: { site: any }) {
   let currentSupplyAmount = 0;
   let currentFitterHours = 0;
   let currentHelperHours = 0;
+  let currentForemanHours = 0;
 
   currentEntries.forEach((e: any) => {
     const st = entriesState[e.id] || e;
     currentSupplyAmount += st.totalAmount || 0;
     currentFitterHours += (st.fitterQty || 0) * (st.fitterHours || 0);
     currentHelperHours += (st.helperQty || 0) * (st.helperHours || 0);
+    currentForemanHours += (st.fitterForemanQty || 0) * (st.fitterForemanHours || 0);
   });
 
   // Previous (Past Bills) Stats
   let prevSupplyAmount = 0;
   let prevFitterHours = 0;
   let prevHelperHours = 0;
+  let prevForemanHours = 0;
 
   previousEntries.forEach((e: any) => {
     const st = entriesState[e.id] || e;
     prevSupplyAmount += st.totalAmount || 0;
     prevFitterHours += (st.fitterQty || 0) * (st.fitterHours || 0);
     prevHelperHours += (st.helperQty || 0) * (st.helperHours || 0);
+    prevForemanHours += (st.fitterForemanQty || 0) * (st.fitterForemanHours || 0);
   });
 
   // Cumulative Overall Stats
   const cumulativeSupplyAmount = currentSupplyAmount + prevSupplyAmount;
   const cumulativeFitterHours = currentFitterHours + prevFitterHours;
   const cumulativeHelperHours = currentHelperHours + prevHelperHours;
+  const cumulativeForemanHours = currentForemanHours + prevForemanHours;
 
   const currentFitterDays = Math.round((currentFitterHours / 8) * 100) / 100;
   const currentHelperDays = Math.round((currentHelperHours / 8) * 100) / 100;
+  const currentForemanDays = Math.round((currentForemanHours / 8) * 100) / 100;
+
   const prevFitterDays = Math.round((prevFitterHours / 8) * 100) / 100;
   const prevHelperDays = Math.round((prevHelperHours / 8) * 100) / 100;
+  const prevForemanDays = Math.round((prevForemanHours / 8) * 100) / 100;
 
   return (
     <div className="space-y-6">
@@ -261,7 +282,9 @@ export function SupplyLabourManager({ site }: { site: any }) {
             <div className="text-2xl font-black text-amber-600 dark:text-amber-400">
               {formatINR(currentSupplyAmount)}
             </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2 pt-2 border-t border-amber-500/20">
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-2 pt-2 border-t border-amber-500/20 flex-wrap">
+              <span>Foremen: <strong className="text-foreground">{currentForemanHours}h</strong> ({currentForemanDays}d)</span>
+              <span>•</span>
               <span>Fitters: <strong className="text-foreground">{currentFitterHours}h</strong> ({currentFitterDays}d)</span>
               <span>•</span>
               <span>Helpers: <strong className="text-foreground">{currentHelperHours}h</strong> ({currentHelperDays}d)</span>
@@ -284,7 +307,9 @@ export function SupplyLabourManager({ site }: { site: any }) {
             <div className="text-2xl font-black text-blue-600 dark:text-blue-400">
               {formatINR(prevSupplyAmount)}
             </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2 pt-2 border-t border-blue-500/20">
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-2 pt-2 border-t border-blue-500/20 flex-wrap">
+              <span>Foremen: <strong className="text-foreground">{prevForemanHours}h</strong> ({prevForemanDays}d)</span>
+              <span>•</span>
               <span>Fitters: <strong className="text-foreground">{prevFitterHours}h</strong> ({prevFitterDays}d)</span>
               <span>•</span>
               <span>Helpers: <strong className="text-foreground">{prevHelperHours}h</strong> ({prevHelperDays}d)</span>
@@ -307,7 +332,9 @@ export function SupplyLabourManager({ site }: { site: any }) {
             <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
               {formatINR(cumulativeSupplyAmount)}
             </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2 pt-2 border-t border-emerald-500/20">
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-2 pt-2 border-t border-emerald-500/20 flex-wrap">
+              <span>Foremen: <strong className="text-foreground">{cumulativeForemanHours}h</strong></span>
+              <span>•</span>
               <span>Fitters: <strong className="text-foreground">{cumulativeFitterHours}h</strong></span>
               <span>•</span>
               <span>Helpers: <strong className="text-foreground">{cumulativeHelperHours}h</strong></span>
@@ -482,6 +509,22 @@ export function SupplyLabourManager({ site }: { site: any }) {
               </div>
 
               <div className="grid gap-3 md:grid-cols-3 bg-muted/60 p-3 rounded-md">
+                <div className="md:col-span-3 font-semibold text-xs text-orange-500 uppercase tracking-wider">Fitter Foreman Details</div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">Foreman Count (Nos)</label>
+                  <Input name="fitterForemanQty" type="number" step="0.01" placeholder="1" defaultValue="0" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">Hours / Day</label>
+                  <Input name="fitterForemanHours" type="number" step="0.5" placeholder="8" defaultValue="8" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">Foreman Rate (₹)</label>
+                  <Input name="fitterForemanRate" type="number" step="1" defaultValue="1500" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3 bg-muted/60 p-3 rounded-md">
                 <div className="md:col-span-3 font-semibold text-xs text-purple-500 uppercase tracking-wider">Fitter Helper Details</div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Helper Count (Nos)</label>
@@ -521,7 +564,12 @@ export function SupplyLabourManager({ site }: { site: any }) {
                   <TR>
                     <TH className="w-32">Date</TH>
                     <TH className="w-20">Challan</TH>
-                    <TH className="min-w-[180px]">Work Description</TH>
+                    <TH className="min-w-[220px] max-w-[300px] whitespace-normal break-words">Work Description</TH>
+                    <TH className="w-16 text-center text-orange-600">F.Mn</TH>
+                    <TH className="w-16 text-center text-orange-600">FM. Hrs</TH>
+                    <TH className="w-20 text-center text-orange-600">FM. Rate</TH>
+                    <TH className="w-16 text-center text-orange-500 font-bold">Tot FM.Hrs</TH>
+                    <TH className="w-24 text-right text-orange-500 font-bold">FM. Amt (₹)</TH>
                     <TH className="w-16 text-center">Fitter</TH>
                     <TH className="w-16 text-center">F. Hrs</TH>
                     <TH className="w-20 text-center">F. Rate</TH>
@@ -543,7 +591,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
                   {(filterView === "all" || filterView === "current") && (
                     <>
                       <TR className="bg-amber-500/15 border-t-2 border-b border-amber-500/30">
-                        <TD colSpan={15} className="py-2 px-3 font-bold text-xs text-amber-700 dark:text-amber-400">
+                        <TD colSpan={20} className="py-2 px-3 font-bold text-xs text-amber-700 dark:text-amber-400">
                           <div className="flex items-center justify-between">
                             <span className="flex items-center gap-2">
                               <Clock className="h-4 w-4" />
@@ -558,7 +606,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
 
                       {currentEntries.length === 0 ? (
                         <TR>
-                          <TD colSpan={15} className="text-center py-4 text-xs text-muted-foreground italic">
+                          <TD colSpan={20} className="text-center py-4 text-xs text-muted-foreground italic">
                             No unbilled supply labour entries logged for the current bill yet. Click "Log Supply Labour" to add new challan.
                           </TD>
                         </TR>
@@ -567,8 +615,10 @@ export function SupplyLabourManager({ site }: { site: any }) {
                           const st = entriesState[e.id] || {};
                           const fTotalHrs = (st.fitterQty || 0) * (st.fitterHours || 0);
                           const hTotalHrs = (st.helperQty || 0) * (st.helperHours || 0);
+                          const ffTotalHrs = (st.fitterForemanQty || 0) * (st.fitterForemanHours || 0);
                           const fAmt = fTotalHrs > 0 ? (fTotalHrs / 8) * (st.fitterRate || 1100) : (st.fitterQty || 0) * (st.fitterRate || 1100);
                           const hAmt = hTotalHrs > 0 ? (hTotalHrs / 8) * (st.helperRate || 800) : (st.helperQty || 0) * (st.helperRate || 800);
+                          const ffAmt = ffTotalHrs > 0 ? (ffTotalHrs / 8) * (st.fitterForemanRate || 1500) : (st.fitterForemanQty || 0) * (st.fitterForemanRate || 1500);
 
                           return (
                             <TR key={e.id} className="hover:bg-amber-500/5 transition-colors">
@@ -707,9 +757,13 @@ export function SupplyLabourManager({ site }: { site: any }) {
                       {/* Current Section Subtotal Summary Row */}
                       {currentEntries.length > 0 && (
                         <TR className="bg-amber-500/10 font-bold border-t border-b text-xs">
-                          <TD colSpan={6} className="text-right uppercase text-amber-800 dark:text-amber-300">
+                          <TD colSpan={3} className="text-right uppercase text-amber-800 dark:text-amber-300">
                             🟡 SUB-TOTAL (CURRENT THIS BILL)
                           </TD>
+                          <TD colSpan={3}></TD>
+                          <TD className="text-center font-mono text-orange-600">{currentForemanHours}h</TD>
+                          <TD className="text-right font-mono text-orange-600">{formatINR((currentForemanHours / 8) * 1500)}</TD>
+                          <TD colSpan={3}></TD>
                           <TD className="text-center font-mono text-blue-600">{currentFitterHours}h</TD>
                           <TD className="text-right font-mono text-blue-600">{formatINR((currentFitterHours / 8) * 1100)}</TD>
                           <TD colSpan={3}></TD>
@@ -730,7 +784,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
                   {(filterView === "all" || filterView === "previous") && (
                     <>
                       <TR className="bg-blue-500/15 border-t-2 border-b border-blue-500/30">
-                        <TD colSpan={15} className="py-2 px-3 font-bold text-xs text-blue-700 dark:text-blue-400">
+                        <TD colSpan={20} className="py-2 px-3 font-bold text-xs text-blue-700 dark:text-blue-400">
                           <div className="flex items-center justify-between">
                             <span className="flex items-center gap-2">
                               <Lock className="h-4 w-4" />
@@ -745,7 +799,7 @@ export function SupplyLabourManager({ site }: { site: any }) {
 
                       {previousEntries.length === 0 ? (
                         <TR>
-                          <TD colSpan={15} className="text-center py-4 text-xs text-muted-foreground italic">
+                          <TD colSpan={20} className="text-center py-4 text-xs text-muted-foreground italic">
                             No previously billed supply labour entries yet. Once you generate an RA Bill, billed entries will appear here.
                           </TD>
                         </TR>
@@ -754,8 +808,10 @@ export function SupplyLabourManager({ site }: { site: any }) {
                           const st = entriesState[e.id] || e;
                           const fTotalHrs = (st.fitterQty || 0) * (st.fitterHours || 0);
                           const hTotalHrs = (st.helperQty || 0) * (st.helperHours || 0);
+                          const ffTotalHrs = (st.fitterForemanQty || 0) * (st.fitterForemanHours || 0);
                           const fAmt = fTotalHrs > 0 ? (fTotalHrs / 8) * (st.fitterRate || 1100) : (st.fitterQty || 0) * (st.fitterRate || 1100);
                           const hAmt = hTotalHrs > 0 ? (hTotalHrs / 8) * (st.helperRate || 800) : (st.helperQty || 0) * (st.helperRate || 800);
+                          const ffAmt = ffTotalHrs > 0 ? (ffTotalHrs / 8) * (st.fitterForemanRate || 1500) : (st.fitterForemanQty || 0) * (st.fitterForemanRate || 1500);
                           const billNo = billMap[e.runningBillId] || "Generated Bill";
 
                           return (
@@ -823,9 +879,13 @@ export function SupplyLabourManager({ site }: { site: any }) {
                       {/* Previous Section Subtotal Summary Row */}
                       {previousEntries.length > 0 && (
                         <TR className="bg-blue-500/10 font-bold border-t border-b text-xs">
-                          <TD colSpan={6} className="text-right uppercase text-blue-800 dark:text-blue-300">
+                          <TD colSpan={3} className="text-right uppercase text-blue-800 dark:text-blue-300">
                             🔒 SUB-TOTAL (PREVIOUSLY BILLED)
                           </TD>
+                          <TD colSpan={3}></TD>
+                          <TD className="text-center font-mono text-orange-600">{prevForemanHours}h</TD>
+                          <TD className="text-right font-mono text-orange-600">{formatINR((prevForemanHours / 8) * 1500)}</TD>
+                          <TD colSpan={3}></TD>
                           <TD className="text-center font-mono text-blue-600">{prevFitterHours}h</TD>
                           <TD className="text-right font-mono text-blue-600">{formatINR((prevFitterHours / 8) * 1100)}</TD>
                           <TD colSpan={3}></TD>
@@ -844,9 +904,13 @@ export function SupplyLabourManager({ site }: { site: any }) {
                   {/* GRAND CUMULATIVE TOTAL ROW */}
                   {/* ========================================================================= */}
                   <TR className="bg-emerald-500/15 font-bold border-t-2 border-emerald-500/40 text-sm">
-                    <TD colSpan={6} className="text-right uppercase tracking-wider text-emerald-800 dark:text-emerald-300 font-extrabold">
+                    <TD colSpan={3} className="text-right uppercase tracking-wider text-emerald-800 dark:text-emerald-300 font-extrabold">
                       GRAND CUMULATIVE TOTAL (ALL SUPPLY LABOURS)
                     </TD>
+                    <TD colSpan={3}></TD>
+                    <TD className="text-center font-mono text-orange-600 font-bold">{cumulativeForemanHours}h</TD>
+                    <TD className="text-right font-mono text-orange-600 font-bold">{formatINR((cumulativeForemanHours / 8) * 1500)}</TD>
+                    <TD colSpan={3}></TD>
                     <TD className="text-center font-mono text-blue-600 font-bold">{cumulativeFitterHours}h</TD>
                     <TD className="text-right font-mono text-blue-600 font-bold">{formatINR((cumulativeFitterHours / 8) * 1100)}</TD>
                     <TD colSpan={3}></TD>

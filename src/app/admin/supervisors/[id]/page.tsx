@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { SupervisorPaymentForm } from "./payment-form";
 import { EditSupervisorForm } from "../edit-supervisor-form";
 import { Pagination } from "@/components/ui/pagination";
+import { DownloadSalarySlip } from "./download-salary-slip";
 
 export const dynamic = "force-dynamic";
 
@@ -117,6 +118,29 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
   const totalTransfers = (sv.supervisorTransfers || []).length;
   const paginatedTransfers = (sv.supervisorTransfers || []).slice((transferPage - 1) * PAGE_SIZE, transferPage * PAGE_SIZE);
 
+  const currentMonth = new Date().toLocaleString("en-US", { month: "long" });
+  const currentYear = new Date().getFullYear().toString();
+  
+  const slipData = {
+    companyName: "RCR INFRASTRUCTURE",
+    companyAddress: "Mumbai, Maharashtra, India",
+    employeeName: sv.name,
+    employeeId: `EMP-${sv.id.substring(0, 6).toUpperCase()}`,
+    designation: "Supervisor",
+    month: currentMonth,
+    year: currentYear,
+    dateOfJoining: sv.dateOfJoining ? formatDate(sv.dateOfJoining) : formatDate(sv.createdAt),
+    bankName: sv.bankName,
+    accountNumber: sv.accountNumber,
+    monthlySalary: monthlySalary,
+    presentDays: presentDays,
+    halfDays: halfDays,
+    absentDays: 0,
+    earnedSalary: totalEarned,
+    advancePaid: totalPaid,
+    netPayable: balance > 0 ? balance : 0,
+  };
+
   return (
     <div className="space-y-8 pb-10 animate-in fade-in duration-700">
       {/* Header Section */}
@@ -142,6 +166,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+            <DownloadSalarySlip data={slipData} />
             <EditSupervisorForm supervisor={sv} allSites={allSites} />
         </div>
       </div>
