@@ -36,7 +36,7 @@ export default async function SupervisorLaboursPage() {
             <p className="text-blue-100 max-w-xl mb-6 text-sm sm:text-base font-medium">
               Directory of all active labourers across your assigned sites. View their categories, daily wages, and contact information.
             </p>
-            <a href="/supervisor/labours/add" className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all bg-white text-indigo-600 shadow-xl shadow-indigo-900/20 hover:bg-white/90 hover:-translate-y-0.5 h-11 px-6">
+            <a href="/supervisor/labours/add" className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all bg-white text-indigo-600 shadow-xl shadow-indigo-900/20 hover:bg-white/90 hover:-translate-y-0.5 h-11 px-6 w-full sm:w-auto">
               <UserPlus className="h-4 w-4" /> Add Labourer
             </a>
           </div>
@@ -49,8 +49,8 @@ export default async function SupervisorLaboursPage() {
 
       {/* Data Table */}
       <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-xl bg-white dark:bg-slate-900">
-        <div className="overflow-x-auto">
-          <Table>
+        <div className="overflow-x-auto w-full">
+          <Table className="min-w-[800px]">
             <THead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
               <TR>
                 <TH className="py-5 px-6 font-bold text-slate-500 uppercase text-xs tracking-wider">Labourer Profile</TH>

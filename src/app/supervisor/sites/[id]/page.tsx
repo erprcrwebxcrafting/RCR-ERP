@@ -48,9 +48,9 @@ export default async function SupervisorSiteDetail({ params }: { params: Promise
             </div>
           </div>
           
-          <div className="shrink-0 flex items-center justify-start md:justify-end">
-            <Link href={`/supervisor/attendance?siteId=${site.id}`}>
-              <Button size="lg" className="h-12 px-6 rounded-xl bg-white hover:bg-white/90 text-indigo-600 shadow-xl shadow-indigo-900/20 transition-all font-bold gap-2 group border-0 hover:-translate-y-1">
+          <div className="shrink-0 flex items-center justify-start md:justify-end w-full md:w-auto">
+            <Link href={`/supervisor/attendance?siteId=${site.id}`} className="w-full md:w-auto">
+              <Button size="lg" className="h-12 px-6 rounded-xl bg-white hover:bg-white/90 text-indigo-600 shadow-xl shadow-indigo-900/20 transition-all font-bold gap-2 group border-0 hover:-translate-y-1 w-full md:w-auto">
                 <ClipboardCheck className="h-5 w-5 group-hover:scale-110 transition-transform" />
                 Mark Daily Attendance
               </Button>

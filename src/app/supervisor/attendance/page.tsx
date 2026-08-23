@@ -149,9 +149,9 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         }
       >
         {/* Premium Attendance Table */}
-        <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-xl bg-white dark:bg-slate-900">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left border-collapse">
+        <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-xl bg-white dark:bg-slate-900 w-full">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-sm text-left border-collapse min-w-[700px]">
               <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 uppercase text-xs font-bold tracking-wider">
                 <tr>
                   <th className="px-6 py-5 w-1/3">

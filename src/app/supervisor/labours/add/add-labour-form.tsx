@@ -295,19 +295,19 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
             </div>
           </div>
 
-          <div className="flex justify-end gap-4 pt-6 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-4 pt-6 border-t border-slate-100 dark:border-slate-800">
             <Button
               type="button"
               variant="outline"
               onClick={() => router.back()}
-              className="h-12 px-6 rounded-xl border-slate-200 dark:border-slate-700 font-bold"
+              className="h-12 px-6 rounded-xl border-slate-200 dark:border-slate-700 font-bold w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isPending}
-              className="h-12 px-8 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold shadow-xl shadow-indigo-900/20 gap-2 border-0"
+              className="h-12 px-8 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold shadow-xl shadow-indigo-900/20 gap-2 border-0 w-full sm:w-auto"
             >
               <Save className="h-4 w-4" />
               {isPending ? "Registering Labourer..." : "Save & Register Labourer"}
