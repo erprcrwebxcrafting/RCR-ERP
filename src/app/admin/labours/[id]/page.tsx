@@ -5,6 +5,7 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { PaymentForm } from "@/app/admin/labours/[id]/payment-form";
+import { DownloadHajariSlip } from "./download-hajari-slip";
 import Link from "next/link";
 import { ArrowLeft, User, Phone, Calendar, CreditCard, Building, WalletCards, History, TrendingUp, IndianRupee, ArrowRightLeft, FileText, AlertCircle } from "lucide-react";
 import { LabourForm } from "../labour-form";
@@ -115,6 +116,26 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
               {labour.site.projectName} <span className="text-slate-300 dark:text-slate-700">•</span> {labour.labourCategory.name}
             </p>
           </div>
+        </div>
+        
+        <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
+          <DownloadHajariSlip data={{
+            companyName: "RCR INFRASTRUCTURE",
+            companyAddress: "Mumbai, Maharashtra, India",
+            labourName: labour.name,
+            labourId: `LAB-${labour.id.substring(0, 6).toUpperCase()}`,
+            category: labour.labourCategory.name,
+            siteName: labour.site.projectName,
+            dateOfJoining: labour.joiningDate ? formatDate(labour.joiningDate) : formatDate(labour.createdAt),
+            bankName: labour.bankName,
+            accountNumber: labour.accountNumber,
+            ifscCode: labour.ifscCode,
+            wageRate: dailyWage,
+            totalHajari: presentDays,
+            earnedAmount: totalEarned,
+            advancePaid: totalPaid,
+            netPayable: balance
+          }} />
         </div>
       </div>
 
