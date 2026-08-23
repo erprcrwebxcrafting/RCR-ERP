@@ -741,7 +741,7 @@ function SupplyPage({ data, logoStr, signStr }: any) {
             <View style={styles.tr} key={idx} wrap={false}>
               <Text style={[styles.td, { width: "10%" }]}>{dateStr}</Text>
               <Text style={[styles.td, { width: "12%" }]}>{se.challanNo || "-"}</Text>
-              <Text style={[styles.td, { width: "24%" }]}>{(se.description || "").slice(0, 30)}</Text>
+              <Text style={[styles.td, { width: "24%" }]}>{se.description || ""}</Text>
               <Text style={[styles.td, { width: "8%", textAlign: "center", backgroundColor: "#f0f7ff", color: "#1e40af" }]}>{se.fitterQty || 0}</Text>
               <Text style={[styles.td, { width: "8%", textAlign: "center", backgroundColor: "#f0f7ff", color: "#1e40af" }]}>{se.fitterHours || 8}h</Text>
               <Text style={[styles.td, { width: "10%", textAlign: "center", backgroundColor: "#f0f7ff", color: "#1e40af", fontFamily: "Helvetica-Bold" }]}>{fHrs}h</Text>
