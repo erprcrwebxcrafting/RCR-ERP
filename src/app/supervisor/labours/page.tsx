@@ -57,6 +57,7 @@ export default async function SupervisorLaboursPage() {
                 <TH className="py-5 px-6 font-bold text-slate-500 uppercase text-xs tracking-wider">Category</TH>
                 <TH className="py-5 px-6 font-bold text-slate-500 uppercase text-xs tracking-wider">1 Hajari Rate</TH>
                 <TH className="py-5 px-6 font-bold text-slate-500 uppercase text-xs tracking-wider">Contact</TH>
+                <TH className="py-5 px-6 font-bold text-slate-500 uppercase text-xs tracking-wider text-right">Actions</TH>
               </TR>
             </THead>
             <TBody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -94,6 +95,11 @@ export default async function SupervisorLaboursPage() {
                       ) : (
                         <span className="text-slate-400 text-sm italic font-medium">Not provided</span>
                       )}
+                    </TD>
+                    <TD className="px-6 text-right">
+                      <a href={`/supervisor/labours/${l.id}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors">
+                        Profile
+                      </a>
                     </TD>
                   </TR>
                 );

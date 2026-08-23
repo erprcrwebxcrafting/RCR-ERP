@@ -83,7 +83,15 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
 
     startTransition(async () => {
       try {
-        await createSupervisor(formData);
+        const res = await createSupervisor(formData);
+        
+        if (res && res.error) {
+          toast.error("Validation Error", {
+            description: res.error,
+          });
+          return;
+        }
+
         toast.success("Supervisor account created successfully!", {
           description: `${name} (${email}) has been registered.`,
         });

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DateSelector } from "./date-selector";
 import { AttendanceForm } from "./attendance-form";
 import { HajariInput } from "./hajari-input";
-import { Lock, Building2, Calendar, MapPin, CheckCircle2, Save, Users, Clock, MessageSquare, Edit, ClipboardCheck, AlertTriangle } from "lucide-react";
+import { Lock, Building2, Calendar, MapPin, CheckCircle2, Save, Users, Clock, MessageSquare, Edit, ClipboardCheck, AlertTriangle, Eye } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 export default async function AttendancePage({ searchParams }: { searchParams: Promise<{ siteId?: string; date?: string }> }) {
@@ -63,10 +63,8 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
     0
   );
 
-  const yesterday = new Date();
-  yesterday.setHours(0, 0, 0, 0);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const allLocked = targetDate.getTime() < yesterday.getTime();
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const allLocked = false; // The form should never be globally locked. Individual rows are locked.
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700 pb-24">
@@ -184,7 +182,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                       </tr>
                       {cat.labours.map((p: any) => {
                         const existing = existingMap.get(p.id);
-                        const isLocked = allLocked;
+                        const isLocked = !!existing && existing.createdAt.getTime() < twentyFourHoursAgo.getTime();
                         
                         const colors = ['bg-blue-50 text-blue-600 border-blue-200', 'bg-emerald-50 text-emerald-600 border-emerald-200', 'bg-purple-50 text-purple-600 border-purple-200', 'bg-amber-50 text-amber-600 border-amber-200', 'bg-rose-50 text-rose-600 border-rose-200'];
                         const colorClass = colors[p.name.charCodeAt(0) % colors.length];
@@ -198,7 +196,13 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                                   {p.name.substring(0, 2).toUpperCase()}
                                 </div>
                                 <div className="flex flex-col">
-                                  <span className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{p.name}</span>
+                                  <span className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors flex items-center gap-2">
+                                    {p.name}
+                                    <a href={`/supervisor/labours/${p.id}`} className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg p-1 transition-colors" title="View Labour Profile">
+                                      <Eye className="h-3.5 w-3.5" />
+                                    </a>
+                                  </span>
+
                                   {isLocked && (
                                     <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-500 mt-1 bg-rose-50 dark:bg-rose-500/10 px-1.5 py-0.5 rounded-full w-fit">
                                       <Lock className="h-3 w-3" /> Locked

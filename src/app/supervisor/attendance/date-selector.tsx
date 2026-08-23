@@ -13,7 +13,7 @@ export function DateSelector({ defaultDate }: { defaultDate: string }) {
       name="date" 
       defaultValue={defaultDate} 
       required 
-      className="h-8 rounded border-0 bg-transparent text-sm text-gray-700 font-medium focus:ring-0 cursor-pointer outline-none"
+      className="h-8 rounded border-0 bg-transparent text-sm text-gray-700 dark:text-slate-200 font-medium focus:ring-0 cursor-pointer outline-none"
       onChange={(e) => {
         const params = new URLSearchParams(searchParams.toString());
         if (e.target.value) {

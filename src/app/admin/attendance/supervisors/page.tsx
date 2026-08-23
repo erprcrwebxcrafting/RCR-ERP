@@ -50,6 +50,7 @@ export default async function SupervisorAttendanceHubPage() {
     dailyRate: a.dailyRate,
     earnedAmount: a.earnedAmount,
     remarks: a.remarks,
+    createdAt: a.createdAt.toISOString(),
   }));
 
   return (

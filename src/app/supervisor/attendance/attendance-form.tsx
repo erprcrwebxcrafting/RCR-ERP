@@ -34,7 +34,15 @@ export function AttendanceForm({ siteId, allLocked, hasExisting, headerControls,
 
     startTransition(async () => {
       try {
-        await saveAttendance(siteId, formData);
+        const res = await saveAttendance(siteId, formData);
+        
+        if (res && res.error) {
+          toast.error("Validation Error", {
+            description: res.error,
+          });
+          return;
+        }
+
         toast.success("Attendance saved successfully!", {
           description: "Worker hajari and daily shift records updated.",
         });

@@ -19,7 +19,7 @@ export async function saveAttendance(siteId: string, formData: FormData) {
   targetDate.setHours(0, 0, 0, 0);
 
   if (targetDate.getTime() > today.getTime()) {
-    throw new Error("Attendance date cannot be in the future.");
+    return { error: "Attendance date cannot be in the future." };
   }
 
   const yesterday = new Date(today);
@@ -63,12 +63,15 @@ export async function saveAttendance(siteId: string, formData: FormData) {
     const joiningDate = new Date(labour.joiningDate || labour.createdAt);
     joiningDate.setHours(0, 0, 0, 0);
     if (targetDate.getTime() < joiningDate.getTime()) {
-      throw new Error(`Cannot mark attendance for ${labour.name} before their joining date (${joiningDate.toLocaleDateString()}).`);
+      return { error: `Cannot mark attendance for ${labour.name} before their joining date (${joiningDate.toLocaleDateString()}).` };
     }
 
-    // 3. 24-Hour Edit Lock (Cannot edit an EXISTING record if it's older than yesterday)
-    if (existing && targetDate.getTime() < yesterday.getTime()) {
-      throw new Error(`Cannot edit existing attendance for ${labour.name} older than 24 hours.`);
+    // 3. 24-Hour Edit Lock (Cannot edit an EXISTING record if it was recorded more than 24 hours ago)
+    if (existing) {
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
+        return { error: `Cannot edit attendance for ${labour.name} as it was recorded more than 24 hours ago.` };
+      }
     }
 
     // 4. Rate Snapshot Protection
@@ -83,4 +86,5 @@ export async function saveAttendance(siteId: string, formData: FormData) {
   }
 
   revalidatePath("/supervisor/attendance");
+  return { success: true };
 }

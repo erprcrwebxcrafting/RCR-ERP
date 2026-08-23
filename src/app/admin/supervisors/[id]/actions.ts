@@ -90,8 +90,11 @@ export async function markSupervisorAttendanceAction(
     where: { supervisorId_date: { supervisorId, date } }
   });
 
-  if (existing && targetDate.getTime() < yesterday.getTime()) {
-    throw new Error("Attendance cannot be edited for dates older than 24 hours (yesterday).");
+  if (existing) {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
+      throw new Error("Attendance cannot be edited for dates older than 24 hours from creation.");
+    }
   }
 
   const monthlySalary = supervisor?.monthlySalary || 0;

@@ -58,6 +58,7 @@ interface AttendanceItem {
   dailyRate: number;
   earnedAmount: number;
   remarks: string | null;
+  createdAt?: string;
 }
 
 interface SupervisorAttendanceHubProps {
@@ -199,7 +200,7 @@ export function SupervisorAttendanceHub({
   const yesterday = new Date();
   yesterday.setHours(0, 0, 0, 0);
   yesterday.setDate(yesterday.getDate() - 1);
-  const isLocked = selectedDateObj.getTime() < yesterday.getTime();
+  const isPast24h = selectedDateObj.getTime() < yesterday.getTime();
 
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-700 max-w-7xl mx-auto">
@@ -262,7 +263,7 @@ export function SupervisorAttendanceHub({
         </Link>
       </div>
 
-      {selectedTab === "daily" && !isLocked && unmarkedTodayCount > 0 && (
+      {selectedTab === "daily" && unmarkedTodayCount > 0 && (
         <div className="bg-rose-50 border border-rose-200 dark:bg-rose-950/30 dark:border-rose-900 rounded-2xl p-5 flex items-start gap-4 shadow-sm animate-in slide-in-from-top-2">
           <div className="p-2 bg-rose-100 dark:bg-rose-900/50 rounded-xl shrink-0">
             <AlertTriangle className="h-6 w-6 text-rose-600 dark:text-rose-400" />
@@ -270,7 +271,7 @@ export function SupervisorAttendanceHub({
           <div>
             <h3 className="text-base font-bold text-rose-800 dark:text-rose-300">Action Required: Unmarked Attendance</h3>
             <p className="text-sm text-rose-600 dark:text-rose-400 font-medium mt-1 leading-relaxed">
-              You have <strong>{unmarkedTodayCount}</strong> supervisor{unmarkedTodayCount !== 1 ? 's' : ''} with unmarked attendance for {new Date(selectedDate).toLocaleDateString('en-IN')}. Please ensure all attendances are marked to prevent them from being permanently locked.
+              You have <strong>{unmarkedTodayCount}</strong> supervisor{unmarkedTodayCount !== 1 ? 's' : ''} with unmarked attendance for {new Date(selectedDate).toLocaleDateString('en-IN')}. Please ensure all attendances are marked to keep records up to date.
             </p>
           </div>
         </div>
@@ -485,6 +486,13 @@ export function SupervisorAttendanceHub({
                   const dailyRate = Math.round((monthlySalary / 30) * 100) / 100;
                   const earnedAmt = currentAtt?.earnedAmount ?? (status === "PRESENT" ? dailyRate : status === "HALF_DAY" ? dailyRate / 2 : 0);
 
+                  let isLocked = false;
+                  if (currentAtt && currentAtt.createdAt) {
+                    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                    isLocked = new Date(currentAtt.createdAt).getTime() < twentyFourHoursAgo.getTime();
+                  }
+
+
                   return (
                     <div
                       key={sup.id}
@@ -540,7 +548,7 @@ export function SupervisorAttendanceHub({
 
                       {/* Attendance Status Buttons */}
                       <div className="flex items-center gap-2 self-end sm:self-center">
-                        {isLocked && <span className="text-xs text-rose-500 font-bold mr-2 hidden sm:inline">Locked (Past 24h)</span>}
+                        {isLocked && <span className="text-xs text-rose-500 font-bold mr-2 hidden sm:inline">Locked</span>}
                         <Button
                           type="button"
                           size="sm"

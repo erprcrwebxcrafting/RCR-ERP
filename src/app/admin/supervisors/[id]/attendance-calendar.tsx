@@ -17,6 +17,7 @@ import {
   Info,
 } from "lucide-react";
 import { markSupervisorAttendanceAction, deleteSupervisorAttendanceAction } from "./actions";
+import { toast } from "sonner";
 
 type AttendanceRecord = {
   id: string;
@@ -91,7 +92,12 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
   const handleMarkStatus = (day: number, status: "PRESENT" | "HALF_DAY" | "ABSENT") => {
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     startTransition(async () => {
-      await markSupervisorAttendanceAction(supervisor.id, dateStr, status);
+      try {
+        await markSupervisorAttendanceAction(supervisor.id, dateStr, status);
+        toast.success(`Attendance marked as ${status} for ${dateStr}`);
+      } catch (err: any) {
+        toast.error(err.message || "Failed to mark attendance");
+      }
     });
   };
 
@@ -100,7 +106,12 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
     const att = attendanceMap.get(dateStr);
     if (att) {
       startTransition(async () => {
-        await deleteSupervisorAttendanceAction(att.id, supervisor.id);
+        try {
+          await deleteSupervisorAttendanceAction(att.id, supervisor.id);
+          toast.success(`Cleared attendance for ${dateStr}`);
+        } catch (err: any) {
+          toast.error(err.message || "Failed to clear attendance");
+        }
       });
     }
   };

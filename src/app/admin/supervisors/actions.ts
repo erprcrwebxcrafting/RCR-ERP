@@ -27,42 +27,42 @@ export async function createSupervisor(formData: FormData) {
   const siteIds = formData.getAll("siteIds[]") as string[];
 
   if (!name || !email) {
-    throw new Error("Supervisor name and email are required.");
+    return { error: "Supervisor name and email are required." };
   }
   if (monthlySalary !== null && (isNaN(monthlySalary) || monthlySalary < 0)) {
-    throw new Error("Monthly salary cannot be negative.");
+    return { error: "Monthly salary cannot be negative." };
   }
 
   if (phone) {
     const cleanedPhone = phone.replace(/\s+/g, "").replace(/^(\+91|91)/, "");
     if (!/^[6-9]\d{9}$/.test(cleanedPhone)) {
-      throw new Error("Please enter a valid 10-digit Indian mobile number.");
+      return { error: "Please enter a valid 10-digit Indian mobile number." };
     }
   }
 
   if (aadharNumber) {
     const cleanedAadhar = aadharNumber.replace(/[\s-]+/g, "");
     if (!/^\d{12}$/.test(cleanedAadhar)) {
-      throw new Error("Aadhar card number must be exactly 12 digits.");
+      return { error: "Aadhar card number must be exactly 12 digits." };
     }
   }
 
   if (ifscCode) {
     const cleanedIFSC = ifscCode.trim().toUpperCase();
     if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanedIFSC)) {
-      throw new Error("Invalid IFSC Code format (e.g. ICIC0001234).");
+      return { error: "Invalid IFSC Code format (e.g. ICIC0001234)." };
     }
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    throw new Error(`A user with email "${email}" already exists. Please use a unique email.`);
+    return { error: `A user with email "${email}" already exists. Please use a unique email.` };
   }
 
   // ✅ Enforce strong password policy
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{}|;':",./<>?])[A-Za-z\d!@#$%^&*()_+\-=\[\]{}|;':",./<>?]{8,}$/;
   if (!password || !passwordRegex.test(password)) {
-    throw new Error("Password must be at least 8 characters with uppercase, lowercase, a number, and a special character.");
+    return { error: "Password must be at least 8 characters with uppercase, lowercase, a number, and a special character." };
   }
 
   const passwordHash = await hashPassword(password);
@@ -86,7 +86,7 @@ export async function createSupervisor(formData: FormData) {
 
   // ✅ Max 3 active sites validation
   if (siteIds.length > 3) {
-    throw new Error("A supervisor can only manage a maximum of 3 sites simultaneously. Please reduce the number of assigned sites.");
+    return { error: "A supervisor can only manage a maximum of 3 sites simultaneously. Please reduce the number of assigned sites." };
   }
 
   // Create site assignments
