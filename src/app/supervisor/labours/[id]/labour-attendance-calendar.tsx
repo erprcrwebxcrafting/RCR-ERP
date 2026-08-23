@@ -167,19 +167,21 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
           </div>
         </CardHeader>
 
-        <CardContent className="p-4 sm:p-6">
-          <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mb-2 text-center">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((dayName, idx) => (
-              <div key={dayName} className={`py-2 text-xs font-extrabold uppercase tracking-wider rounded-lg ${idx === 0 || idx === 6 ? "text-rose-500 bg-rose-50/40 dark:bg-rose-950/20" : "text-slate-600 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-800/30"}`}>
-                {dayName}
+        <CardContent className="p-4 sm:p-6 overflow-hidden">
+          <div className="overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+            <div className="min-w-[600px]">
+              <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mb-2 text-center">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((dayName, idx) => (
+                  <div key={dayName} className={`py-2 text-xs font-extrabold uppercase tracking-wider rounded-lg ${idx === 0 || idx === 6 ? "text-rose-500 bg-rose-50/40 dark:bg-rose-950/20" : "text-slate-600 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-800/30"}`}>
+                    {dayName}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-            {Array.from({ length: firstDayIndex }).map((_, idx) => (
-              <div key={`blank-${idx}`} className="min-h-[110px] rounded-xl bg-slate-50/30 dark:bg-slate-800/10 border border-dashed border-slate-100 dark:border-slate-800/40 opacity-40" />
-            ))}
+              <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+                {Array.from({ length: firstDayIndex }).map((_, idx) => (
+                  <div key={`blank-${idx}`} className="min-h-[110px] rounded-xl bg-slate-50/30 dark:bg-slate-800/10 border border-dashed border-slate-100 dark:border-slate-800/40 opacity-40" />
+                ))}
 
             {Array.from({ length: daysInMonth }).map((_, idx) => {
               const day = idx + 1;
@@ -248,6 +250,8 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
                 </div>
               );
             })}
+          </div>
+            </div>
           </div>
         </CardContent>
       </Card>
