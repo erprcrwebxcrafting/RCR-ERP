@@ -627,3 +627,4 @@ ALTER TABLE "SupervisorAttendance" ADD CONSTRAINT "SupervisorAttendance_supervis
 
 -- AddForeignKey
 ALTER TABLE "SiteExpense" ADD CONSTRAINT "SiteExpense_siteId_fkey" FOREIGN KEY ("siteId") REFERENCES "Site"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
