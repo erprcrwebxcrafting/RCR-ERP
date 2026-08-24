@@ -29,6 +29,10 @@ import { SupervisorPaymentForm } from "./payment-form";
 import { EditSupervisorForm } from "../edit-supervisor-form";
 import { Pagination } from "@/components/ui/pagination";
 import { DownloadSalarySlip } from "./download-salary-slip";
+import { ActiveToggle } from "@/components/ui/active-toggle";
+import { AadharUpload } from "@/components/ui/aadhar-upload";
+import { toggleSupervisorActive } from "../actions";
+import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +62,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
         ifscCode: true,
         bankBranch: true,
         aadharNumber: true,
+        aadharCardUrl: true,
         // ✅ NO passwordHash sent to browser
         supervisorPayments: {
           select: { id: true, amount: true, date: true, transactionId: true, reason: true },
@@ -157,10 +162,16 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
               <Wallet className="h-3.5 w-3.5" />
               Supervisor Profile & Ledger
             </div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
               {sv.name}
+              <Badge variant={sv.active ? "default" : "destructive"} className={`text-[10px] uppercase font-bold shadow-none ${sv.active ? 'bg-emerald-500 hover:bg-emerald-600' : ''}`}>
+                {sv.active ? "Active" : "Inactive"}
+              </Badge>
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium text-sm">
+            <div className="mt-2">
+              <ActiveToggle id={sv.id} active={sv.active} entityName={sv.name} onToggle={toggleSupervisorActive} />
+            </div>
+            <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium text-sm">
               Assigned Sites: {sv.assignedSites.map((a: any) => a.site.projectName).join(", ") || "No active sites"}
             </p>
           </div>
@@ -267,6 +278,9 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
             <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
               <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
               <span>Joined: {sv.dateOfJoining ? formatDate(sv.dateOfJoining) : formatDate(sv.createdAt)}</span>
+            </div>
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-3 mt-1">
+              <AadharUpload type="supervisor" id={sv.id} currentUrl={sv.aadharCardUrl} />
             </div>
           </CardContent>
         </Card>

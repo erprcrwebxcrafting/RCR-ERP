@@ -2,19 +2,21 @@ import { prisma } from "@/lib/prisma";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { LabourForm } from "./labour-form";
-import { deleteLabour } from "./actions";
+import { deleteLabour, toggleLabourActive } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Search } from "@/components/search";
-import { Search as SearchIcon, Trash2, ChevronDown, Users, MapPin, Pickaxe, Phone, FileText, FileDown, BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search as SearchIcon, Trash2, ChevronDown, Users, MapPin, Pickaxe, Phone, FileText, FileDown, BookOpen, ChevronLeft, ChevronRight, UserX, UserCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { Pagination } from "@/components/ui/pagination";
+import { ActiveToggle } from "@/components/ui/active-toggle";
 
-export default async function LaboursPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+export default async function LaboursPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; showInactive?: string }> }) {
   const resolvedParams = await searchParams;
   const q = resolvedParams.q || "";
   const page = Math.max(1, parseInt(resolvedParams.page || "1", 10));
+  const showInactive = resolvedParams.showInactive === "1";
   const PAGE_SIZE = 10;
 
   const [totalSites, sites, allSites, allCategories, allSupervisors] = await Promise.all([
@@ -51,7 +53,7 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
             { name: { contains: q, mode: "insensitive" } },
             { phone: { contains: q, mode: "insensitive" } },
           ]
-        } : undefined,
+        } : (showInactive ? undefined : { active: true }),
         orderBy: { createdAt: "desc" }
       }
     },
@@ -97,11 +99,22 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
-        <div className="w-full sm:max-w-md">
+      {/* Search + Filter Bar */}
+      <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
+        <div className="flex-1 min-w-0 sm:max-w-md">
           <Search placeholder="Search by labour name or phone..." />
         </div>
+        <Link
+          href={showInactive ? "/admin/labours" : "/admin/labours?showInactive=1"}
+          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors shrink-0 ${
+            showInactive
+              ? "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700"
+              : "bg-white text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+          }`}
+        >
+          {showInactive ? <UserCheck className="h-3.5 w-3.5" /> : <UserX className="h-3.5 w-3.5" />}
+          {showInactive ? "Showing All" : "Show Inactive"}
+        </Link>
       </div>
 
       {/* Site Accordions */}
@@ -202,10 +215,14 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
                             )}
                           </div>
                         </TD>
-                        <TD className="align-top pt-5">
-                          <Badge className={`${l.active ? "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 border-emerald-500/20" : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"} shadow-none font-bold`}>
-                            {l.active ? "Active" : "Inactive"}
-                          </Badge>
+                        <TD className="align-top pt-4">
+                          <ActiveToggle
+                            id={l.id}
+                            active={l.active}
+                            entityName={l.name}
+                            onToggle={toggleLabourActive}
+                            size="sm"
+                          />
                         </TD>
                         <TD className="align-top text-right">
                           <div className="flex items-center justify-end gap-1">

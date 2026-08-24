@@ -2,18 +2,23 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { formatINR } from "@/lib/utils";
-import { HardHat, Phone, Users, IndianRupee, UserPlus } from "lucide-react";
+import { HardHat, Phone, Users, IndianRupee, UserPlus, UserCheck, UserX } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { ActiveToggle } from "@/components/ui/active-toggle";
+import { toggleLabourActiveSupervisor } from "./[id]/actions";
 
-export default async function SupervisorLaboursPage() {
+export default async function SupervisorLaboursPage({ searchParams }: { searchParams: Promise<{ showInactive?: string }> }) {
+  const resolvedParams = await searchParams;
+  const showInactive = resolvedParams.showInactive === "1";
   const session = await auth();
   const userId = (session?.user as any)?.id as string;
   const assigned = await prisma.siteSupervisor.findMany({ where: { supervisorId: userId }, select: { siteId: true } });
   const siteIds = assigned.map((a) => a.siteId);
 
   const labours = await prisma.labour.findMany({
-    where: { siteId: { in: siteIds }, active: true },
+    where: { siteId: { in: siteIds }, ...(showInactive ? {} : { active: true }) },
     include: { labourCategory: true },
     orderBy: { name: "asc" },
   });
@@ -36,9 +41,22 @@ export default async function SupervisorLaboursPage() {
             <p className="text-blue-100 max-w-xl mb-6 text-sm sm:text-base font-medium">
               Directory of all active labourers across your assigned sites. View their categories, daily wages, and contact information.
             </p>
-            <a href="/supervisor/labours/add" className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all bg-white text-indigo-600 shadow-xl shadow-indigo-900/20 hover:bg-white/90 hover:-translate-y-0.5 h-11 px-6 w-full sm:w-auto">
-              <UserPlus className="h-4 w-4" /> Add Labourer
-            </a>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <a href="/supervisor/labours/add" className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all bg-white text-indigo-600 shadow-xl shadow-indigo-900/20 hover:bg-white/90 hover:-translate-y-0.5 h-11 px-6 w-full sm:w-auto">
+                <UserPlus className="h-4 w-4" /> Add Labourer
+              </a>
+              <Link
+                href={showInactive ? "/supervisor/labours" : "/supervisor/labours?showInactive=1"}
+                className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold border transition-colors h-11 shrink-0 ${
+                  showInactive
+                    ? "bg-amber-500/20 text-amber-100 border-amber-300/30 hover:bg-amber-500/30"
+                    : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                }`}
+              >
+                {showInactive ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
+                {showInactive ? "Showing All" : "Show Inactive"}
+              </Link>
+            </div>
           </div>
         </div>
         
@@ -57,6 +75,7 @@ export default async function SupervisorLaboursPage() {
                 <TH className="py-5 px-6 font-bold text-slate-500 uppercase text-xs tracking-wider">Category</TH>
                 <TH className="py-5 px-6 font-bold text-slate-500 uppercase text-xs tracking-wider">1 Hajari Rate</TH>
                 <TH className="py-5 px-6 font-bold text-slate-500 uppercase text-xs tracking-wider">Contact</TH>
+                <TH className="py-5 px-6 font-bold text-slate-500 uppercase text-xs tracking-wider text-center">Status</TH>
                 <TH className="py-5 px-6 font-bold text-slate-500 uppercase text-xs tracking-wider text-right">Actions</TH>
               </TR>
             </THead>
@@ -95,6 +114,11 @@ export default async function SupervisorLaboursPage() {
                       ) : (
                         <span className="text-slate-400 text-sm italic font-medium">Not provided</span>
                       )}
+                    </TD>
+                    <TD className="px-6 text-center">
+                      <div className="flex justify-center">
+                        <ActiveToggle id={l.id} active={l.active} entityName={l.name} onToggle={toggleLabourActiveSupervisor} size="sm" />
+                      </div>
                     </TD>
                     <TD className="px-6 text-right">
                       <a href={`/supervisor/labours/${l.id}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors">

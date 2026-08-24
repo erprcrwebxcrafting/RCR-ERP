@@ -5,6 +5,9 @@ import { LabourAttendanceCalendar } from "./labour-attendance-calendar";
 import Link from "next/link";
 import { ArrowLeft, User, Phone, MapPin, HardHat, CalendarDays, IndianRupee } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ActiveToggle } from "@/components/ui/active-toggle";
+import { AadharUpload } from "@/components/ui/aadhar-upload";
+import { toggleLabourActiveSupervisor } from "./actions";
 
 export default async function SupervisorLabourDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -68,6 +71,9 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
                   </Badge>
                 )}
               </div>
+              <div className="mb-4">
+                <ActiveToggle id={labour.id} active={labour.active} entityName={labour.name} onToggle={toggleLabourActiveSupervisor} />
+              </div>
               <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-blue-100">
                 <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-full backdrop-blur-md border border-white/10"><HardHat className="h-4 w-4 text-blue-300" /> {labour.labourCategory.name}</span>
                 <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-full backdrop-blur-md border border-white/10"><MapPin className="h-4 w-4 text-blue-300" /> {labour.site.projectName}</span>
@@ -130,6 +136,11 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
               </div>
             </div>
 
+          </div>
+          
+          {/* Aadhar Upload Section */}
+          <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+            <AadharUpload type="labour" id={labour.id} currentUrl={labour.aadharCardUrl} />
           </div>
         </div>
 

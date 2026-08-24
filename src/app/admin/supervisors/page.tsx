@@ -2,23 +2,27 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search as SearchIcon, UserCheck, IndianRupee, MapPin, Mail, Phone, Building2, CalendarDays } from "lucide-react";
+import { Search as SearchIcon, UserCheck, IndianRupee, MapPin, Mail, Phone, Building2, CalendarDays, UserX } from "lucide-react";
 import Link from "next/link";
 import { SupervisorForm } from "./supervisor-form";
 import { EditSupervisorForm } from "./edit-supervisor-form";
 import { Pagination } from "@/components/ui/pagination";
 import { Search } from "@/components/search";
+import { ActiveToggle } from "@/components/ui/active-toggle";
+import { toggleSupervisorActive } from "./actions";
 
 export const dynamic = 'force-dynamic';
 
-export default async function SupervisorsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+export default async function SupervisorsPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; showInactive?: string }> }) {
   const resolvedParams = await searchParams;
   const q = resolvedParams.q || "";
   const page = Math.max(1, parseInt(resolvedParams.page || "1", 10));
+  const showInactive = resolvedParams.showInactive === "1";
   const PAGE_SIZE = 10;
 
   const whereClause = { 
     role: "SUPERVISOR",
+    ...(showInactive ? {} : { active: true }),
     ...(q ? {
       OR: [
         { name: { contains: q, mode: "insensitive" } },
@@ -135,13 +139,26 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
       </div>
 
       {/* Search / Filter Bar */}
-      <div className="relative">
-        <Search placeholder="Search supervisors by name, email or phone..." />
-        {q && (
-          <p className="mt-2.5 text-sm text-slate-500 dark:text-slate-400 font-medium">
-            Showing <span className="font-bold text-blue-600">{totalSupervisors}</span> result{totalSupervisors !== 1 ? "s" : ""} for "<span className="font-bold">{q}</span>"
-          </p>
-        )}
+      <div className="flex flex-wrap items-start md:items-center gap-3 relative">
+        <div className="flex-1 min-w-0 md:max-w-md">
+          <Search placeholder="Search supervisors by name, email or phone..." />
+          {q && (
+            <p className="mt-2.5 text-sm text-slate-500 dark:text-slate-400 font-medium">
+              Showing <span className="font-bold text-blue-600">{totalSupervisors}</span> result{totalSupervisors !== 1 ? "s" : ""} for "<span className="font-bold">{q}</span>"
+            </p>
+          )}
+        </div>
+        <Link
+          href={showInactive ? "/admin/supervisors" : "/admin/supervisors?showInactive=1"}
+          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold border transition-colors shrink-0 h-[42px] ${
+            showInactive
+              ? "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700"
+              : "bg-white text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+          }`}
+        >
+          {showInactive ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
+          {showInactive ? "Showing All" : "Show Inactive"}
+        </Link>
       </div>
 
       {/* Supervisors Grid */}
@@ -169,6 +186,7 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
                     </div>
                   </div>
                 </div>
+                <ActiveToggle id={s.id} active={s.active} entityName={s.name} onToggle={toggleSupervisorActive} size="sm" />
               </div>
             </CardHeader>
 

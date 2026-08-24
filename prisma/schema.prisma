@@ -20,6 +20,7 @@ model User {
   updatedAt             DateTime                    @updatedAt
   monthlySalary         Float?
   aadharNumber          String?
+  aadharCardUrl         String?
   accountNumber         String?
   address               String?
   bankBranch            String?
@@ -168,6 +169,7 @@ model Labour {
   address          String?
   joiningDate      DateTime?
   aadharNumber     String?
+  aadharCardUrl    String?
   accountNumber    String?
   ifscCode         String?
   bankBranch       String?

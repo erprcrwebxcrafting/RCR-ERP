@@ -11,6 +11,9 @@ import { ArrowLeft, User, Phone, Calendar, CreditCard, Building, WalletCards, Hi
 import { LabourForm } from "../labour-form";
 import { LabourCalendar } from "./labour-calendar";
 import { Pagination } from "@/components/ui/pagination";
+import { ActiveToggle } from "@/components/ui/active-toggle";
+import { AadharUpload } from "@/components/ui/aadhar-upload";
+import { toggleLabourActive } from "@/app/admin/labours/actions";
 
 export default async function LabourLedgerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ payoutPage?: string; transferPage?: string; attendancePage?: string }> }) {
   const resolvedParams = await params;
@@ -111,6 +114,9 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
                 {labour.active ? "Active" : "Inactive"}
               </Badge>
             </h1>
+            <div className="mt-2">
+              <ActiveToggle id={labour.id} active={labour.active} entityName={labour.name} onToggle={toggleLabourActive} />
+            </div>
             <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium flex items-center gap-2">
               <Building className="h-4 w-4 shrink-0 text-indigo-500" />
               {labour.site.projectName} <span className="text-slate-300 dark:text-slate-700">•</span> {labour.labourCategory.name}
@@ -176,6 +182,10 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
                 <div className="space-y-1.5 col-span-2 md:col-span-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 mt-2">
                   <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-1">Address</div>
                   <div className="font-medium text-slate-700 dark:text-slate-300">{labour.address || "—"}</div>
+                </div>
+                {/* Aadhar Card Upload */}
+                <div className="col-span-2 md:col-span-4 border-t border-slate-100 dark:border-slate-800 pt-4 mt-2">
+                  <AadharUpload type="labour" id={labour.id} currentUrl={labour.aadharCardUrl} />
                 </div>
               </div>
             </div>

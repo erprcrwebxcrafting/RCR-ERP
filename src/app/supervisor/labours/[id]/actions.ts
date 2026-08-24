@@ -81,3 +81,18 @@ export async function markIndividualLabourAttendance(
 
   return { success: true };
 }
+
+export async function toggleLabourActiveSupervisor(labourId: string, active: boolean) {
+  const session = await auth();
+  const userId = (session?.user as any)?.id as string;
+  if (!userId || (session?.user as any)?.role !== "SUPERVISOR") throw new Error("Unauthorized");
+
+  // Ownership check — supervisor can only toggle their own labours
+  const labour = await prisma.labour.findUnique({ where: { id: labourId }, select: { supervisorId: true, name: true } });
+  if (!labour) throw new Error("Labour not found.");
+  if (labour.supervisorId !== userId) throw new Error("You can only change status of labours assigned to you.");
+
+  await prisma.labour.update({ where: { id: labourId }, data: { active } });
+  revalidatePath("/supervisor/labours");
+  revalidatePath(`/supervisor/labours/${labourId}`);
+}

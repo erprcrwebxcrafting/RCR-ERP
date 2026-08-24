@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { auth } from "@/auth";
 
 const labourSchema = z.object({
   id: z.string().optional(),
@@ -100,4 +101,12 @@ export async function saveLabour(formData: FormData) {
 export async function deleteLabour(id: string) {
   await prisma.labour.delete({ where: { id } });
   revalidatePath("/admin/labours");
+}
+
+export async function toggleLabourActive(id: string, active: boolean) {
+  const session = await auth();
+  if ((session?.user as any)?.role !== "ADMIN") throw new Error("Unauthorized");
+  await prisma.labour.update({ where: { id }, data: { active } });
+  revalidatePath("/admin/labours");
+  revalidatePath(`/admin/labours/${id}`);
 }

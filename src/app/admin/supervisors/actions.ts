@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { hashPassword } from "@/lib/hash-password";
+import { auth } from "@/auth";
 
 export async function createSupervisor(formData: FormData) {
   const name = (formData.get("name") as string || "").trim();
@@ -231,4 +232,12 @@ export async function updateSupervisor(id: string, formData: FormData) {
   revalidatePath("/admin/supervisors");
   revalidatePath(`/admin/supervisors/${id}`);
   revalidatePath("/admin/sites");
+}
+
+export async function toggleSupervisorActive(id: string, active: boolean) {
+  const session = await auth();
+  if ((session?.user as any)?.role !== "ADMIN") throw new Error("Unauthorized");
+  await prisma.user.update({ where: { id, role: "SUPERVISOR" }, data: { active } });
+  revalidatePath("/admin/supervisors");
+  revalidatePath(`/admin/supervisors/${id}`);
 }
