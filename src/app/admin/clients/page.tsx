@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { NewClientDialog } from "./new-client-dialog";
 import { EditClientForm } from "./edit-client-form";
+import { DeleteClientButton } from "./delete-client-button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -116,7 +117,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
             {/* Card Top Color Accent */}
             <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500" />
             
-            <CardHeader className="pb-4 pt-5 px-6">
+            <CardHeader className="pb-4 pt-5 px-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   {/* Avatar */}
@@ -149,7 +150,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
               </div>
             </CardHeader>
     
-            <CardContent className="flex-1 px-6 pb-4">
+            <CardContent className="flex-1 px-5 pb-4">
               <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 p-3.5 space-y-2.5">
                 <div className="flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-300">
                   <div className="h-7 w-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
@@ -172,11 +173,16 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
               </div>
             </CardContent>
 
-            <div className="px-6 pb-5 flex gap-2.5">
-              <Button asChild className="flex-1 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm shadow-blue-500/20 transition-all hover:-translate-y-0.5 text-sm">
-                <Link href={`/admin/clients/${c.id}`}>View Details →</Link>
+            <div className="px-5 pb-5 flex items-center gap-2">
+              <Button asChild className="flex-1 min-w-0 h-10 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300 font-semibold transition-all hover:-translate-y-0.5 text-xs sm:text-sm border border-blue-200 dark:border-blue-800">
+                <Link href={`/admin/clients/${c.id}`} className="flex justify-center items-center overflow-hidden">
+                  <span className="truncate">View Details</span>
+                </Link>
               </Button>
-              <EditClientForm client={c} />
+              <EditClientForm client={c} triggerClassName="flex-1 min-w-0 h-10 px-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-sm shadow-blue-500/20 transition-all hover:-translate-y-0.5 text-xs sm:text-sm truncate" />
+              {c._count.sites === 0 && (
+                <DeleteClientButton clientId={c.id} clientName={c.name} />
+              )}
             </div>
           </Card>
         ))}

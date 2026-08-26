@@ -10,7 +10,7 @@ import { updateClient } from "./actions";
 import { toast } from "sonner";
 import { validatePhone, validateGST, validateEmail } from "@/lib/validations";
 
-export function EditClientForm({ client }: { client: any }) {
+export function EditClientForm({ client, triggerClassName }: { client: any; triggerClassName?: string }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -63,7 +63,7 @@ export function EditClientForm({ client }: { client: any }) {
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
-        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-sm shadow-blue-500/20 transition-all hover:-translate-y-0.5">
+        <Button className={triggerClassName || "h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-sm shadow-blue-500/20 transition-all hover:-translate-y-0.5"}>
           <Edit className="h-4 w-4 mr-2" /> Edit Client
         </Button>
       </Dialog.Trigger>
