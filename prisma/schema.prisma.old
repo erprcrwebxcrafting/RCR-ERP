@@ -1,0 +1,474 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                    String                      @id @default(cuid())
+  name                  String
+  email                 String                      @unique
+  passwordHash          String
+  role                  Role
+  phone                 String?
+  active                Boolean                     @default(true)
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+  monthlySalary         Float?
+  aadharNumber          String?
+  aadharCardUrl         String?
+  accountNumber         String?
+  address               String?
+  bankBranch            String?
+  bankName              String?
+  dateOfJoining         DateTime?
+  ifscCode              String?
+  passwordVersion       Int                         @default(0)
+  labours               Labour[]
+  assignedSites         SiteSupervisor[]
+  supervisorAttendances SupervisorAttendance[]      @relation("SupervisorAttendanceRecords")
+  supervisorPayments    SupervisorPayment[]         @relation("SupervisorPayments")
+  supervisorTransfers   SupervisorTransferHistory[]
+}
+
+model Client {
+  id            String      @id @default(cuid())
+  name          String
+  address       String?
+  gstNo         String?
+  contactPerson String?
+  phone         String?
+  email         String?
+  remarks       String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  quotations    Quotation[]
+  sites         Site[]
+}
+
+model Site {
+  id                      String                      @id @default(cuid())
+  projectName             String
+  clientId                String
+  address                 String?
+  gstNo                   String?
+  retentionPct            Float                       @default(2)
+  cgstPct                 Float                       @default(9)
+  sgstPct                 Float                       @default(9)
+  tdsPct                  Float                       @default(1)
+  startDate               DateTime?
+  endDate                 DateTime?
+  remarks                 String?
+  workOrderNo             String?
+  active                  Boolean                     @default(true)
+  progress                Float                       @default(0)
+  createdAt               DateTime                    @default(now())
+  updatedAt               DateTime                    @updatedAt
+  attendances             Attendance[]
+  buildings               Building[]
+  labours                 Labour[]
+  labourCategories        LabourCategory[]
+  labourEntries           LabourEntry[]
+  labourTransfersFrom     LabourTransferHistory[]     @relation("LabourTransferFromSite")
+  labourTransfersTo       LabourTransferHistory[]     @relation("LabourTransferToSite")
+  payments                Payment[]
+  quotations              Quotation[]
+  bills                   RunningBill[]
+  client                  Client                      @relation(fields: [clientId], references: [id])
+  supervisors             SiteSupervisor[]
+  supervisorTransfersFrom SupervisorTransferHistory[] @relation("SupervisorTransferFromSite")
+  supervisorTransfersTo   SupervisorTransferHistory[] @relation("SupervisorTransferToSite")
+  supplyLabourEntries     SupplyLabourEntry[]
+  workItems               WorkItem[]
+  expenses                SiteExpense[]
+
+  @@index([clientId])
+}
+
+model SiteSupervisor {
+  id           String @id @default(cuid())
+  siteId       String
+  supervisorId String
+  site         Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  supervisor   User   @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, supervisorId])
+  @@index([siteId])
+  @@index([supervisorId])
+}
+
+model Building {
+  id           String       @id @default(cuid())
+  siteId       String
+  name         String
+  order        Int          @default(0)
+  createdAt    DateTime     @default(now())
+  approxArea   Float?       @default(0)
+  contractRate Float?       @default(0)
+  attendances  Attendance[]
+  billLines    BillLine[]
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  workItems    WorkItem[]
+
+  @@index([siteId])
+}
+
+model WorkItem {
+  id            String     @id @default(cuid())
+  siteId        String
+  name          String
+  unit          String
+  rate          Float      @default(0)
+  buWork        Float?
+  remarks       String?
+  order         Int        @default(0)
+  createdAt     DateTime   @default(now())
+  buildingId    String?
+  currentQty    Float      @default(0)
+  previousQty   Float      @default(0)
+  currentPct    Float      @default(0)
+  partAmount    Float?     @default(0)
+  previousPct   Float      @default(0)
+  cumulativeAmt Float?     @default(0)
+  cumulativePct Float?     @default(0)
+  currentAmt    Float?     @default(0)
+  previousAmt   Float?     @default(0)
+  billLines     BillLine[]
+  building      Building?  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  site          Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([buildingId])
+}
+
+model LabourCategory {
+  id           String     @id @default(cuid())
+  siteId       String
+  name         String
+  dailyWage    Float
+  overtimeRate Float      @default(0)
+  remarks      String?
+  order        Int        @default(0)
+  billLines    BillLine[]
+  labours      Labour[]
+  site         Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+}
+
+model Labour {
+  id               String                  @id @default(cuid())
+  siteId           String
+  labourCategoryId String
+  name             String
+  phone            String?
+  address          String?
+  joiningDate      DateTime?
+  aadharNumber     String?
+  aadharCardUrl    String?
+  accountNumber    String?
+  ifscCode         String?
+  bankBranch       String?
+  supervisorId     String?
+  dailyWage        Float?
+  overtimeRate     Float?
+  active           Boolean                 @default(true)
+  createdAt        DateTime                @default(now())
+  bankName         String?
+  attendances      Attendance[]
+  labourCategory   LabourCategory          @relation(fields: [labourCategoryId], references: [id], onDelete: Cascade)
+  site             Site                    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  supervisor       User?                   @relation(fields: [supervisorId], references: [id])
+  labourEntries    LabourEntry[]
+  payments         LabourPayment[]
+  transferHistory  LabourTransferHistory[]
+
+  @@index([siteId])
+  @@index([labourCategoryId])
+  @@index([supervisorId])
+  @@index([active])
+}
+
+model LabourPayment {
+  id            String   @id @default(cuid())
+  labourId      String
+  amount        Float
+  date          DateTime @default(now())
+  transactionId String?
+  reason        String?
+  createdAt     DateTime @default(now())
+  labour        Labour   @relation(fields: [labourId], references: [id], onDelete: Cascade)
+
+  @@index([labourId])
+  @@index([date])
+}
+
+model SupervisorPayment {
+  id            String   @id @default(cuid())
+  supervisorId  String
+  amount        Float
+  date          DateTime @default(now())
+  transactionId String?
+  reason        String?
+  createdAt     DateTime @default(now())
+  supervisor    User     @relation("SupervisorPayments", fields: [supervisorId], references: [id], onDelete: Cascade)
+
+  @@index([supervisorId])
+}
+
+model Attendance {
+  id          String    @id @default(cuid())
+  siteId      String
+  buildingId  String?
+  labourId    String
+  date        DateTime
+  status      String
+  hajari      Float     @default(0)
+  hajariRate  Float     @default(0)
+  overtimeHrs Float     @default(0)
+  remarks     String?
+  markedById  String
+  createdAt   DateTime  @default(now())
+  building    Building? @relation(fields: [buildingId], references: [id])
+  labour      Labour    @relation(fields: [labourId], references: [id], onDelete: Cascade)
+  site        Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([labourId, date])
+  @@index([siteId, date])
+  @@index([buildingId])
+}
+
+model LabourEntry {
+  id           String   @id @default(cuid())
+  siteId       String
+  periodStart  DateTime
+  periodEnd    DateTime
+  labourId     String
+  presentDays  Float
+  overtimeHrs  Float    @default(0)
+  dailyWage    Float
+  grossAmount  Float
+  approved     Boolean  @default(false)
+  approvedById String?
+  createdAt    DateTime @default(now())
+  labour       Labour   @relation(fields: [labourId], references: [id], onDelete: Cascade)
+  site         Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([labourId])
+}
+
+model Quotation {
+  id             String   @id @default(cuid())
+  siteId         String?
+  clientId       String?
+  projectName    String?
+  quotationNo    String
+  date           DateTime @default(now())
+  subject        String
+  termsJson      String
+  exclusionsJson String?
+  itemsJson      String
+  status         String   @default("DRAFT")
+  createdAt      DateTime @default(now())
+  client         Client?  @relation(fields: [clientId], references: [id])
+  site           Site?    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([siteId])
+}
+
+model SupplyLabourEntry {
+  id            String       @id @default(cuid())
+  siteId        String
+  date          DateTime     @default(now())
+  challanNo     String?
+  description   String
+  fitterQty     Float        @default(0)
+  fitterHours   Float        @default(0)
+  fitterRate    Float        @default(1100)
+  helperQty     Float        @default(0)
+  helperHours   Float        @default(0)
+  helperRate    Float        @default(800)
+  fitterForemanQty   Float   @default(0)
+  fitterForemanHours Float   @default(0)
+  fitterForemanRate  Float   @default(1500)
+  totalAmount   Float        @default(0)
+  runningBillId String?
+  createdAt     DateTime     @default(now())
+  runningBill   RunningBill? @relation(fields: [runningBillId], references: [id])
+  site          Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([runningBillId])
+}
+
+model RunningBill {
+  id                  String              @id @default(cuid())
+  siteId              String
+  billNo              String
+  refNo               String?
+  billDate            DateTime            @default(now())
+  periodLabel         String?
+  status              String              @default("DRAFT")
+  cgstPct             Float               @default(9)
+  sgstPct             Float               @default(9)
+  tdsPct              Float               @default(1)
+  retentionPct        Float               @default(2)
+  createdAt           DateTime            @default(now())
+  lines               BillLine[]
+  site                Site                @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  supplyLabourEntries SupplyLabourEntry[]
+
+  @@index([siteId])
+  @@index([billDate])
+  @@index([status])
+}
+
+model BillLine {
+  id               String          @id @default(cuid())
+  runningBillId    String
+  buildingId       String?
+  workItemId       String?
+  labourCategoryId String?
+  description      String
+  unit             String
+  woQty            Float?
+  rate             Float
+  previousQty      Float           @default(0)
+  currentQty       Float           @default(0)
+  cumulativeQty    Float           @default(0)
+  previousAmount   Float           @default(0)
+  currentAmount    Float           @default(0)
+  cumulativeAmount Float           @default(0)
+  order            Int             @default(0)
+  isSupplyLabour   Boolean         @default(false)
+  building         Building?       @relation(fields: [buildingId], references: [id])
+  labourCategory   LabourCategory? @relation(fields: [labourCategoryId], references: [id])
+  runningBill      RunningBill     @relation(fields: [runningBillId], references: [id], onDelete: Cascade)
+  workItem         WorkItem?       @relation(fields: [workItemId], references: [id])
+
+  @@index([runningBillId])
+  @@index([buildingId])
+  @@index([workItemId])
+  @@index([labourCategoryId])
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  siteId          String
+  date            DateTime @default(now())
+  amount          Float
+  mode            String
+  accountCredited String?
+  reference       String?
+  remarks         String?
+  createdAt       DateTime @default(now())
+  site            Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([date])
+}
+
+model LabourTransferHistory {
+  id                   String   @id @default(cuid())
+  labourId             String
+  fromSiteId           String?
+  toSiteId             String
+  fromSupervisorId     String?
+  toSupervisorId       String?
+  previousDailyWage    Float?
+  newDailyWage         Float?
+  previousOvertimeRate Float?
+  newOvertimeRate      Float?
+  transferDate         DateTime @default(now())
+  createdAt            DateTime @default(now())
+  fromSite             Site?    @relation("LabourTransferFromSite", fields: [fromSiteId], references: [id])
+  labour               Labour   @relation(fields: [labourId], references: [id], onDelete: Cascade)
+  toSite               Site     @relation("LabourTransferToSite", fields: [toSiteId], references: [id])
+}
+
+model SupervisorTransferHistory {
+  id                 String   @id @default(cuid())
+  supervisorId       String
+  fromSiteId         String?
+  toSiteId           String
+  laboursTransferred Int      @default(0)
+  transferDate       DateTime @default(now())
+  createdAt          DateTime @default(now())
+  fromSite           Site?    @relation("SupervisorTransferFromSite", fields: [fromSiteId], references: [id])
+  supervisor         User     @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+  toSite             Site     @relation("SupervisorTransferToSite", fields: [toSiteId], references: [id])
+}
+
+model GlobalSettings {
+  id                     String   @id @default("global")
+  companyName            String   @default("RCR ENTERPRISES")
+  phone                  String?
+  email                  String?
+  website                String?
+  address                String?
+  updatedAt              DateTime @updatedAt
+  notifySupervisorLogins Boolean  @default(true)
+}
+
+model SupervisorAttendance {
+  id           String   @id @default(cuid())
+  supervisorId String
+  date         DateTime
+  status       String
+  dailyRate    Float
+  earnedAmount Float
+  remarks      String?
+  markedById   String?
+  createdAt    DateTime @default(now())
+  supervisor   User     @relation("SupervisorAttendanceRecords", fields: [supervisorId], references: [id], onDelete: Cascade)
+
+  @@unique([supervisorId, date])
+  @@index([supervisorId, date])
+}
+
+model OtpToken {
+  id        String   @id @default(cuid())
+  email     String
+  otp       String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model ShareLink {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  type      String
+  refId     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([code])
+}
+
+model SiteExpense {
+  id          String   @id @default(cuid())
+  siteId      String
+  date        DateTime
+  amount      Float
+  paidTo      String
+  description String
+  createdAt   DateTime @default(now())
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([date])
+}
+
+enum Role {
+  ADMIN
+  SUPERVISOR
+}
