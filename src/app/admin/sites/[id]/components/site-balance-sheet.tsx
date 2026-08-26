@@ -227,19 +227,19 @@ export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any,
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between pb-3 gap-4">
           <div>
-            <CardTitle className="text-lg font-bold flex items-center gap-2">
-              <CircleDollarSign className="h-5 w-5 text-indigo-500" />
-              Site Ledger & Client Balance Sheet (Full Statement View)
+            <CardTitle className="text-lg font-bold flex items-center gap-2 leading-tight">
+              <CircleDollarSign className="h-5 w-5 text-indigo-500 shrink-0" />
+              <span>Site Ledger & Client Balance Sheet <span className="block sm:inline text-sm font-medium text-muted-foreground mt-0.5 sm:mt-0">(Full Statement View)</span></span>
             </CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1.5 leading-snug">
               Complete statement tracking RA Bills, Retention ({retentionPct}%), Net Amount, Payments Received, 1% TDS, Advance, GST, and Running Balance.
             </p>
           </div>
           {!hidePaymentForm && (
-            <Button onClick={() => setIsRecording(!isRecording)} className="gap-1 bg-emerald-600 hover:bg-emerald-700">
-              <Plus className="h-4 w-4" /> Record Client Payment
+            <Button onClick={() => setIsRecording(!isRecording)} className="gap-1 bg-emerald-600 hover:bg-emerald-700 shrink-0 w-full sm:w-auto">
+              <Plus className="h-4 w-4 shrink-0" /> Record Client Payment
             </Button>
           )}
         </CardHeader>

@@ -13,12 +13,14 @@ const labourSchema = z.object({
   labourCategoryName: z.string().min(1, "Category is required"),
   joiningDate: z.string().optional(),
   aadharNumber: z.string().optional(),
+  aadharCardUrl: z.string().optional(),
   accountNumber: z.string().optional(),
   bankName: z.string().optional(),
   ifscCode: z.string().optional(),
   bankBranch: z.string().optional(),
   supervisorId: z.string().optional(),
   dailyWage: z.string().optional(),
+  effectiveDate: z.string().optional(),
 });
 
 export async function saveLabour(formData: FormData) {
@@ -82,6 +84,7 @@ export async function saveLabour(formData: FormData) {
     labourCategoryId: category.id,
     joiningDate: parsed.joiningDate ? new Date(parsed.joiningDate) : null,
     aadharNumber: parsed.aadharNumber || null,
+    aadharCardUrl: parsed.aadharCardUrl || null,
     accountNumber: parsed.accountNumber || null,
     bankName: parsed.bankName || null,
     ifscCode: parsed.ifscCode || null,
@@ -91,9 +94,53 @@ export async function saveLabour(formData: FormData) {
   };
 
   if (parsed.id) {
+    const oldLabour = await prisma.labour.findUnique({ where: { id: parsed.id } });
     await prisma.labour.update({ where: { id: parsed.id }, data });
+
+    // Handle retroactive wage updates if effectiveDate is provided and wage changed
+    if (
+      parsed.effectiveDate && 
+      data.dailyWage !== null && 
+      oldLabour?.dailyWage !== data.dailyWage
+    ) {
+      const effectiveDate = new Date(parsed.effectiveDate);
+      effectiveDate.setHours(0, 0, 0, 0);
+      
+      // 1. Log the history
+      // @ts-ignore
+      await prisma.labourWageHistory.create({
+        data: {
+          labourId: parsed.id,
+          dailyWage: data.dailyWage,
+          effectiveDate: effectiveDate
+        }
+      });
+      
+      // 2. Retroactively update all attendances from effectiveDate onwards
+      await prisma.attendance.updateMany({
+        where: {
+          labourId: parsed.id,
+          date: { gte: effectiveDate }
+        },
+        data: {
+          hajariRate: data.dailyWage
+        }
+      });
+    }
+
   } else {
-    await prisma.labour.create({ data });
+    const newLabour = await prisma.labour.create({ data });
+    
+    if (data.dailyWage !== null) {
+      // @ts-ignore
+      await prisma.labourWageHistory.create({
+        data: {
+          labourId: newLabour.id,
+          dailyWage: data.dailyWage,
+          effectiveDate: data.joiningDate || new Date()
+        }
+      });
+    }
   }
   revalidatePath("/admin/labours");
 }

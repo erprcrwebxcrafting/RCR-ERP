@@ -10,6 +10,7 @@ import { User, CreditCard, Building2, HardHat, Save } from "lucide-react";
 import { toast } from "sonner";
 import { validatePhone, validateAadhar, validateIFSC, validatePositiveNumber } from "@/lib/validations";
 import { saveSupervisorLabour } from "./actions";
+import { AadharUpload } from "@/components/ui/aadhar-upload";
 
 interface AddLabourFormProps {
   availableSites: Array<{
@@ -29,6 +30,7 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
 
   const [selectedCategoryName, setSelectedCategoryName] = useState<string>("");
   const [dailyWage, setDailyWage] = useState<string>("");
+  const [aadharUrl, setAadharUrl] = useState<string | null>(null);
 
   const handleCategoryChange = (catName: string) => {
     setSelectedCategoryName(catName);
@@ -47,7 +49,7 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
     const aadharNumber = (formData.get("aadharNumber") as string)?.trim();
     const ifscCode = (formData.get("ifscCode") as string)?.trim();
     const categoryName = (formData.get("labourCategoryName") as string)?.trim();
-    const wageStr = (formData.get("dailyWage") as string)?.trim();
+    const wageInput = (formData.get("wageInput") as string)?.trim();
 
     // Client-side validations
     if (!name || name.length < 2) {
@@ -83,8 +85,8 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
       return;
     }
 
-    if (wageStr) {
-      const wageCheck = validatePositiveNumber(wageStr, "Hajri");
+    if (wageInput) {
+      const wageCheck = validatePositiveNumber(wageInput, "Wage/Salary");
       if (!wageCheck.valid) {
         toast.error(wageCheck.error);
         return;
@@ -93,6 +95,12 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
 
     startTransition(async () => {
       try {
+        let val = parseFloat(wageInput || "0");
+        if (selectedCategoryName === "Fitter Foreman") {
+          val = val / 30; // Divide monthly salary by 30 to store daily wage
+        }
+        formData.set("dailyWage", val.toString());
+
         await saveSupervisorLabour(formData);
         toast.success("Labourer registered successfully!", {
           description: `${name} has been added to ${selectedSite?.projectName}.`,
@@ -166,6 +174,10 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
                   placeholder="12-digit UID"
                   className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-indigo-500/20 shadow-sm font-mono"
                 />
+                <input type="hidden" name="aadharCardUrl" value={aadharUrl || ""} />
+                <div className="pt-2">
+                  <AadharUpload type="labour" id={`temp-${Date.now()}`} onUploadSuccess={setAadharUrl} currentUrl={aadharUrl} />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="joiningDate" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -270,6 +282,7 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
                   className="flex h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm cursor-pointer"
                 >
                   <option value="">Select Category...</option>
+                  <option value="Fitter Foreman" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">Fitter Foreman</option>
                   <option value="Fitter" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">Fitter</option>
                   <option value="Helper" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">Helper</option>
                   <option value="Mason" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">Mason</option>
@@ -279,18 +292,24 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="dailyWage" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Hajri (₹) *
+                  {selectedCategoryName === "Fitter Foreman" ? "Monthly Salary (₹) *" : "Hajri / Daily Wage (₹) *"}
                 </Label>
                 <Input
                   id="dailyWage"
-                  name="dailyWage"
+                  name="wageInput"
                   type="number"
                   required
                   value={dailyWage}
                   onChange={(e) => setDailyWage(e.target.value)}
-                  placeholder="e.g. 850"
+                  placeholder={selectedCategoryName === "Fitter Foreman" ? "e.g. 45000" : "e.g. 850"}
                   className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 shadow-sm font-mono font-bold"
                 />
+                <input type="hidden" name="dailyWage" id="actualDailyWage" value="" />
+                {selectedCategoryName === "Fitter Foreman" && (
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    * This will be automatically divided by 30 to store the daily Hajri rate in the system.
+                  </p>
+                )}
               </div>
             </div>
           </div>

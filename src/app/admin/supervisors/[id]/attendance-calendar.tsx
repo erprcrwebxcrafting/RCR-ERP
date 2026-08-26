@@ -125,10 +125,10 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Daily Salary Rate</p>
-                <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">
+                <p className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">
                   ₹{standardDailyRate.toLocaleString("en-IN")}
                 </p>
-                <p className="text-[11px] text-slate-400 font-medium mt-0.5">Fixed (Monthly ₹{monthlySalary.toLocaleString("en-IN")} ÷ 30)</p>
+                <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-0.5">Fixed (Monthly ₹{monthlySalary.toLocaleString("en-IN")} ÷ 30)</p>
               </div>
               <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
                 <IndianRupee className="h-5 w-5" />
@@ -142,8 +142,8 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Present Days</p>
-                <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-                  {monthPresentCount} <span className="text-sm font-semibold text-slate-400">days</span>
+                <p className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                  {monthPresentCount} <span className="text-xs sm:text-sm font-semibold text-slate-400">days</span>
                 </p>
                 <p className="text-[11px] text-slate-400 font-medium mt-0.5">{monthHalfDayCount > 0 ? `+ ${monthHalfDayCount} half days` : "Full attendance"}</p>
               </div>
@@ -159,8 +159,8 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Absent Days</p>
-                <p className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">
-                  {monthAbsentCount} <span className="text-sm font-semibold text-slate-400">days</span>
+                <p className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">
+                  {monthAbsentCount} <span className="text-xs sm:text-sm font-semibold text-slate-400">days</span>
                 </p>
                 <p className="text-[11px] text-slate-400 font-medium mt-0.5">Unmarked or absent</p>
               </div>
@@ -176,7 +176,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Earned This Month</p>
-                <p className="text-2xl font-black text-indigo-700 dark:text-indigo-300 mt-1">
+                <p className="text-xl sm:text-2xl font-black text-indigo-700 dark:text-indigo-300 mt-1">
                   ₹{monthTotalEarned.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
                 <p className="text-[11px] text-indigo-500 dark:text-indigo-400 font-medium mt-0.5">For {monthNames[month]} {year}</p>
@@ -238,9 +238,11 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
           </div>
         </CardHeader>
 
-        <CardContent className="p-4 sm:p-6">
+        <CardContent className="p-3 sm:p-4 md:p-6">
           {/* Day Headers (Sun - Sat) */}
-          <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mb-2 text-center">
+          <div className="overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0">
+            <div className="min-w-[580px]">
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2 mb-2 text-center">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((dayName, idx) => (
               <div
                 key={dayName}
@@ -256,10 +258,10 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
           </div>
 
           {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2">
             {/* Blank cells for offset */}
             {Array.from({ length: firstDayIndex }).map((_, idx) => (
-              <div key={`blank-${idx}`} className="min-h-[90px] sm:min-h-[105px] rounded-xl bg-slate-50/30 dark:bg-slate-800/10 border border-dashed border-slate-100 dark:border-slate-800/40 opacity-40" />
+              <div key={`blank-${idx}`} className="min-h-[80px] sm:min-h-[95px] md:min-h-[105px] rounded-xl bg-slate-50/30 dark:bg-slate-800/10 border border-dashed border-slate-100 dark:border-slate-800/40 opacity-40" />
             ))}
 
             {/* Days of Month */}
@@ -301,7 +303,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
               return (
                 <div
                   key={day}
-                  className={`group relative min-h-[95px] sm:min-h-[110px] p-2 sm:p-2.5 rounded-xl border transition-all flex flex-col justify-between ${cardBg} ${
+                  className={`group relative min-h-[80px] sm:min-h-[95px] md:min-h-[110px] p-1.5 sm:p-2 md:p-2.5 rounded-xl border transition-all flex flex-col justify-between ${cardBg} ${
                     isToday ? "ring-2 ring-blue-500 ring-offset-1" : ""
                   }`}
                 >
@@ -329,6 +331,11 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
                         <p className="text-[9px] text-slate-400 font-medium truncate">
                           Rate: ₹{att.dailyRate}
                         </p>
+                        {att.remarks && (
+                          <p className="text-[9px] mt-1 text-slate-500 italic leading-tight opacity-90 truncate" title={att.remarks}>
+                            {att.remarks}
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <div className="text-[10px] text-slate-300 dark:text-slate-600 italic">
@@ -384,6 +391,8 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
           </div>
 
           {/* Bottom Legend / Quick Note */}
+            </div>
+          </div>
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400">
             <div className="flex flex-wrap items-center gap-4">
               <span className="font-bold text-slate-700 dark:text-slate-300">Quick Guide:</span>

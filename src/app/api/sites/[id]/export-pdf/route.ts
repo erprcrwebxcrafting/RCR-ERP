@@ -168,7 +168,11 @@ export async function GET(
       settings: globalSettings,
     });
 
-    const filename = `${site.projectName.replace(/[^a-zA-Z0-9]/g, "_")}_RA_BILL_PACKAGE_${new Date().toISOString().slice(0, 10)}.pdf`;
+    let billRef = "DRAFT";
+    if (latestBill && (latestBill as any).billNo) {
+      billRef = (latestBill as any).billNo.replace(/[^a-zA-Z0-9]/g, "_");
+    }
+    const filename = `${site.projectName.replace(/[^a-zA-Z0-9]/g, "_")}_${billRef}_RA_BILL.pdf`;
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,

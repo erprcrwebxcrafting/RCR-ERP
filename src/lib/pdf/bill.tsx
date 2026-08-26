@@ -709,6 +709,7 @@ function SupplyPage({ data, logoStr, signStr }: any) {
   const { site, runningBill, supplyEntries } = data;
 
   let totFitterHrs = 0;
+  let totForemanHrs = 0;
   let totHelperHrs = 0;
   let totSupplyAmt = 0;
 
@@ -718,57 +719,77 @@ function SupplyPage({ data, logoStr, signStr }: any) {
       
       <View style={styles.table}>
         <View style={styles.tr} fixed>
-          <Text style={[styles.th, { width: "10%", backgroundColor: "#f1f5f9" }]}>Date</Text>
-          <Text style={[styles.th, { width: "12%", backgroundColor: "#f1f5f9" }]}>Challan</Text>
-          <Text style={[styles.th, { width: "24%", backgroundColor: "#f1f5f9" }]}>Description</Text>
-          <Text style={[styles.th, { width: "8%", textAlign: "center", backgroundColor: "#dbeafe", color: "#1e40af" }]}>F. Qty</Text>
-          <Text style={[styles.th, { width: "8%", textAlign: "center", backgroundColor: "#dbeafe", color: "#1e40af" }]}>F. Hrs</Text>
-          <Text style={[styles.th, { width: "10%", textAlign: "center", backgroundColor: "#dbeafe", color: "#1e40af" }]}>Tot F.H</Text>
-          <Text style={[styles.th, { width: "8%", textAlign: "center", backgroundColor: "#ede9fe", color: "#6b21a8" }]}>H. Qty</Text>
-          <Text style={[styles.th, { width: "10%", textAlign: "center", backgroundColor: "#ede9fe", color: "#6b21a8" }]}>Tot H.H</Text>
-          <Text style={[styles.th, { width: "10%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d" }]}>Amount</Text>
+          <Text style={[styles.th, { width: "9%", backgroundColor: "#f1f5f9" }]}>Date</Text>
+          <Text style={[styles.th, { width: "10%", backgroundColor: "#f1f5f9" }]}>Challan</Text>
+          <Text style={[styles.th, { width: "22%", backgroundColor: "#f1f5f9" }]}>Description</Text>
+          <Text style={[styles.th, { width: "4%", textAlign: "center", backgroundColor: "#dbeafe", color: "#1e40af", paddingLeft: 1, paddingRight: 1 }]}>F. Qty</Text>
+          <Text style={[styles.th, { width: "5%", textAlign: "center", backgroundColor: "#dbeafe", color: "#1e40af", paddingLeft: 1, paddingRight: 1 }]}>F. Hrs</Text>
+          <Text style={[styles.th, { width: "6%", textAlign: "center", backgroundColor: "#dbeafe", color: "#1e40af", paddingLeft: 1, paddingRight: 1 }]}>T. F.H</Text>
+          <Text style={[styles.th, { width: "4%", textAlign: "center", backgroundColor: "#ffedd5", color: "#c2410c", paddingLeft: 1, paddingRight: 1 }]}>FM Qty</Text>
+          <Text style={[styles.th, { width: "5%", textAlign: "center", backgroundColor: "#ffedd5", color: "#c2410c", paddingLeft: 1, paddingRight: 1 }]}>FM Hrs</Text>
+          <Text style={[styles.th, { width: "6%", textAlign: "center", backgroundColor: "#ffedd5", color: "#c2410c", paddingLeft: 1, paddingRight: 1 }]}>T. FM.H</Text>
+          <Text style={[styles.th, { width: "4%", textAlign: "center", backgroundColor: "#ede9fe", color: "#6b21a8", paddingLeft: 1, paddingRight: 1 }]}>H. Qty</Text>
+          <Text style={[styles.th, { width: "5%", textAlign: "center", backgroundColor: "#ede9fe", color: "#6b21a8", paddingLeft: 1, paddingRight: 1 }]}>H. Hrs</Text>
+          <Text style={[styles.th, { width: "6%", textAlign: "center", backgroundColor: "#ede9fe", color: "#6b21a8", paddingLeft: 1, paddingRight: 1 }]}>T. H.H</Text>
+          <Text style={[styles.th, { width: "14%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d" }]}>Amount</Text>
         </View>
+
 
         {(supplyEntries || []).map((se: any, idx: number) => {
           const fHrs = (se.fitterQty || 0) * (se.fitterHours || 8);
+          const fmHrs = (se.fitterForemanQty || 0) * (se.fitterForemanHours || 8);
           const hHrs = (se.helperQty || 0) * (se.helperHours || 8);
           totFitterHrs += fHrs;
+          totForemanHrs += fmHrs;
           totHelperHrs += hHrs;
           totSupplyAmt += se.totalAmount || 0;
           const dateStr = se.date ? new Date(se.date).toLocaleDateString("en-IN") : "-";
+          
+          // Fix long continuous words in description by inserting newlines
+          let desc = se.description || "";
+          desc = desc.replace(/(\S{15})/g, "$1\n");
 
           return (
             <View style={styles.tr} key={idx} wrap={false}>
-              <Text style={[styles.td, { width: "10%" }]}>{dateStr}</Text>
-              <Text style={[styles.td, { width: "12%" }]}>{se.challanNo || "-"}</Text>
-              <Text style={[styles.td, { width: "24%" }]}>{se.description || ""}</Text>
-              <Text style={[styles.td, { width: "8%", textAlign: "center", backgroundColor: "#f0f7ff", color: "#1e40af" }]}>{se.fitterQty || 0}</Text>
-              <Text style={[styles.td, { width: "8%", textAlign: "center", backgroundColor: "#f0f7ff", color: "#1e40af" }]}>{se.fitterHours || 8}h</Text>
-              <Text style={[styles.td, { width: "10%", textAlign: "center", backgroundColor: "#f0f7ff", color: "#1e40af", fontFamily: "Helvetica-Bold" }]}>{fHrs}h</Text>
-              <Text style={[styles.td, { width: "8%", textAlign: "center", backgroundColor: "#fbf8ff", color: "#6b21a8" }]}>{se.helperQty || 0}</Text>
-              <Text style={[styles.td, { width: "10%", textAlign: "center", backgroundColor: "#fbf8ff", color: "#6b21a8", fontFamily: "Helvetica-Bold" }]}>{hHrs}h</Text>
-              <Text style={[styles.td, { width: "10%", textAlign: "right", backgroundColor: "#f2fbf5", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(se.totalAmount || 0)}</Text>
+              <Text style={[styles.td, { width: "9%" }]}>{dateStr}</Text>
+              <Text style={[styles.td, { width: "10%" }]}>{se.challanNo || "-"}</Text>
+              <Text style={[styles.td, { width: "22%" }]}>{desc}</Text>
+              <Text style={[styles.td, { width: "4%", textAlign: "center", backgroundColor: "#f0f7ff", color: "#1e40af", paddingLeft: 1, paddingRight: 1 }]}>{se.fitterQty || 0}</Text>
+              <Text style={[styles.td, { width: "5%", textAlign: "center", backgroundColor: "#f0f7ff", color: "#1e40af", paddingLeft: 1, paddingRight: 1 }]}>{se.fitterHours || 8}h</Text>
+              <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#f0f7ff", color: "#1e40af", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1 }]}>{fHrs}h</Text>
+              <Text style={[styles.td, { width: "4%", textAlign: "center", backgroundColor: "#fff7ed", color: "#c2410c", paddingLeft: 1, paddingRight: 1 }]}>{se.fitterForemanQty || 0}</Text>
+              <Text style={[styles.td, { width: "5%", textAlign: "center", backgroundColor: "#fff7ed", color: "#c2410c", paddingLeft: 1, paddingRight: 1 }]}>{se.fitterForemanHours || 8}h</Text>
+              <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#fff7ed", color: "#c2410c", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1 }]}>{fmHrs}h</Text>
+              <Text style={[styles.td, { width: "4%", textAlign: "center", backgroundColor: "#fbf8ff", color: "#6b21a8", paddingLeft: 1, paddingRight: 1 }]}>{se.helperQty || 0}</Text>
+              <Text style={[styles.td, { width: "5%", textAlign: "center", backgroundColor: "#fbf8ff", color: "#6b21a8", paddingLeft: 1, paddingRight: 1 }]}>{se.helperHours || 8}h</Text>
+              <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#fbf8ff", color: "#6b21a8", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1 }]}>{hHrs}h</Text>
+              <Text style={[styles.td, { width: "14%", textAlign: "right", backgroundColor: "#f2fbf5", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(se.totalAmount || 0)}</Text>
             </View>
           );
         })}
 
         <View style={[styles.tr, styles.trTotal]} wrap={false}>
-          <Text style={[styles.td, { width: "46%", textAlign: "right" }]}>TOTAL HOURS</Text>
-          <Text style={[styles.td, { width: "8%", backgroundColor: "#eff6ff" }]}></Text>
-          <Text style={[styles.td, { width: "8%", backgroundColor: "#eff6ff" }]}></Text>
-          <Text style={[styles.td, { width: "10%", textAlign: "center", backgroundColor: "#dbeafe", color: "#1e40af", fontFamily: "Helvetica-Bold" }]}>{totFitterHrs}h</Text>
-          <Text style={[styles.td, { width: "8%", backgroundColor: "#faf5ff" }]}></Text>
-          <Text style={[styles.td, { width: "10%", textAlign: "center", backgroundColor: "#ede9fe", color: "#6b21a8", fontFamily: "Helvetica-Bold" }]}>{totHelperHrs}h</Text>
-          <Text style={[styles.td, { width: "10%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(totSupplyAmt)}</Text>
+          <Text style={[styles.td, { width: "41%", textAlign: "right" }]}>TOTAL HOURS</Text>
+          <Text style={[styles.td, { width: "4%", backgroundColor: "#eff6ff", paddingLeft: 1, paddingRight: 1 }]}></Text>
+          <Text style={[styles.td, { width: "5%", backgroundColor: "#eff6ff", paddingLeft: 1, paddingRight: 1 }]}></Text>
+          <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#dbeafe", color: "#1e40af", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1 }]}>{totFitterHrs}h</Text>
+          <Text style={[styles.td, { width: "4%", backgroundColor: "#fff7ed", paddingLeft: 1, paddingRight: 1 }]}></Text>
+          <Text style={[styles.td, { width: "5%", backgroundColor: "#fff7ed", paddingLeft: 1, paddingRight: 1 }]}></Text>
+          <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#ffedd5", color: "#c2410c", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1 }]}>{totForemanHrs}h</Text>
+          <Text style={[styles.td, { width: "4%", backgroundColor: "#faf5ff", paddingLeft: 1, paddingRight: 1 }]}></Text>
+          <Text style={[styles.td, { width: "5%", backgroundColor: "#faf5ff", paddingLeft: 1, paddingRight: 1 }]}></Text>
+          <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#ede9fe", color: "#6b21a8", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1 }]}>{totHelperHrs}h</Text>
+          <Text style={[styles.td, { width: "14%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(totSupplyAmt)}</Text>
         </View>
       </View>
       
       {(() => {
         const fDays = Math.round((totFitterHrs / 8) * 100) / 100;
+        const fmDays = Math.round((totForemanHrs / 8) * 100) / 100;
         const hDays = Math.round((totHelperHrs / 8) * 100) / 100;
         return (
           <View style={{ marginTop: 14, alignItems: "flex-end" }} wrap={false}>
-            <Text style={{ fontSize: 7.5, marginBottom: 2 }}>Total Shifts: {fDays} Days (Fitter @ Rs.1100)  |  {hDays} Days (Helper @ Rs.800)</Text>
+            <Text style={{ fontSize: 7.5, marginBottom: 2 }}>Total Shifts: {fDays} Days (Fitter)  |  {fmDays} Days (Foreman)  |  {hDays} Days (Helper)</Text>
             <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#111827" }}>TOTAL EXTRA LABOUR SUPPLY: <Text style={{ color: "#15803d" }}>{formatINR(totSupplyAmt)}</Text></Text>
           </View>
         );

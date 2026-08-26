@@ -33,6 +33,7 @@ model User {
   supervisorAttendances SupervisorAttendance[]      @relation("SupervisorAttendanceRecords")
   supervisorPayments    SupervisorPayment[]         @relation("SupervisorPayments")
   supervisorTransfers   SupervisorTransferHistory[]
+  wageHistory           SupervisorWageHistory[]
 }
 
 model Client {
@@ -186,6 +187,7 @@ model Labour {
   labourEntries    LabourEntry[]
   payments         LabourPayment[]
   transferHistory  LabourTransferHistory[]
+  wageHistory      LabourWageHistory[]
 
   @@index([siteId])
   @@index([labourCategoryId])
@@ -471,4 +473,29 @@ model SiteExpense {
 enum Role {
   ADMIN
   SUPERVISOR
+}
+
+model LabourWageHistory {
+  id            String   @id @default(cuid())
+  labourId      String
+  dailyWage     Float
+  effectiveDate DateTime
+  createdAt     DateTime @default(now())
+  labour        Labour   @relation(fields: [labourId], references: [id], onDelete: Cascade)
+
+  @@index([labourId])
+  @@index([effectiveDate])
+}
+
+model SupervisorWageHistory {
+  id             String   @id @default(cuid())
+  supervisorId   String
+  monthlySalary  Float?
+  dailyWage      Float?
+  effectiveDate  DateTime
+  createdAt      DateTime @default(now())
+  supervisor     User     @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+
+  @@index([supervisorId])
+  @@index([effectiveDate])
 }

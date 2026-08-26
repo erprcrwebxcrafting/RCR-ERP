@@ -367,13 +367,13 @@ export function TowerWorkManager({ site }: { site: any }) {
               </Card>
           {/* Selected Tower Work Items Table */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between pb-3 gap-4">
               <div>
-                <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <Layers className="h-5 w-5 text-indigo-500" />
-                  {selectedBuilding.name} - Work Items & Expense Tracker (Matching PDF Format)
+                <CardTitle className="text-lg font-bold flex items-start sm:items-center gap-2">
+                  <Layers className="h-5 w-5 text-indigo-500 shrink-0 mt-1 sm:mt-0" />
+                  <span className="leading-tight">{selectedBuilding.name} - Work Items & Expense Tracker <span className="text-sm font-medium text-muted-foreground block sm:inline">(Matching PDF Format)</span></span>
                 </CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-muted-foreground mt-1.5 leading-snug">
                   Track allocated stage Part Amounts (₹), Previous Work Done (%), This Bill Work Done (%), and Cumulative Amounts.
                 </p>
               </div>
@@ -382,9 +382,9 @@ export function TowerWorkManager({ site }: { site: any }) {
                 onClick={() => setIsAddingItem(!isAddingItem)} 
                 disabled={!isAddingAllowed}
                 title={!isAddingAllowed ? "Total contract value reached or not set. Please increase BUA Area/Rate to add more items." : ""}
-                className="gap-1"
+                className="gap-1 shrink-0 w-full sm:w-auto"
               >
-                <Plus className="h-4 w-4" /> Add Work Item / Stage
+                <Plus className="h-4 w-4 shrink-0" /> Add Work Item / Stage
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -426,16 +426,16 @@ export function TowerWorkManager({ site }: { site: any }) {
                   <Table>
                     <THead className="bg-muted/50">
                       <TR>
-                        <TH className="w-12">#</TH>
-                        <TH>Particulars of Item</TH>
-                        <TH className="text-right">Part Amount (₹)</TH>
-                        <TH className="text-center">Previous Qty (%)</TH>
-                        <TH className="text-center">This Bill Qty (%)</TH>
-                        <TH className="text-center">Cumulative Qty (%)</TH>
-                        <TH className="text-right">Previous Amt (₹)</TH>
-                        <TH className="text-right">This Bill Amt (₹)</TH>
-                        <TH className="text-right">Cumulative Amt (₹)</TH>
-                        <TH className="text-right w-16">Actions</TH>
+                        <TH className="w-12 whitespace-nowrap">#</TH>
+                        <TH className="whitespace-nowrap min-w-[200px]">Particulars of Item</TH>
+                        <TH className="text-right whitespace-nowrap">Part Amount (₹)</TH>
+                        <TH className="text-center whitespace-nowrap">Previous Qty (%)</TH>
+                        <TH className="text-center whitespace-nowrap">This Bill Qty (%)</TH>
+                        <TH className="text-center whitespace-nowrap">Cumulative Qty (%)</TH>
+                        <TH className="text-right whitespace-nowrap">Previous Amt (₹)</TH>
+                        <TH className="text-right whitespace-nowrap">This Bill Amt (₹)</TH>
+                        <TH className="text-right whitespace-nowrap">Cumulative Amt (₹)</TH>
+                        <TH className="text-right w-16 whitespace-nowrap">Actions</TH>
                       </TR>
                     </THead>
                     <TBody>

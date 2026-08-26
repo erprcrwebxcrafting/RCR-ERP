@@ -338,11 +338,11 @@ export function SiteExpensesTracker({ site }: { site: any }) {
   return (
     <div className="space-y-6">
       {/* Action Bar */}
-      <div className="flex justify-end print:hidden gap-2">
-        <Button onClick={handleExportExcel} variant="outline" className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50">
+      <div className="flex flex-wrap items-center justify-end print:hidden gap-2">
+        <Button onClick={handleExportExcel} variant="outline" className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 w-full sm:w-auto">
           <Download className="h-4 w-4" /> Download Excel
         </Button>
-        <Button onClick={handlePrintPDF} variant="outline" className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+        <Button onClick={handlePrintPDF} variant="outline" className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50 w-full sm:w-auto">
           <Printer className="h-4 w-4" /> Print Full Ledger
         </Button>
       </div>
@@ -394,10 +394,10 @@ export function SiteExpensesTracker({ site }: { site: any }) {
         </Card>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6 items-start print:block print:space-y-6">
+      <div className="grid md:grid-cols-2 gap-6 items-start print:block print:space-y-6 max-w-full">
         
         {/* REVENUE SECTION */}
-        <Card className="print:shadow-none print:border-none print:break-inside-avoid">
+        <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-bold flex items-center gap-2">
               <FileCheck className="h-5 w-5 text-emerald-500" />
@@ -405,33 +405,35 @@ export function SiteExpensesTracker({ site }: { site: any }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Bill No.</TH>
-                  <TH>Date</TH>
-                  <TH className="text-right">Net Amount</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {billSummaries.length === 0 ? (
-                  <TR><TD colSpan={3} className="text-center text-muted-foreground py-4">No RA Bills generated.</TD></TR>
-                ) : (
-                  billSummaries.map((b: any) => (
-                    <TR key={b.id}>
-                      <TD className="font-medium">{b.billNo}</TD>
-                      <TD className="text-muted-foreground">{formatDate(b.date)}</TD>
-                      <TD className="text-right font-bold text-emerald-600">{formatINR(b.netAmount)}</TD>
-                    </TR>
-                  ))
-                )}
-              </TBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <THead>
+                  <TR>
+                    <TH className="whitespace-nowrap">Bill No.</TH>
+                    <TH className="whitespace-nowrap">Date</TH>
+                    <TH className="text-right whitespace-nowrap">Net Amount</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {billSummaries.length === 0 ? (
+                    <TR><TD colSpan={3} className="text-center text-muted-foreground py-4">No RA Bills generated.</TD></TR>
+                  ) : (
+                    billSummaries.map((b: any) => (
+                      <TR key={b.id}>
+                        <TD className="font-medium whitespace-nowrap">{b.billNo}</TD>
+                        <TD className="text-muted-foreground whitespace-nowrap">{formatDate(b.date)}</TD>
+                        <TD className="text-right font-bold text-emerald-600 whitespace-nowrap">{formatINR(b.netAmount)}</TD>
+                      </TR>
+                    ))
+                  )}
+                </TBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 
         {/* INTERNAL LABOUR PAYMENTS */}
-        <Card className="print:shadow-none print:border-none print:break-inside-avoid">
+        <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-bold flex items-center gap-2">
               <Users className="h-5 w-5 text-indigo-500" />
@@ -439,13 +441,13 @@ export function SiteExpensesTracker({ site }: { site: any }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="max-h-[300px] overflow-y-auto print:max-h-none print:overflow-visible pr-2">
+            <div className="max-h-[300px] overflow-auto print:max-h-none print:overflow-visible">
               <Table>
                 <THead>
                   <TR>
-                    <TH>Date</TH>
-                    <TH>Labour Name</TH>
-                    <TH className="text-right">Amount Paid</TH>
+                    <TH className="whitespace-nowrap">Date</TH>
+                    <TH className="whitespace-nowrap">Labour Name</TH>
+                    <TH className="text-right whitespace-nowrap">Amount Paid</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -454,9 +456,9 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                   ) : (
                     allLabourPayments.map((p: any) => (
                       <TR key={p.id}>
-                        <TD className="text-muted-foreground">{formatDate(p.date)}</TD>
-                        <TD className="font-medium">{p.labourName}</TD>
-                        <TD className="text-right font-bold text-rose-600">{formatINR(p.amount)}</TD>
+                        <TD className="text-muted-foreground whitespace-nowrap">{formatDate(p.date)}</TD>
+                        <TD className="font-medium whitespace-nowrap">{p.labourName}</TD>
+                        <TD className="text-right font-bold text-rose-600 whitespace-nowrap">{formatINR(p.amount)}</TD>
                       </TR>
                     ))
                   )}
@@ -472,7 +474,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
         </Card>
 
         {/* SUPPLY LABOURS */}
-        <Card className="print:shadow-none print:border-none print:break-inside-avoid">
+        <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-bold flex items-center gap-2">
               <HardHat className="h-5 w-5 text-orange-500" />
@@ -480,13 +482,13 @@ export function SiteExpensesTracker({ site }: { site: any }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="max-h-[300px] overflow-y-auto print:max-h-none print:overflow-visible pr-2">
+            <div className="max-h-[300px] overflow-auto print:max-h-none print:overflow-visible">
               <Table>
                 <THead>
                   <TR>
-                    <TH>Date</TH>
-                    <TH>Description</TH>
-                    <TH className="text-right">Total Cost</TH>
+                    <TH className="whitespace-nowrap">Date</TH>
+                    <TH className="whitespace-nowrap">Description</TH>
+                    <TH className="text-right whitespace-nowrap">Total Cost</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -495,9 +497,9 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                   ) : (
                     supplyEntries.map((s: any) => (
                       <TR key={s.id}>
-                        <TD className="text-muted-foreground">{formatDate(s.date)}</TD>
-                        <TD className="font-medium">{s.description}</TD>
-                        <TD className="text-right font-bold text-rose-600">{formatINR(s.totalAmount)}</TD>
+                        <TD className="text-muted-foreground whitespace-nowrap">{formatDate(s.date)}</TD>
+                        <TD className="font-medium break-all min-w-[150px] max-w-[250px]">{s.description}</TD>
+                        <TD className="text-right font-bold text-rose-600 whitespace-nowrap">{formatINR(s.totalAmount)}</TD>
                       </TR>
                     ))
                   )}
@@ -513,14 +515,14 @@ export function SiteExpensesTracker({ site }: { site: any }) {
         </Card>
 
         {/* MANUAL EXPENSES */}
-        <Card className="print:shadow-none print:border-none print:break-inside-avoid">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between pb-3 gap-4">
             <CardTitle className="text-lg font-bold flex items-center gap-2">
-              <Banknote className="h-5 w-5 text-rose-500" />
-              Manual & Petty Expenses
+              <Banknote className="h-5 w-5 text-rose-500 shrink-0" />
+              <span>Manual & Petty Expenses</span>
             </CardTitle>
-            <Button onClick={() => setIsRecording(!isRecording)} size="sm" className="gap-1 bg-rose-600 hover:bg-rose-700 print:hidden">
-              <Plus className="h-4 w-4" /> Add Expense
+            <Button onClick={() => setIsRecording(!isRecording)} size="sm" className="gap-1 bg-rose-600 hover:bg-rose-700 print:hidden shrink-0 w-full sm:w-auto">
+              <Plus className="h-4 w-4 shrink-0" /> Add Expense
             </Button>
           </CardHeader>
           <CardContent>
@@ -566,14 +568,14 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               </form>
             )}
 
-            <div className="max-h-[300px] overflow-y-auto print:max-h-none print:overflow-visible pr-2">
+            <div className="max-h-[300px] overflow-auto print:max-h-none print:overflow-visible">
               <Table>
                 <THead>
                   <TR>
-                    <TH>Date</TH>
-                    <TH>Details</TH>
-                    <TH className="text-right">Amount</TH>
-                    <TH className="w-10 print:hidden"></TH>
+                    <TH className="whitespace-nowrap">Date</TH>
+                    <TH className="whitespace-nowrap">Details</TH>
+                    <TH className="text-right whitespace-nowrap">Amount</TH>
+                    <TH className="w-10 print:hidden whitespace-nowrap"></TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -583,11 +585,11 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                     manualExpenses.map((e: any) => (
                       <TR key={e.id}>
                         <TD className="text-muted-foreground whitespace-nowrap">{formatDate(e.date)}</TD>
-                        <TD>
-                          <div className="font-medium">{e.paidTo}</div>
-                          <div className="text-xs text-muted-foreground">{e.description}</div>
+                        <TD className="min-w-[150px] max-w-[250px]">
+                          <div className="font-medium break-words">{e.paidTo}</div>
+                          <div className="text-xs text-muted-foreground break-words">{e.description}</div>
                         </TD>
-                        <TD className="text-right font-bold text-rose-600">{formatINR(e.amount)}</TD>
+                        <TD className="text-right font-bold text-rose-600 whitespace-nowrap">{formatINR(e.amount)}</TD>
                         <TD className="text-right print:hidden">
                           <form action={deleteSiteExpenseAction.bind(null, site.id, e.id)}>
                             <Button type="submit" variant="ghost" size="sm" className="h-6 w-6 p-0 text-rose-500 hover:bg-rose-50">

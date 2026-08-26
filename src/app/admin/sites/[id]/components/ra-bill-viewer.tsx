@@ -29,16 +29,16 @@ import {
 function BillHeaderBanner({ site, latestBill, sheetTitle }: { site: any; latestBill: any; sheetTitle?: string }) {
   return (
     <div className="space-y-3 border-b pb-4">
-      <div className="flex items-center justify-between border-b pb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
         <div>
           <h2 className="text-base font-bold uppercase tracking-wider text-foreground">{sheetTitle || "RA Bill Document"}</h2>
-          <p className="text-xs text-muted-foreground font-medium">RCR ENTERPRISES / SSHIVAAY CONSTRUCTIONS</p>
+          <p className="text-xs text-muted-foreground font-medium leading-tight mt-0.5">RCR ENTERPRISES / SSHIVAAY CONSTRUCTIONS</p>
         </div>
-        <div className="text-right font-mono text-xs">
+        <div className="text-left sm:text-right font-mono text-xs flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 sm:gap-1">
           <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 px-2 py-0.5 font-bold">
             Invoice: {latestBill?.billNo || "Draft"}
           </Badge>
-          <p className="text-muted-foreground text-[11px] mt-1">Date: {formatDate(latestBill?.billDate || new Date())}</p>
+          <p className="text-muted-foreground text-[11px]">Date: {formatDate(latestBill?.billDate || new Date())}</p>
         </div>
       </div>
 
@@ -713,16 +713,20 @@ export function RABillViewer({ site }: { site: any }) {
           {(() => {
             const entries = site.supplyLabourEntries || [];
             let totFitterHrs = 0;
+            let totForemanHrs = 0;
             let totHelperHrs = 0;
 
             entries.forEach((se: any) => {
               totFitterHrs += (se.fitterQty || 0) * (se.fitterHours || 8);
+              totForemanHrs += (se.fitterForemanQty || 0) * (se.fitterForemanHours || 8);
               totHelperHrs += (se.helperQty || 0) * (se.helperHours || 8);
             });
 
             const fitterDays = Math.round((totFitterHrs / 8) * 100) / 100;
+            const foremanDays = Math.round((totForemanHrs / 8) * 100) / 100;
             const helperDays = Math.round((totHelperHrs / 8) * 100) / 100;
             const fitterAmt = fitterDays * 1100;
+            const foremanAmt = foremanDays * 1500;
             const helperAmt = helperDays * 800;
 
             return (
@@ -736,6 +740,9 @@ export function RABillViewer({ site }: { site: any }) {
                       <TH className="py-2.5 font-bold text-center">Fitter Count</TH>
                       <TH className="py-2.5 font-bold text-center">Hours</TH>
                       <TH className="py-2.5 font-bold text-center">Total Fitter Hrs</TH>
+                      <TH className="py-2.5 font-bold text-center text-orange-600">Foreman Count</TH>
+                      <TH className="py-2.5 font-bold text-center text-orange-600">Hours</TH>
+                      <TH className="py-2.5 font-bold text-center text-orange-600">Total Foreman Hrs</TH>
                       <TH className="py-2.5 font-bold text-center">Fitter Helper</TH>
                       <TH className="py-2.5 font-bold text-center">Hours</TH>
                       <TH className="py-2.5 font-bold text-center">Total Helper Hrs</TH>
@@ -745,16 +752,20 @@ export function RABillViewer({ site }: { site: any }) {
                   <TBody>
                     {entries.map((se: any) => {
                       const fHrs = (se.fitterQty || 0) * (se.fitterHours || 8);
+                      const fmHrs = (se.fitterForemanQty || 0) * (se.fitterForemanHours || 8);
                       const hHrs = (se.helperQty || 0) * (se.helperHours || 8);
 
                       return (
                         <TR key={se.id}>
                           <TD className="font-mono text-xs whitespace-nowrap">{formatDate(se.date)}</TD>
                           <TD className="font-mono text-xs font-semibold">{se.challanNo || "—"}</TD>
-                          <TD className="font-medium">{se.description}</TD>
+                          <TD className="font-medium break-all whitespace-pre-wrap">{se.description}</TD>
                           <TD className="font-mono text-center">{se.fitterQty || 0}</TD>
                           <TD className="font-mono text-center">{se.fitterHours || 8}h</TD>
                           <TD className="font-mono text-center font-semibold text-blue-600">{fHrs}h</TD>
+                          <TD className="font-mono text-center text-orange-600 bg-orange-50/50">{se.fitterForemanQty || 0}</TD>
+                          <TD className="font-mono text-center text-orange-600 bg-orange-50/50">{se.fitterForemanHours || 8}h</TD>
+                          <TD className="font-mono text-center font-semibold text-orange-600 bg-orange-50/50">{fmHrs}h</TD>
                           <TD className="font-mono text-center">{se.helperQty || 0}</TD>
                           <TD className="font-mono text-center">{se.helperHours || 8}h</TD>
                           <TD className="font-mono text-center font-semibold text-purple-600">{hHrs}h</TD>
@@ -769,6 +780,8 @@ export function RABillViewer({ site }: { site: any }) {
                       <TD colSpan={2}></TD>
                       <TD className="text-center font-mono text-blue-600 font-bold">{totFitterHrs} Hrs</TD>
                       <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-orange-600 font-bold">{totForemanHrs} Hrs</TD>
+                      <TD colSpan={2}></TD>
                       <TD className="text-center font-mono text-purple-600 font-bold">{totHelperHrs} Hrs</TD>
                       <TD></TD>
                     </TR>
@@ -776,6 +789,8 @@ export function RABillViewer({ site }: { site: any }) {
                       <TD colSpan={3} className="text-right text-xs">Total Days (Nos = Hrs / 8)</TD>
                       <TD colSpan={2}></TD>
                       <TD className="text-center font-mono text-blue-600 font-bold">{fitterDays} Nos</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-orange-600 font-bold">{foremanDays} Nos</TD>
                       <TD colSpan={2}></TD>
                       <TD className="text-center font-mono text-purple-600 font-bold">{helperDays} Nos</TD>
                       <TD></TD>
@@ -785,6 +800,8 @@ export function RABillViewer({ site }: { site: any }) {
                       <TD colSpan={2}></TD>
                       <TD className="text-center font-mono text-blue-600 font-bold">₹1,100 /day</TD>
                       <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-orange-600 font-bold">₹1,500 /day</TD>
+                      <TD colSpan={2}></TD>
                       <TD className="text-center font-mono text-purple-600 font-bold">₹800 /day</TD>
                       <TD></TD>
                     </TR>
@@ -792,6 +809,8 @@ export function RABillViewer({ site }: { site: any }) {
                       <TD colSpan={3} className="text-right uppercase tracking-wider text-emerald-800 dark:text-emerald-300">TOTAL SUPPLY AMOUNT (₹)</TD>
                       <TD colSpan={2}></TD>
                       <TD className="text-center font-mono text-blue-600 font-bold">{formatINR(fitterAmt)}</TD>
+                      <TD colSpan={2}></TD>
+                      <TD className="text-center font-mono text-orange-600 font-bold">{formatINR(foremanAmt)}</TD>
                       <TD colSpan={2}></TD>
                       <TD className="text-center font-mono text-purple-600 font-bold">{formatINR(helperAmt)}</TD>
                       <TD className="font-mono text-emerald-600 dark:text-emerald-400 text-right text-base font-black">{formatINR(totalSupplyWork)}</TD>

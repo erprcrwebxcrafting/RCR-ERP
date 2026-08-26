@@ -45,6 +45,16 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
           active: true,
           joiningDate: true,
           dailyWage: true,
+          overtimeRate: true,
+          address: true,
+          aadharNumber: true,
+          aadharCardUrl: true,
+          bankName: true,
+          accountNumber: true,
+          ifscCode: true,
+          bankBranch: true,
+          siteId: true,
+          supervisorId: true,
           labourCategory: { select: { id: true, name: true } },
           supervisor: { select: { id: true, name: true } },
         },
@@ -167,11 +177,11 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
                 <Table>
                   <THead className="bg-slate-50/80 dark:bg-slate-900/80">
                     <TR>
-                      <TH className="font-semibold text-slate-600 dark:text-slate-300">Name & Details</TH>
-                      <TH className="font-semibold text-slate-600 dark:text-slate-300">Category & Wage</TH>
-                      <TH className="font-semibold text-slate-600 dark:text-slate-300">Contact & Info</TH>
-                      <TH className="font-semibold text-slate-600 dark:text-slate-300">Status</TH>
-                      <TH className="w-[120px] text-right font-semibold text-slate-600 dark:text-slate-300">Actions</TH>
+                      <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Name & Details</TH>
+                      <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Category & Wage</TH>
+                      <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Contact & Info</TH>
+                      <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Status</TH>
+                      <TH className="w-[120px] text-right font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Actions</TH>
                     </TR>
                   </THead>
                   <TBody>

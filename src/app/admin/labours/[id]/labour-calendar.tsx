@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
-type Attendance = { id: string; date: string | Date; status: string; overtimeHrs: number; hajari: number; hajariRate: number };
+type Attendance = { id: string; date: string | Date; status: string; overtimeHrs: number; hajari: number; hajariRate: number; remarks?: string | null };
 type Payment = { id: string; date: string | Date; amount: number; reason?: string | null };
 
 export function LabourCalendar({ attendances, payments }: { attendances: Attendance[], payments: Payment[] }) {
@@ -63,9 +63,9 @@ export function LabourCalendar({ attendances, payments }: { attendances: Attenda
 
   return (
     <Card className="mb-6">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
         <CardTitle className="text-lg font-medium">Calendar Overview</CardTitle>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={goToday}>Today</Button>
           <div className="flex items-center gap-1">
             <Button variant="outline" size="icon" onClick={prevMonth}><ChevronLeft className="h-4 w-4" /></Button>
@@ -74,10 +74,12 @@ export function LabourCalendar({ attendances, payments }: { attendances: Attenda
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden border border-border">
-          {weekdays.map(day => (
-            <div key={day} className="bg-muted/50 p-2 text-center text-xs font-medium text-muted-foreground">
+      <CardContent className="overflow-hidden">
+        <div className="overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="min-w-[600px]">
+            <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden border border-border">
+              {weekdays.map(day => (
+                <div key={day} className="bg-muted/50 p-2 text-center text-xs font-medium text-muted-foreground">
               {day}
             </div>
           ))}
@@ -101,6 +103,7 @@ export function LabourCalendar({ attendances, payments }: { attendances: Attenda
                         'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400'}`}>
                       {att.status === 'PRESENT' ? `${att.hajari} Hajari` : att.status === 'ABSENT' ? 'Absent' : 'Half Day'}
                       {att.status === 'PRESENT' && att.hajariRate > 0 && <span className="block font-bold mt-0.5 opacity-80">@ ₹{att.hajariRate}</span>}
+                      {att.remarks && <span className="block text-[9px] leading-tight opacity-90 mt-0.5 italic">{att.remarks}</span>}
                     </div>
                   )}
                   {payments.map(p => (
@@ -113,6 +116,8 @@ export function LabourCalendar({ attendances, payments }: { attendances: Attenda
               </div>
             );
           })}
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>

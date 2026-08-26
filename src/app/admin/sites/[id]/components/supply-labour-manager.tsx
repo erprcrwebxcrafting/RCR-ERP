@@ -282,12 +282,12 @@ export function SupplyLabourManager({ site }: { site: any }) {
             <div className="text-2xl font-black text-amber-600 dark:text-amber-400">
               {formatINR(currentSupplyAmount)}
             </div>
-            <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-2 pt-2 border-t border-amber-500/20 flex-wrap">
-              <span>Foremen: <strong className="text-foreground">{currentForemanHours}h</strong> ({currentForemanDays}d)</span>
-              <span>•</span>
-              <span>Fitters: <strong className="text-foreground">{currentFitterHours}h</strong> ({currentFitterDays}d)</span>
-              <span>•</span>
-              <span>Helpers: <strong className="text-foreground">{currentHelperHours}h</strong> ({currentHelperDays}d)</span>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[10px] text-muted-foreground mt-2 pt-2 border-t border-amber-500/20">
+              <span className="whitespace-nowrap">Foremen: <strong className="text-foreground">{currentForemanHours}h</strong> ({currentForemanDays}d)</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="whitespace-nowrap">Fitters: <strong className="text-foreground">{currentFitterHours}h</strong> ({currentFitterDays}d)</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="whitespace-nowrap">Helpers: <strong className="text-foreground">{currentHelperHours}h</strong> ({currentHelperDays}d)</span>
             </div>
           </CardContent>
         </Card>
@@ -307,12 +307,12 @@ export function SupplyLabourManager({ site }: { site: any }) {
             <div className="text-2xl font-black text-blue-600 dark:text-blue-400">
               {formatINR(prevSupplyAmount)}
             </div>
-            <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-2 pt-2 border-t border-blue-500/20 flex-wrap">
-              <span>Foremen: <strong className="text-foreground">{prevForemanHours}h</strong> ({prevForemanDays}d)</span>
-              <span>•</span>
-              <span>Fitters: <strong className="text-foreground">{prevFitterHours}h</strong> ({prevFitterDays}d)</span>
-              <span>•</span>
-              <span>Helpers: <strong className="text-foreground">{prevHelperHours}h</strong> ({prevHelperDays}d)</span>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[10px] text-muted-foreground mt-2 pt-2 border-t border-blue-500/20">
+              <span className="whitespace-nowrap">Foremen: <strong className="text-foreground">{prevForemanHours}h</strong> ({prevForemanDays}d)</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="whitespace-nowrap">Fitters: <strong className="text-foreground">{prevFitterHours}h</strong> ({prevFitterDays}d)</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="whitespace-nowrap">Helpers: <strong className="text-foreground">{prevHelperHours}h</strong> ({prevHelperDays}d)</span>
             </div>
           </CardContent>
         </Card>
@@ -332,12 +332,12 @@ export function SupplyLabourManager({ site }: { site: any }) {
             <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
               {formatINR(cumulativeSupplyAmount)}
             </div>
-            <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-2 pt-2 border-t border-emerald-500/20 flex-wrap">
-              <span>Foremen: <strong className="text-foreground">{cumulativeForemanHours}h</strong></span>
-              <span>•</span>
-              <span>Fitters: <strong className="text-foreground">{cumulativeFitterHours}h</strong></span>
-              <span>•</span>
-              <span>Helpers: <strong className="text-foreground">{cumulativeHelperHours}h</strong></span>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[10px] text-muted-foreground mt-2 pt-2 border-t border-emerald-500/20">
+              <span className="whitespace-nowrap">Foremen: <strong className="text-foreground">{cumulativeForemanHours}h</strong></span>
+              <span className="hidden sm:inline">•</span>
+              <span className="whitespace-nowrap">Fitters: <strong className="text-foreground">{cumulativeFitterHours}h</strong></span>
+              <span className="hidden sm:inline">•</span>
+              <span className="whitespace-nowrap">Helpers: <strong className="text-foreground">{cumulativeHelperHours}h</strong></span>
             </div>
           </CardContent>
         </Card>
@@ -562,26 +562,26 @@ export function SupplyLabourManager({ site }: { site: any }) {
               <Table>
                 <THead className="bg-muted/60">
                   <TR>
-                    <TH className="w-32">Date</TH>
-                    <TH className="w-20">Challan</TH>
+                    <TH className="w-32 whitespace-nowrap">Date</TH>
+                    <TH className="w-20 whitespace-nowrap">Challan</TH>
                     <TH className="min-w-[220px] max-w-[300px] whitespace-normal break-words">Work Description</TH>
-                    <TH className="w-16 text-center text-orange-600">F.Mn</TH>
-                    <TH className="w-16 text-center text-orange-600">FM. Hrs</TH>
-                    <TH className="w-20 text-center text-orange-600">FM. Rate</TH>
-                    <TH className="w-16 text-center text-orange-500 font-bold">Tot FM.Hrs</TH>
-                    <TH className="w-24 text-right text-orange-500 font-bold">FM. Amt (₹)</TH>
-                    <TH className="w-16 text-center">Fitter</TH>
-                    <TH className="w-16 text-center">F. Hrs</TH>
-                    <TH className="w-20 text-center">F. Rate</TH>
-                    <TH className="w-16 text-center text-blue-500 font-bold">Tot F.Hrs</TH>
-                    <TH className="w-24 text-right text-blue-500 font-bold">F. Amt (₹)</TH>
-                    <TH className="w-16 text-center">Helper</TH>
-                    <TH className="w-16 text-center">H. Hrs</TH>
-                    <TH className="w-20 text-center">H. Rate</TH>
-                    <TH className="w-16 text-center text-purple-500 font-bold">Tot H.Hrs</TH>
-                    <TH className="w-24 text-right text-purple-500 font-bold">H. Amt (₹)</TH>
-                    <TH className="w-24 text-right">Total Amt (₹)</TH>
-                    <TH className="w-12 text-right">Action</TH>
+                    <TH className="w-16 text-center text-orange-600 whitespace-nowrap">F.Mn</TH>
+                    <TH className="w-16 text-center text-orange-600 whitespace-nowrap">FM. Hrs</TH>
+                    <TH className="w-20 text-center text-orange-600 whitespace-nowrap">FM. Rate</TH>
+                    <TH className="w-16 text-center text-orange-500 font-bold whitespace-nowrap">Tot FM.Hrs</TH>
+                    <TH className="w-24 text-right text-orange-500 font-bold whitespace-nowrap">FM. Amt (₹)</TH>
+                    <TH className="w-16 text-center whitespace-nowrap">Fitter</TH>
+                    <TH className="w-16 text-center whitespace-nowrap">F. Hrs</TH>
+                    <TH className="w-20 text-center whitespace-nowrap">F. Rate</TH>
+                    <TH className="w-16 text-center text-blue-500 font-bold whitespace-nowrap">Tot F.Hrs</TH>
+                    <TH className="w-24 text-right text-blue-500 font-bold whitespace-nowrap">F. Amt (₹)</TH>
+                    <TH className="w-16 text-center whitespace-nowrap">Helper</TH>
+                    <TH className="w-16 text-center whitespace-nowrap">H. Hrs</TH>
+                    <TH className="w-20 text-center whitespace-nowrap">H. Rate</TH>
+                    <TH className="w-16 text-center text-purple-500 font-bold whitespace-nowrap">Tot H.Hrs</TH>
+                    <TH className="w-24 text-right text-purple-500 font-bold whitespace-nowrap">H. Amt (₹)</TH>
+                    <TH className="w-24 text-right whitespace-nowrap">Total Amt (₹)</TH>
+                    <TH className="w-12 text-right whitespace-nowrap">Action</TH>
                   </TR>
                 </THead>
                 <TBody>

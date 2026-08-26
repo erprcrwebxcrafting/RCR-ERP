@@ -14,14 +14,16 @@ import { Pagination } from "@/components/ui/pagination";
 import { ActiveToggle } from "@/components/ui/active-toggle";
 import { AadharUpload } from "@/components/ui/aadhar-upload";
 import { toggleLabourActive } from "@/app/admin/labours/actions";
+import { PaymentSlipAction } from "@/components/ui/payment-slip-actions";
 
-export default async function LabourLedgerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ payoutPage?: string; transferPage?: string; attendancePage?: string }> }) {
+export default async function LabourLedgerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ payoutPage?: string; transferPage?: string; attendancePage?: string; wageHistoryPage?: string }> }) {
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
   
   const payoutPage = Math.max(1, parseInt(resolvedSearchParams.payoutPage || "1", 10));
   const transferPage = Math.max(1, parseInt(resolvedSearchParams.transferPage || "1", 10));
   const attendancePage = Math.max(1, parseInt(resolvedSearchParams.attendancePage || "1", 10));
+  const wageHistoryPage = Math.max(1, parseInt(resolvedSearchParams.wageHistoryPage || "1", 10));
   const PAGE_SIZE = 5;
 
   const labourRaw = await prisma.labour.findUnique({
@@ -32,6 +34,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
       attendances: { orderBy: { date: "desc" }, take: 30 },
       payments: { orderBy: { date: "desc" } },
       transferHistory: { include: { fromSite: true, toSite: true }, orderBy: { transferDate: "desc" } },
+      wageHistory: { orderBy: { effectiveDate: "desc" } },
     } as any,
   });
 
@@ -75,11 +78,14 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
     })
   ]);
 
-  let totalEarned = 0;
   const presentDays = attendanceAgg._sum.hajari ?? 0;
-
-  // Approximate earned using current daily wage (exact per-record rate not needed for summary)
-  totalEarned = presentDays * dailyWage;
+  let totalEarned = 0;
+  for (const record of allAttendance) {
+    if (record.hajari > 0) {
+      const rate = record.hajariRate || dailyWage || 0;
+      totalEarned += record.hajari * rate;
+    }
+  }
 
 
   const totalPaid = labour.payments.reduce((sum: any, p: any) => sum + p.amount, 0);
@@ -88,8 +94,11 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
   const totalPayments = (labour.payments || []).length;
   const paginatedPayments = (labour.payments || []).slice((payoutPage - 1) * PAGE_SIZE, payoutPage * PAGE_SIZE);
 
-  const totalTransfers = (labour.transferHistory || []).length;
-  const paginatedTransfers = (labour.transferHistory || []).slice((transferPage - 1) * PAGE_SIZE, transferPage * PAGE_SIZE);
+  const totalTransfers = labour.transferHistory.length;
+  const paginatedTransfers = labour.transferHistory.slice((transferPage - 1) * PAGE_SIZE, transferPage * PAGE_SIZE);
+
+  const totalWageHistory = labour.wageHistory?.length || 0;
+  const paginatedWageHistory = (labour.wageHistory || []).slice((wageHistoryPage - 1) * PAGE_SIZE, wageHistoryPage * PAGE_SIZE);
 
   const totalAttendances = (labour.attendances || []).length;
   const paginatedAttendances = (labour.attendances || []).slice((attendancePage - 1) * PAGE_SIZE, attendancePage * PAGE_SIZE);
@@ -108,40 +117,31 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
               <User className="h-3.5 w-3.5" />
               Labour Ledger
             </div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
-              {labour.name}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                {labour.name}
+              </h1>
               <Badge variant={labour.active ? "default" : "destructive"} className={`text-[10px] uppercase font-bold shadow-none ${labour.active ? 'bg-emerald-500 hover:bg-emerald-600' : ''}`}>
                 {labour.active ? "Active" : "Inactive"}
               </Badge>
-            </h1>
-            <div className="mt-2">
-              <ActiveToggle id={labour.id} active={labour.active} entityName={labour.name} onToggle={toggleLabourActive} />
+              <div className="ml-1">
+                <ActiveToggle id={labour.id} active={labour.active} entityName={labour.name} onToggle={toggleLabourActive} />
+              </div>
             </div>
-            <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium flex items-center gap-2">
+            <p className="text-slate-500 dark:text-slate-400 mt-2.5 font-medium flex items-center gap-2 text-xs sm:text-sm">
               <Building className="h-4 w-4 shrink-0 text-indigo-500" />
               {labour.site.projectName} <span className="text-slate-300 dark:text-slate-700">•</span> {labour.labourCategory.name}
             </p>
           </div>
         </div>
         
-        <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
-          <DownloadHajariSlip data={{
-            companyName: "RCR INFRASTRUCTURE",
-            companyAddress: "Mumbai, Maharashtra, India",
-            labourName: labour.name,
-            labourId: `LAB-${labour.id.substring(0, 6).toUpperCase()}`,
-            category: labour.labourCategory.name,
-            siteName: labour.site.projectName,
-            dateOfJoining: labour.joiningDate ? formatDate(labour.joiningDate) : formatDate(labour.createdAt),
-            bankName: labour.bankName,
-            accountNumber: labour.accountNumber,
-            ifscCode: labour.ifscCode,
-            wageRate: dailyWage,
-            totalHajari: presentDays,
-            earnedAmount: totalEarned,
-            advancePaid: totalPaid,
-            netPayable: balance
-          }} />
+        <div className="flex w-full sm:w-auto items-center gap-2 sm:gap-3 mt-4 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-slate-800">
+          <div className="flex-1 sm:flex-none [&>button]:w-full">
+            <DownloadHajariSlip labourId={labour.id} />
+          </div>
+          <div className="flex-1 sm:flex-none [&>button]:w-full [&_button]:w-full">
+            <LabourForm sites={sites as any} supervisors={allSupervisors} labour={labour} />
+          </div>
         </div>
       </div>
 
@@ -150,7 +150,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
             <div className="space-y-4 flex-1 w-full">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-sm">
                 <div className="space-y-1.5">
                   <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-blue-500" /> Phone</div>
                   <div className="font-semibold text-slate-800 dark:text-slate-100">{labour.phone || "—"}</div>
@@ -175,23 +175,19 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
                   <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5 text-rose-500" /> IFSC Code</div>
                   <div className="font-semibold text-slate-800 dark:text-slate-100">{labour.ifscCode || "—"}</div>
                 </div>
-                <div className="space-y-1.5 col-span-2 md:col-span-2">
+                <div className="space-y-1.5 col-span-1 sm:col-span-2 md:col-span-2">
                   <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5">Bank Branch</div>
                   <div className="font-semibold text-slate-800 dark:text-slate-100">{labour.bankBranch || "—"}</div>
                 </div>
-                <div className="space-y-1.5 col-span-2 md:col-span-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 mt-2">
+                <div className="space-y-1.5 col-span-1 sm:col-span-2 md:col-span-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 mt-2">
                   <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-1">Address</div>
                   <div className="font-medium text-slate-700 dark:text-slate-300">{labour.address || "—"}</div>
                 </div>
                 {/* Aadhar Card Upload */}
-                <div className="col-span-2 md:col-span-4 border-t border-slate-100 dark:border-slate-800 pt-4 mt-2">
+                <div className="col-span-1 sm:col-span-2 md:col-span-4 border-t border-slate-100 dark:border-slate-800 pt-4 mt-2">
                   <AadharUpload type="labour" id={labour.id} currentUrl={labour.aadharCardUrl} />
                 </div>
               </div>
-            </div>
-            
-            <div className="shrink-0 flex items-center md:items-start justify-end w-full md:w-auto border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800 pt-6 md:pt-0 md:pl-6">
-               <LabourForm sites={sites as any} supervisors={allSupervisors} labour={labour} />
             </div>
           </div>
         </CardContent>
@@ -208,7 +204,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
               </div>
             </div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Hajari Rate</p>
-            <p className="text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{dailyWage}</p>
+            <p className="text-2xl sm:text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{dailyWage}</p>
             <p className="text-xs text-slate-400 font-medium mt-1">Per Hajari</p>
           </CardContent>
         </Card>
@@ -222,7 +218,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
               </div>
             </div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Earned</p>
-            <p className="text-3xl font-black tracking-tight text-emerald-600 dark:text-emerald-500">₹{totalEarned.toLocaleString("en-IN")}</p>
+            <p className="text-2xl sm:text-3xl font-black tracking-tight text-emerald-600 dark:text-emerald-500">₹{totalEarned.toLocaleString("en-IN")}</p>
             <p className="text-xs text-slate-400 font-medium mt-1">From {presentDays} Hajaris</p>
           </CardContent>
         </Card>
@@ -236,7 +232,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
               </div>
             </div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Paid</p>
-            <p className="text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{totalPaid.toLocaleString("en-IN")}</p>
+            <p className="text-2xl sm:text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{totalPaid.toLocaleString("en-IN")}</p>
             <p className="text-xs text-slate-400 font-medium mt-1">Across {labour.payments.length} transactions</p>
           </CardContent>
         </Card>
@@ -250,7 +246,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
               </div>
             </div>
             <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${balance > 0 ? "text-rose-600/80 dark:text-rose-400/80" : "text-slate-500 dark:text-slate-400"}`}>Outstanding Balance</p>
-            <p className={`text-3xl font-black tracking-tight ${balance > 0 ? "text-rose-600 dark:text-rose-500" : "text-slate-800 dark:text-slate-100"}`}>
+            <p className={`text-2xl sm:text-3xl font-black tracking-tight ${balance > 0 ? "text-rose-600 dark:text-rose-500" : "text-slate-800 dark:text-slate-100"}`}>
               ₹{balance.toLocaleString("en-IN")}
             </p>
             <p className={`text-xs font-medium mt-1 ${balance > 0 ? "text-rose-500/70 dark:text-rose-400/70" : "text-slate-400"}`}>Amount to be cleared</p>
@@ -260,17 +256,20 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
 
       <LabourCalendar attendances={allAttendance as any} payments={labour.payments} />
 
-      <div className="grid gap-8 md:grid-cols-2">
+      <div className="grid gap-6 sm:gap-8 grid-cols-1 md:grid-cols-2">
         {/* Payouts Section */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
                 <History className="h-4 w-4 text-indigo-600" />
               </div>
-              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Payment History</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">Payment History</h2>
             </div>
-            <PaymentForm labourId={labour.id} />
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <PaymentSlipAction entityId={labour.id} entityType="LABOUR" variant="statement" />
+              <PaymentForm labourId={labour.id} />
+            </div>
           </div>
           <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md">
             <div className="overflow-x-auto">
@@ -280,6 +279,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
                     <TH className="font-semibold text-slate-600 dark:text-slate-300">Date</TH>
                     <TH className="font-semibold text-slate-600 dark:text-slate-300">Amount</TH>
                     <TH className="font-semibold text-slate-600 dark:text-slate-300">Details</TH>
+                    <TH className="text-right font-semibold text-slate-600 dark:text-slate-300">Slip</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -291,11 +291,14 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
                         <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{p.reason || "Payout"}</div>
                         {p.transactionId && <div className="text-xs text-slate-500 mt-0.5 font-mono">Tx: {p.transactionId}</div>}
                       </TD>
+                      <TD className="text-right">
+                        <PaymentSlipAction entityId={labour.id} entityType="LABOUR" paymentId={p.id} />
+                      </TD>
                     </TR>
                   ))}
                   {totalPayments === 0 && (
                     <TR>
-                      <TD colSpan={3} className="py-12 text-center">
+                      <TD colSpan={4} className="py-12 text-center">
                         <div className="inline-flex flex-col items-center justify-center">
                           <History className="h-8 w-8 text-slate-300 mb-3" />
                           <p className="text-slate-500 font-medium">No payments recorded yet.</p>
@@ -322,7 +325,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
             <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
               <Calendar className="h-4 w-4 text-emerald-600" />
             </div>
-            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Recent Attendance</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">Recent Attendance</h2>
           </div>
           <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md">
             <div className="overflow-x-auto">
@@ -383,7 +386,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
           <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
             <ArrowRightLeft className="h-4 w-4 text-blue-600" />
           </div>
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Transfer History</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">Transfer History</h2>
         </div>
         <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md">
           <div className="overflow-x-auto">
@@ -431,6 +434,55 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
           totalItems={totalTransfers} 
           pageSize={PAGE_SIZE} 
           pageParam="transferPage"
+        />
+      </div>
+      
+      {/* Rate History Section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
+            <TrendingUp className="h-4 w-4 text-orange-600" />
+          </div>
+          <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">Rate History</h2>
+        </div>
+        <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md">
+          <div className="overflow-x-auto">
+            <Table>
+              <THead className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
+                <TR>
+                  <TH className="font-semibold text-slate-600 dark:text-slate-300">Effective Date</TH>
+                  <TH className="font-semibold text-slate-600 dark:text-slate-300">Recorded On</TH>
+                  <TH className="font-semibold text-slate-600 dark:text-slate-300">New Hajari Rate</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {paginatedWageHistory.map((w: any) => (
+                  <TR key={w.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <TD className="whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">{formatDate(w.effectiveDate)}</TD>
+                    <TD className="whitespace-nowrap font-medium text-slate-500 dark:text-slate-400 text-sm">{formatDate(w.createdAt)}</TD>
+                    <TD className="font-bold text-emerald-600 dark:text-emerald-400">₹{w.dailyWage}</TD>
+                  </TR>
+                ))}
+                {totalWageHistory === 0 && (
+                  <TR>
+                    <TD colSpan={3} className="py-12 text-center">
+                      <div className="inline-flex flex-col items-center justify-center">
+                        <TrendingUp className="h-8 w-8 text-slate-300 mb-3" />
+                        <p className="text-slate-500 font-medium">No rate changes recorded.</p>
+                      </div>
+                    </TD>
+                  </TR>
+                )}
+              </TBody>
+            </Table>
+          </div>
+        </Card>
+        <Pagination 
+          currentPage={wageHistoryPage} 
+          totalPages={Math.ceil(totalWageHistory / PAGE_SIZE)} 
+          totalItems={totalWageHistory} 
+          pageSize={PAGE_SIZE} 
+          pageParam="wageHistoryPage"
         />
       </div>
     </div>

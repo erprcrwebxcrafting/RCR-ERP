@@ -89,7 +89,7 @@ export default async function ProfilePage() {
             {assignedSites.length > 0 ? (
               <ul className="space-y-3">
                 {assignedSites.map((assignment) => (
-                  <li key={assignment.id} className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 transition-colors hover:border-blue-200 dark:hover:border-blue-500/30">
+                  <li key={assignment.site.id} className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 transition-colors hover:border-blue-200 dark:hover:border-blue-500/30">
                     <div className="p-2 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg shrink-0">
                       <MapPin className="h-5 w-5" />
                     </div>

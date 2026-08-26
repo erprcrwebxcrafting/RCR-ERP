@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/password-input";
 import { Label } from "@/components/ui/label";
-import { Plus, X, User, Mail, Phone, Lock, IndianRupee, MapPin, CreditCard, Building2, Calendar, Landmark, Hash, ChevronDown, UserPlus } from "lucide-react";
+import { Plus, X, User, Mail, Phone, Lock, IndianRupee, MapPin, CreditCard, Building2, Calendar, Landmark, Hash, ChevronDown, UserPlus, CheckCircle2 } from "lucide-react";
 import { createSupervisor } from "./actions";
 import { toast } from "sonner";
 import { validatePhone, validateAadhar, validateIFSC, validateEmail, validatePositiveNumber } from "@/lib/validations";
+import { AadharUpload } from "@/components/ui/aadhar-upload";
 
 type SiteOption = { id: string; projectName: string };
 
@@ -17,6 +18,7 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
   const [isPending, startTransition] = useTransition();
   const [selectedSites, setSelectedSites] = useState<string[]>([]);
   const [siteDropdownOpen, setSiteDropdownOpen] = useState(false);
+  const [aadharUrl, setAadharUrl] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -131,8 +133,8 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
         </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] transition-all" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-0 shadow-2xl z-[101] max-h-[90vh] overflow-y-auto">
+        <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-all" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-0 shadow-2xl z-50 max-h-[90vh] overflow-y-auto">
           
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white flex items-center justify-between sticky top-0 z-10">
             <div>
@@ -193,14 +195,30 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
                   <Label className={labelClass}>
                     <CreditCard className="h-3.5 w-3.5 text-violet-500" /> Aadhar Number (12 Digits)
                   </Label>
-                  <Input name="aadharNumber" maxLength={12} placeholder="1234 5678 9012" className={`${inputClass} font-mono`} />
+                  <Input name="aadharNumber" maxLength={12} placeholder="1234 5678 9012" className={`${inputClass} mt-1.5 font-mono`} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className={labelClass}>
                     <IndianRupee className="h-3.5 w-3.5 text-rose-500" /> Monthly Salary (₹)
                   </Label>
-                  <Input name="monthlySalary" type="number" placeholder="e.g. 30000" className={`${inputClass} font-mono font-bold`} />
+                  <Input name="monthlySalary" type="number" placeholder="e.g. 30000" className={`${inputClass} font-mono font-bold mt-1.5`} />
                 </div>
+              </div>
+
+              {/* Aadhar Upload Box */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2">
+                <input type="hidden" name="aadharCardUrl" value={aadharUrl || ""} />
+                <AadharUpload 
+                  type="supervisor" 
+                  id={`temp-${Date.now()}`} 
+                  onUploadSuccess={setAadharUrl} 
+                  currentUrl={aadharUrl} 
+                />
+                {aadharUrl && (
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                    <CheckCircle2 className="h-4 w-4" /> Document Attached
+                  </div>
+                )}
               </div>
             </div>
 

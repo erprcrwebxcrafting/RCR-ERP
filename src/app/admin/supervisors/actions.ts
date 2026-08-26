@@ -15,6 +15,7 @@ export async function createSupervisor(formData: FormData) {
   // New personal fields
   const address = (formData.get("address") as string || "").trim() || null;
   const aadharNumber = (formData.get("aadharNumber") as string || "").trim() || null;
+  const aadharCardUrl = (formData.get("aadharCardUrl") as string || "").trim() || null;
   const dateOfJoiningStr = formData.get("dateOfJoining") as string;
   const dateOfJoining = dateOfJoiningStr ? new Date(dateOfJoiningStr) : null;
 
@@ -77,6 +78,7 @@ export async function createSupervisor(formData: FormData) {
       monthlySalary,
       address,
       aadharNumber,
+      aadharCardUrl,
       dateOfJoining,
       accountNumber,
       ifscCode,
@@ -84,6 +86,19 @@ export async function createSupervisor(formData: FormData) {
       bankBranch,
     } 
   });
+
+  if (monthlySalary !== null) {
+    const dailyWage = monthlySalary / 30;
+    // @ts-ignore
+    await prisma.supervisorWageHistory.create({
+      data: {
+        supervisorId: supervisor.id,
+        monthlySalary,
+        dailyWage,
+        effectiveDate: dateOfJoining || new Date(),
+      }
+    });
+  }
 
   // ✅ Max 3 active sites validation
   if (siteIds.length > 3) {
@@ -116,6 +131,7 @@ export async function updateSupervisor(id: string, formData: FormData) {
   // New personal fields
   const address = (formData.get("address") as string || "").trim() || null;
   const aadharNumber = (formData.get("aadharNumber") as string || "").trim() || null;
+  const aadharCardUrl = (formData.get("aadharCardUrl") as string || "").trim() || null;
   const dateOfJoiningStr = formData.get("dateOfJoining") as string;
   const dateOfJoining = dateOfJoiningStr ? new Date(dateOfJoiningStr) : null;
 
@@ -127,6 +143,10 @@ export async function updateSupervisor(id: string, formData: FormData) {
 
   // Site assignments
   const siteIds = formData.getAll("siteIds[]") as string[];
+  
+  const effectiveDateStr = formData.get("effectiveDate") as string;
+  const effectiveDate = effectiveDateStr ? new Date(effectiveDateStr) : null;
+  if (effectiveDate) effectiveDate.setHours(0, 0, 0, 0);
 
   if (!name || !email) {
     throw new Error("Supervisor name and email are required.");
@@ -168,6 +188,7 @@ export async function updateSupervisor(id: string, formData: FormData) {
     monthlySalary,
     address,
     aadharNumber,
+    aadharCardUrl,
     dateOfJoining,
     accountNumber,
     ifscCode,
@@ -189,10 +210,41 @@ export async function updateSupervisor(id: string, formData: FormData) {
     throw new Error("A supervisor can only manage a maximum of 3 sites simultaneously. Please reduce the number of assigned sites.");
   }
 
+  const oldSupervisor = await prisma.user.findUnique({ where: { id } });
+
   await prisma.user.update({
     where: { id },
     data,
   });
+
+  if (effectiveDate && monthlySalary !== null && oldSupervisor?.monthlySalary !== monthlySalary) {
+    const dailyWage = monthlySalary / 30;
+    
+    // @ts-ignore: Prisma client cache issue in IDE
+    await prisma.supervisorWageHistory.create({
+      data: {
+        supervisorId: id,
+        monthlySalary,
+        dailyWage,
+        effectiveDate
+      }
+    });
+    
+    await prisma.$transaction([
+      prisma.supervisorAttendance.updateMany({
+        where: { supervisorId: id, date: { gte: effectiveDate }, status: "PRESENT" },
+        data: { dailyRate: dailyWage, earnedAmount: dailyWage }
+      }),
+      prisma.supervisorAttendance.updateMany({
+        where: { supervisorId: id, date: { gte: effectiveDate }, status: "HALF_DAY" },
+        data: { dailyRate: dailyWage, earnedAmount: Math.round((dailyWage / 2) * 100) / 100 }
+      }),
+      prisma.supervisorAttendance.updateMany({
+        where: { supervisorId: id, date: { gte: effectiveDate }, status: "ABSENT" },
+        data: { dailyRate: dailyWage, earnedAmount: 0 }
+      })
+    ]);
+  }
 
   // Sync site assignments: delete removed, add new
   const currentAssignments = await prisma.siteSupervisor.findMany({

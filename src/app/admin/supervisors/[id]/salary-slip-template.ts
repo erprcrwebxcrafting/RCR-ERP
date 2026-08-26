@@ -10,6 +10,8 @@ export function generateSalarySlipHTML(data: {
   bankName: string;
   accountNumber: string;
   monthlySalary: number;
+  salaryString?: string;
+  hasMultipleRates?: boolean;
   presentDays: number;
   halfDays: number;
   absentDays: number;
@@ -23,342 +25,440 @@ export function generateSalarySlipHTML(data: {
     year: 'numeric'
   });
 
+  const totalPayableDays = data.presentDays + (data.halfDays * 0.5);
+
   return `
-    <style>
-      @page {
-        size: A4 portrait;
-        margin: 5mm; /* Very small margin so browser doesn't cut it off, but doesn't add huge padding */
-      }
-      
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        padding: 0;
-        background-color: #ffffff;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
-
-      .slip-wrapper {
-        font-family: Arial, Helvetica, sans-serif;
-        max-width: 100%;
-        margin: 0;
-        background-color: #ffffff;
-        color: #000000;
-        line-height: 1.3;
-      }
-
-      /* Internal padding to give it a professional border offset, without taking too much vertical space */
-      .slip-content {
-        padding: 20px 30px;
-        box-sizing: border-box;
-      }
-
-      .header-section {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 10px;
-      }
-
-      .logo-container {
-        width: 120px;
-      }
-
-      .logo-container img {
-        width: 100%;
-        height: auto;
-      }
-
-      .company-title {
-        text-align: right;
-      }
-
-      .company-title h1 {
-        margin: 0;
-        font-size: 22px;
-        color: #000000;
-        font-weight: bold;
-      }
-
-      .company-title h2 {
-        margin: 2px 0 0;
-        font-size: 16px;
-        color: #2b579a;
-        font-weight: bold;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-
-      .divider {
-        height: 2px;
-        background-color: #000000;
-        margin: 8px 0 15px;
-      }
-
-      /* Employee Info Section */
-      .info-grid {
-        display: grid;
-        grid-template-columns: 140px 1fr;
-        row-gap: 4px;
-        font-size: 11px;
-        margin-bottom: 15px;
-      }
-
-      .info-label {
-        font-weight: normal;
-        color: #333333;
-      }
-
-      .info-value {
-        font-weight: bold;
-        color: #000000;
-      }
-
-      .info-value::before {
-        content: ":  ";
-        white-space: pre;
-        font-weight: normal;
-      }
-
-      /* Tables styling */
-      .section-title {
-        font-size: 12px;
-        font-weight: bold;
-        color: #000000;
-        margin: 0 0 4px;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 12px;
-        font-size: 11px;
-      }
-
-      th {
-        background-color: #dbe4f0;
-        color: #000000;
-        font-weight: bold;
-        padding: 5px 8px;
-        text-align: left;
-        border: 1px solid #a0a0a0;
-      }
-
-      th:last-child {
-        text-align: right;
-      }
-
-      td {
-        padding: 5px 8px;
-        border: 1px solid #a0a0a0;
-        color: #000000;
-      }
-
-      td:last-child {
-        text-align: right;
-      }
-
-      tr.total-row td {
-        font-weight: bold;
-        background-color: #f2f2f2;
-      }
-
-      /* Footer summary */
-      .footer-summary {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 20px;
-        font-size: 11px;
-        page-break-inside: avoid;
-      }
-
-      .summary-details {
-        display: grid;
-        grid-template-columns: 90px 1fr;
-        row-gap: 4px;
-      }
-
-      .summary-label {
-        font-weight: normal;
-        color: #333333;
-      }
-
-      .summary-value {
-        font-weight: bold;
-        color: #000000;
-      }
-      
-      .summary-value.net-pay {
-        font-size: 13px;
-      }
-
-      .summary-value::before {
-        content: ":  ";
-        white-space: pre;
-        font-weight: normal;
-      }
-
-      .signature-section {
-        text-align: center;
-        width: 220px;
-        margin-top: 10px;
-      }
-
-      .signature-label {
-        margin-bottom: 30px;
-        color: #333333;
-        text-align: left;
-        padding-left: 20px;
-      }
-
-      .signature-line {
-        border-top: 1px solid #000000;
-        padding-top: 4px;
-        font-weight: bold;
-        color: #000000;
-      }
-
-      @media print {
-        .slip-wrapper {
-          page-break-after: auto;
-        }
-      }
-    </style>
-
-    <div class="slip-wrapper">
-      <div class="slip-content">
-        
-        <div class="header-section">
-          <div class="logo-container">
-            <img src="/rcr-logo.png" alt="Company Logo" onerror="this.style.display='none'" />
-          </div>
-          <div class="company-title">
-            <h1>${data.companyName}</h1>
-            <h2>PAYROLL SLIP</h2>
-          </div>
-        </div>
-
-        <div class="divider"></div>
-
-        <div class="info-grid">
-          <div class="info-label">Month</div>
-          <div class="info-value">${data.month} ${data.year}</div>
-
-          <div class="info-label">Employee Name</div>
-          <div class="info-value">${data.employeeName}</div>
-
-          <div class="info-label">Employee ID</div>
-          <div class="info-value">${data.employeeId}</div>
-
-          <div class="info-label">Designation</div>
-          <div class="info-value">${data.designation}</div>
-
-          <div class="info-label">Date of Joining</div>
-          <div class="info-value">${data.dateOfJoining}</div>
-
-          <div class="info-label">Pay Date</div>
-          <div class="info-value">${currentDate}</div>
-        </div>
-
-        <!-- Attendance Stats -->
-        <h3 class="section-title">Attendance Details</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>Days</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Total Present Days</td>
-              <td>${data.presentDays}</td>
-            </tr>
-            <tr>
-              <td>Total Half Days</td>
-              <td>${data.halfDays}</td>
-            </tr>
-            <tr>
-              <td>Total Absent Days</td>
-              <td>${data.absentDays}</td>
-            </tr>
-            <tr class="total-row">
-              <td>Total Payable Days</td>
-              <td>${data.presentDays + (data.halfDays * 0.5)}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- Earnings Table -->
-        <h3 class="section-title">Earnings</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>Amount (INR)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Basic Monthly Salary</td>
-              <td>₹${data.monthlySalary.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-            </tr>
-            <tr>
-              <td>Earned Salary (Based on Attendance)</td>
-              <td>₹${data.earnedSalary.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-            </tr>
-            <tr class="total-row">
-              <td>Total Earnings</td>
-              <td>₹${data.earnedSalary.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- Deductions Table -->
-        <h3 class="section-title">Deductions</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>Amount (INR)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Advance Payments / Deductions</td>
-              <td>₹${data.advancePaid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-            </tr>
-            <tr class="total-row">
-              <td>Total Deductions</td>
-              <td>₹${data.advancePaid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- Footer / Signature -->
-        <div class="footer-summary">
-          <div class="summary-details">
-            <div class="summary-label">Net Pay</div>
-            <div class="summary-value net-pay">₹${data.netPayable.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
-            
-            <div class="summary-label">Bank Account</div>
-            <div class="summary-value">${data.accountNumber || "N/A"}</div>
-            
-            <div class="summary-label">Bank Name</div>
-            <div class="summary-value">${data.bankName || "N/A"}</div>
-          </div>
+    <html>
+      <head>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 0;
+          }
           
-          <div class="signature-section">
-            <div class="signature-label">Authorized by:</div>
-            <div class="signature-line">For ${data.companyName}</div>
+          * {
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+          }
+
+          body {
+            margin: 0;
+            padding: 0;
+            background-color: #f8fafc;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          .slip-wrapper {
+            width: 210mm;
+            height: 297mm;
+            max-height: 297mm;
+            margin: 0 auto;
+            background-color: #ffffff;
+            color: #0f172a;
+            position: relative;
+            overflow: hidden;
+          }
+
+          .slip-content {
+            padding: 40px 50px;
+            position: relative;
+            z-index: 2;
+          }
+
+          /* Header Styling */
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #1e40af;
+            margin-bottom: 25px;
+          }
+
+          .logo-area img {
+            height: 60px;
+            width: auto;
+          }
+
+          .company-info {
+            text-align: right;
+          }
+
+          .company-name {
+            font-size: 26px;
+            font-weight: 800;
+            color: #1e40af;
+            letter-spacing: -0.5px;
+            margin: 0 0 4px 0;
+            text-transform: uppercase;
+          }
+
+          .slip-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #64748b;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin: 0;
+          }
+
+          /* Employee Information Grid */
+          .employee-card {
+            background-color: #f1f5f9;
+            border-radius: 12px;
+            padding: 20px 25px;
+            margin-bottom: 25px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 30px;
+            border: 1px solid #e2e8f0;
+          }
+
+          .info-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+          }
+
+          .info-label {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0f172a;
+          }
+
+          /* Attendance Summary */
+          .section-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1e40af;
+            margin: 0 0 15px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          }
+
+          .attendance-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+          }
+
+          .stat-card {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+            padding: 12px 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+          }
+
+          .stat-card.payable {
+            border-left-color: #10b981;
+            background-color: #ecfdf5;
+          }
+
+          .stat-card.absent {
+            border-left-color: #ef4444;
+          }
+
+          .stat-label {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 4px;
+          }
+
+          .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f172a;
+          }
+
+          /* Earnings and Deductions */
+          .financials-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 25px;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+
+          th {
+            background-color: #f8fafc;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 10px 15px;
+            text-align: left;
+            border-bottom: 2px solid #e2e8f0;
+          }
+
+          th.amount-col {
+            text-align: right;
+          }
+
+          td {
+            padding: 12px 15px;
+            font-size: 13px;
+            color: #334155;
+            border-bottom: 1px solid #f1f5f9;
+          }
+
+          td.amount-col {
+            text-align: right;
+            font-weight: 500;
+          }
+
+          tr.total-row td {
+            background-color: #f8fafc;
+            font-weight: 700;
+            color: #0f172a;
+            border-top: 2px solid #e2e8f0;
+            border-bottom: none;
+            padding: 15px;
+          }
+
+          /* Net Pay Section */
+          .net-pay-section {
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            border-radius: 12px;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #ffffff;
+            margin-bottom: 30px;
+          }
+
+          .net-pay-label {
+            font-size: 14px;
+            font-weight: 500;
+            opacity: 0.9;
+            margin-bottom: 4px;
+          }
+
+          .net-pay-amount {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -1px;
+          }
+
+          .net-pay-words {
+            font-size: 12px;
+            font-style: italic;
+            opacity: 0.8;
+            margin-top: 4px;
+          }
+
+          /* Footer / Signatures */
+          .footer-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            margin-top: 30px;
+            padding-top: 10px;
+            align-items: end;
+          }
+
+          .signature-box {
+            text-align: center;
+          }
+
+          .signature-line {
+            width: 200px;
+            border-top: 1px solid #94a3b8;
+            margin: 0 auto 10px auto;
+          }
+
+          .signature-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            text-transform: uppercase;
+          }
+
+          /* Watermark */
+          .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 120px;
+            font-weight: 900;
+            color: rgba(226, 232, 240, 0.4);
+            z-index: 1;
+            pointer-events: none;
+            white-space: nowrap;
+          }
+
+        </style>
+      </head>
+      <body>
+        <div class="slip-wrapper">
+          <div class="watermark">RCR ERP</div>
+          
+          <div class="slip-content">
+            <!-- Header -->
+            <div class="header">
+              <div class="logo-area">
+                <img src="/rcr-logo.png" alt="RCR Logo" onerror="this.style.display='none'" />
+              </div>
+              <div class="company-info">
+                <h1 class="company-name">${data.companyName}</h1>
+                <h2 class="slip-title">PAYSLIP &bull; ${data.month.toUpperCase()} ${data.year}</h2>
+              </div>
+            </div>
+
+            <!-- Employee Info -->
+            <div class="employee-card">
+              <div class="info-group">
+                <span class="info-label">Employee Name</span>
+                <span class="info-value">${data.employeeName}</span>
+              </div>
+              <div class="info-group">
+                <span class="info-label">Employee ID</span>
+                <span class="info-value">${data.employeeId}</span>
+              </div>
+              <div class="info-group">
+                <span class="info-label">Designation</span>
+                <span class="info-value">${data.designation}</span>
+              </div>
+              <div class="info-group">
+                <span class="info-label">Date of Joining</span>
+                <span class="info-value">${data.dateOfJoining}</span>
+              </div>
+              <div class="info-group">
+                <span class="info-label">Bank Name</span>
+                <span class="info-value">${data.bankName}</span>
+              </div>
+              <div class="info-group">
+                <span class="info-label">Account Number</span>
+                <span class="info-value">${data.accountNumber}</span>
+              </div>
+            </div>
+
+            <!-- Attendance Summaries -->
+            <h3 class="section-title">Attendance Summary</h3>
+            <div class="attendance-grid">
+              <div class="stat-card">
+                <div class="stat-label">Full Days</div>
+                <div class="stat-value">${data.presentDays}</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Half Days</div>
+                <div class="stat-value">${data.halfDays}</div>
+              </div>
+              <div class="stat-card absent">
+                <div class="stat-label">Absent Days</div>
+                <div class="stat-value">${data.absentDays}</div>
+              </div>
+              <div class="stat-card payable">
+                <div class="stat-label">Total Payable Days</div>
+                <div class="stat-value">${totalPayableDays}</div>
+              </div>
+            </div>
+
+            <!-- Financials Grid -->
+            <div class="financials-grid">
+              <!-- Earnings -->
+              <div class="financial-section">
+                <h3 class="section-title">Earnings</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Description</th>
+                      <th class="amount-col">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Basic Salary (Per Month) ${data.hasMultipleRates ? '<span style="font-size: 10px; color: #ef4444; font-weight: bold; margin-left: 6px;">(Revised)</span>' : ''}</td>
+                      <td class="amount-col">${data.salaryString ? data.salaryString : '₹' + data.monthlySalary.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                    <tr>
+                      <td>Salary Earned (Based on Days)</td>
+                      <td class="amount-col">₹${data.earnedSalary.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                    <tr class="total-row">
+                      <td>Total Earnings</td>
+                      <td class="amount-col">₹${data.earnedSalary.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Deductions -->
+              <div class="financial-section">
+                <h3 class="section-title">Deductions</h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Description</th>
+                      <th class="amount-col">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Advance / Previous Dues</td>
+                      <td class="amount-col">₹${data.advancePaid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                    <tr>
+                      <td>Other Deductions</td>
+                      <td class="amount-col">₹0.00</td>
+                    </tr>
+                    <tr class="total-row">
+                      <td>Total Deductions</td>
+                      <td class="amount-col">₹${data.advancePaid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Net Pay Highlight -->
+            <div class="net-pay-section">
+              <div>
+                <div class="net-pay-label">Net Payable Amount</div>
+                <div class="net-pay-amount">₹${data.netPayable.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
+              </div>
+              <div style="text-align: right;">
+                <div class="net-pay-label">Pay Date</div>
+                <div style="font-size: 16px; font-weight: 600;">${currentDate}</div>
+              </div>
+            </div>
+
+            <!-- Signatures -->
+            <div class="footer-section">
+              <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="signature-title">Employee Signature</div>
+              </div>
+              <div class="signature-box" style="margin-left: auto; text-align: right;">
+                <img src="/sign&logo.png" alt="Authorized Signatory" style="max-width: 160px; height: auto; margin-bottom: 5px; display: inline-block;" onerror="this.style.display='none'" />
+              </div>
+            </div>
+
           </div>
         </div>
-
-      </div>
-    </div>
+      </body>
+    </html>
   `;
 }

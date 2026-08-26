@@ -9,6 +9,7 @@ import { Edit, X, User, Mail, Phone, IndianRupee, MapPin, CreditCard, Building2,
 import { updateSupervisor } from "./actions";
 import { toast } from "sonner";
 import { validatePhone, validateAadhar, validateIFSC, validateEmail, validatePositiveNumber } from "@/lib/validations";
+import { AadharUpload } from "@/components/ui/aadhar-upload";
 
 type SiteOption = { id: string; projectName: string };
 
@@ -18,6 +19,10 @@ export function EditSupervisorForm({ supervisor, allSites = [] }: { supervisor: 
   const currentSiteIds = (supervisor.assignedSites || []).map((a: any) => a.siteId || a.site?.id);
   const [selectedSites, setSelectedSites] = useState<string[]>(currentSiteIds);
   const [siteDropdownOpen, setSiteDropdownOpen] = useState(false);
+  
+  const initialSalaryStr = supervisor.monthlySalary?.toString() || "";
+  const [currentSalaryInput, setCurrentSalaryInput] = useState(initialSalaryStr);
+  const showEffectiveDate = currentSalaryInput !== initialSalaryStr;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -189,9 +194,32 @@ export function EditSupervisorForm({ supervisor, allSites = [] }: { supervisor: 
                   <Label className={labelClass}>
                     <IndianRupee className="h-3.5 w-3.5 text-rose-500" /> Monthly Salary (₹)
                   </Label>
-                  <Input name="monthlySalary" type="number" defaultValue={supervisor.monthlySalary ?? ""} placeholder="e.g. 30000" className={`${inputClass} font-mono font-bold`} />
+                  <Input name="monthlySalary" type="number" value={currentSalaryInput} onChange={(e) => setCurrentSalaryInput(e.target.value)} placeholder="e.g. 30000" className={`${inputClass} font-mono font-bold`} />
                 </div>
               </div>
+
+              <div className="pt-2">
+                <AadharUpload 
+                  type="supervisor" 
+                  id={supervisor.id} 
+                  currentUrl={supervisor.aadharCardUrl} 
+                />
+              </div>
+              
+              {showEffectiveDate && (
+                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                  <Label className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                    Rate Effective Date <span className="text-rose-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500 pointer-events-none" />
+                    <Input name="effectiveDate" type="date" required defaultValue={new Date().toISOString().split('T')[0]} className="pl-10 h-11 rounded-lg bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-300 dark:border-emerald-800 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all font-bold text-emerald-700 dark:text-emerald-400" />
+                  </div>
+                  <p className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                    * Past attendances from this date onwards will be automatically updated to the new rate.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Bank Details Section */}

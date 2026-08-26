@@ -599,16 +599,20 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
           {(() => {
             const entries = supplyLabourEntries || [];
             let totFitterHrs = 0;
+            let totForemanHrs = 0;
             let totHelperHrs = 0;
 
             entries.forEach((se: any) => {
               totFitterHrs += (se.fitterQty || 0) * (se.fitterHours || 8);
+              totForemanHrs += (se.fitterForemanQty || 0) * (se.fitterForemanHours || 8);
               totHelperHrs += (se.helperQty || 0) * (se.helperHours || 8);
             });
 
             const fitterDays = Math.round((totFitterHrs / 8) * 100) / 100;
+            const foremanDays = Math.round((totForemanHrs / 8) * 100) / 100;
             const helperDays = Math.round((totHelperHrs / 8) * 100) / 100;
             const fitterAmt = fitterDays * 1100;
+            const foremanAmt = foremanDays * 1500;
             const helperAmt = helperDays * 800;
 
             return (
@@ -622,6 +626,9 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                       <TH className="py-2.5 font-bold text-center">Fitter Count</TH>
                       <TH className="py-2.5 font-bold text-center">Hours</TH>
                       <TH className="py-2.5 font-bold text-center">Total Fitter Hrs</TH>
+                      <TH className="py-2.5 font-bold text-center text-orange-600">Foreman Count</TH>
+                      <TH className="py-2.5 font-bold text-center text-orange-600">Hours</TH>
+                      <TH className="py-2.5 font-bold text-center text-orange-600">Total Foreman Hrs</TH>
                       <TH className="py-2.5 font-bold text-center">Fitter Helper</TH>
                       <TH className="py-2.5 font-bold text-center">Hours</TH>
                       <TH className="py-2.5 font-bold text-center">Total Helper Hrs</TH>
@@ -638,16 +645,20 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                     ) : (
                       entries.map((se: any) => {
                         const fHrs = (se.fitterQty || 0) * (se.fitterHours || 8);
+                        const fmHrs = (se.fitterForemanQty || 0) * (se.fitterForemanHours || 8);
                         const hHrs = (se.helperQty || 0) * (se.helperHours || 8);
 
                         return (
                           <TR key={se.id}>
                             <TD className="font-mono text-xs whitespace-nowrap">{formatDate(se.date)}</TD>
                             <TD className="font-mono text-xs font-semibold">{se.challanNo || "—"}</TD>
-                            <TD className="font-medium">{se.description}</TD>
+                            <TD className="font-medium break-all whitespace-pre-wrap">{se.description}</TD>
                             <TD className="font-mono text-center">{se.fitterQty || 0}</TD>
                             <TD className="font-mono text-center">{se.fitterHours || 8}h</TD>
                             <TD className="font-mono text-center font-semibold text-blue-600">{fHrs}h</TD>
+                            <TD className="font-mono text-center text-orange-600 bg-orange-50/50">{se.fitterForemanQty || 0}</TD>
+                            <TD className="font-mono text-center text-orange-600 bg-orange-50/50">{se.fitterForemanHours || 8}h</TD>
+                            <TD className="font-mono text-center font-semibold text-orange-600 bg-orange-50/50">{fmHrs}h</TD>
                             <TD className="font-mono text-center">{se.helperQty || 0}</TD>
                             <TD className="font-mono text-center">{se.helperHours || 8}h</TD>
                             <TD className="font-mono text-center font-semibold text-purple-600">{hHrs}h</TD>
@@ -662,6 +673,8 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                           <TD colSpan={2}></TD>
                           <TD className="text-center font-mono text-blue-600 font-bold">{totFitterHrs} Hrs</TD>
                           <TD colSpan={2}></TD>
+                          <TD className="text-center font-mono text-orange-600 font-bold">{totForemanHrs} Hrs</TD>
+                          <TD colSpan={2}></TD>
                           <TD className="text-center font-mono text-purple-600 font-bold">{totHelperHrs} Hrs</TD>
                           <TD></TD>
                         </TR>
@@ -669,6 +682,8 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                           <TD colSpan={3} className="text-right text-xs">Total Days (Nos = Hrs / 8)</TD>
                           <TD colSpan={2}></TD>
                           <TD className="text-center font-mono text-blue-600 font-bold">{fitterDays} Nos</TD>
+                          <TD colSpan={2}></TD>
+                          <TD className="text-center font-mono text-orange-600 font-bold">{foremanDays} Nos</TD>
                           <TD colSpan={2}></TD>
                           <TD className="text-center font-mono text-purple-600 font-bold">{helperDays} Nos</TD>
                           <TD></TD>
@@ -678,6 +693,8 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                           <TD colSpan={2}></TD>
                           <TD className="text-center font-mono text-blue-600 font-bold">₹1,100 /day</TD>
                           <TD colSpan={2}></TD>
+                          <TD className="text-center font-mono text-orange-600 font-bold">₹1,500 /day</TD>
+                          <TD colSpan={2}></TD>
                           <TD className="text-center font-mono text-purple-600 font-bold">₹800 /day</TD>
                           <TD></TD>
                         </TR>
@@ -686,8 +703,10 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                           <TD colSpan={2}></TD>
                           <TD className="text-center font-mono text-blue-600 font-bold">{formatINR(fitterAmt)}</TD>
                           <TD colSpan={2}></TD>
+                          <TD className="text-center font-mono text-orange-600 font-bold">{formatINR(foremanAmt)}</TD>
+                          <TD colSpan={2}></TD>
                           <TD className="text-center font-mono text-purple-600 font-bold">{formatINR(helperAmt)}</TD>
-                          <TD className="font-mono text-emerald-600 dark:text-emerald-400 text-right text-base font-black">{formatINR(totalSupplyWork)}</TD>
+                          <TD className="font-mono text-emerald-600 dark:text-emerald-400 text-right text-base font-black">{formatINR(bill.totalSupplyWork)}</TD>
                         </TR>
                   </TBody>
                 </Table>

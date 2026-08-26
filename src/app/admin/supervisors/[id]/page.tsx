@@ -5,6 +5,7 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { AttendanceCalendar } from "./attendance-calendar";
+import { PaymentSlipAction } from "@/components/ui/payment-slip-actions";
 import {
   ArrowLeft,
   Wallet,
@@ -36,12 +37,13 @@ import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
-export default async function SupervisorLedgerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ payoutPage?: string; transferPage?: string }> }) {
+export default async function SupervisorLedgerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ payoutPage?: string; transferPage?: string; wageHistoryPage?: string }> }) {
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
   
   const payoutPage = Math.max(1, parseInt(resolvedSearchParams.payoutPage || "1", 10));
   const transferPage = Math.max(1, parseInt(resolvedSearchParams.transferPage || "1", 10));
+  const wageHistoryPage = Math.max(1, parseInt(resolvedSearchParams.wageHistoryPage || "1", 10));
   const PAGE_SIZE = 5;
 
   const [supervisor, allSites] = await Promise.all([
@@ -91,6 +93,10 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
           select: { id: true, date: true, status: true, earnedAmount: true, dailyRate: true },
           orderBy: { date: "desc" }
         },
+        // @ts-ignore
+        wageHistory: {
+          orderBy: { effectiveDate: "desc" }
+        },
       },
     }),
     prisma.site.findMany({
@@ -120,31 +126,14 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
   const totalPayments = (sv.supervisorPayments || []).length;
   const paginatedPayments = (sv.supervisorPayments || []).slice((payoutPage - 1) * PAGE_SIZE, payoutPage * PAGE_SIZE);
 
-  const totalTransfers = (sv.supervisorTransfers || []).length;
-  const paginatedTransfers = (sv.supervisorTransfers || []).slice((transferPage - 1) * PAGE_SIZE, transferPage * PAGE_SIZE);
+  const totalTransfers = sv.supervisorTransfers.length;
+  const paginatedTransfers = sv.supervisorTransfers.slice((transferPage - 1) * PAGE_SIZE, transferPage * PAGE_SIZE);
+
+  const totalWageHistory = sv.wageHistory?.length || 0;
+  const paginatedWageHistory = (sv.wageHistory || []).slice((wageHistoryPage - 1) * PAGE_SIZE, wageHistoryPage * PAGE_SIZE);
 
   const currentMonth = new Date().toLocaleString("en-US", { month: "long" });
   const currentYear = new Date().getFullYear().toString();
-  
-  const slipData = {
-    companyName: "RCR INFRASTRUCTURE",
-    companyAddress: "Mumbai, Maharashtra, India",
-    employeeName: sv.name,
-    employeeId: `EMP-${sv.id.substring(0, 6).toUpperCase()}`,
-    designation: "Supervisor",
-    month: currentMonth,
-    year: currentYear,
-    dateOfJoining: sv.dateOfJoining ? formatDate(sv.dateOfJoining) : formatDate(sv.createdAt),
-    bankName: sv.bankName,
-    accountNumber: sv.accountNumber,
-    monthlySalary: monthlySalary,
-    presentDays: presentDays,
-    halfDays: halfDays,
-    absentDays: 0,
-    earnedSalary: totalEarned,
-    advancePaid: totalPaid,
-    netPayable: balance > 0 ? balance : 0,
-  };
 
   return (
     <div className="space-y-8 pb-10 animate-in fade-in duration-700">
@@ -162,23 +151,25 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
               <Wallet className="h-3.5 w-3.5" />
               Supervisor Profile & Ledger
             </div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
-              {sv.name}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                {sv.name}
+              </h1>
               <Badge variant={sv.active ? "default" : "destructive"} className={`text-[10px] uppercase font-bold shadow-none ${sv.active ? 'bg-emerald-500 hover:bg-emerald-600' : ''}`}>
                 {sv.active ? "Active" : "Inactive"}
               </Badge>
-            </h1>
-            <div className="mt-2">
-              <ActiveToggle id={sv.id} active={sv.active} entityName={sv.name} onToggle={toggleSupervisorActive} />
+              <div className="ml-1">
+                <ActiveToggle id={sv.id} active={sv.active} entityName={sv.name} onToggle={toggleSupervisorActive} />
+              </div>
             </div>
-            <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium text-sm">
+            <p className="text-slate-500 dark:text-slate-400 mt-2.5 font-medium text-xs sm:text-sm break-words">
               Assigned Sites: {sv.assignedSites.map((a: any) => a.site.projectName).join(", ") || "No active sites"}
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-            <DownloadSalarySlip data={slipData} />
-            <EditSupervisorForm supervisor={sv} allSites={allSites} />
+        <div className="flex w-full sm:w-auto items-center gap-2 sm:gap-3 mt-4 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-slate-800">
+            <div className="flex-1 sm:flex-none [&>button]:w-full"><DownloadSalarySlip supervisorId={sv.id} /></div>
+            <div className="flex-1 sm:flex-none [&>button]:w-full"><EditSupervisorForm supervisor={sv} allSites={allSites} /></div>
         </div>
       </div>
 
@@ -193,8 +184,8 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
               </div>
             </div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Monthly Salary</p>
-            <p className="text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{monthlySalary.toLocaleString("en-IN")}</p>
-            <p className="text-xs text-slate-400 font-medium mt-1">Daily Rate: ₹{standardDailyRate}/day (÷ 30)</p>
+            <p className="text-2xl sm:text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{monthlySalary.toLocaleString("en-IN")}</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">Daily Rate: ₹{standardDailyRate}/day (÷ 30)</p>
           </CardContent>
         </Card>
 
@@ -207,10 +198,10 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
               </div>
             </div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Attendance Earned</p>
-            <p className="text-3xl font-black tracking-tight text-emerald-600 dark:text-emerald-500">
+            <p className="text-2xl sm:text-3xl font-black tracking-tight text-emerald-600 dark:text-emerald-500">
               ₹{totalEarned.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
             </p>
-            <p className="text-xs text-slate-400 font-medium mt-1">
+            <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">
               For {totalDaysEquivalent} days present ({presentDays} full, {halfDays} half)
             </p>
           </CardContent>
@@ -225,8 +216,8 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
               </div>
             </div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Paid</p>
-            <p className="text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{totalPaid.toLocaleString("en-IN")}</p>
-            <p className="text-xs text-slate-400 font-medium mt-1">Across {sv.supervisorPayments.length} payout(s)</p>
+            <p className="text-2xl sm:text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{totalPaid.toLocaleString("en-IN")}</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">Across {sv.supervisorPayments.length} payout(s)</p>
           </CardContent>
         </Card>
 
@@ -239,7 +230,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
               </div>
             </div>
             <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${balance > 0 ? "text-rose-600/80 dark:text-rose-400/80" : "text-slate-500 dark:text-slate-400"}`}>Outstanding Balance</p>
-            <p className={`text-3xl font-black tracking-tight ${balance > 0 ? "text-rose-600 dark:text-rose-500" : "text-slate-800 dark:text-slate-100"}`}>
+            <p className={`text-2xl sm:text-3xl font-black tracking-tight ${balance > 0 ? "text-rose-600 dark:text-rose-500" : "text-slate-800 dark:text-slate-100"}`}>
               ₹{balance.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
             </p>
             <p className={`text-xs font-medium mt-1 ${balance > 0 ? "text-rose-500/70 dark:text-rose-400/70" : "text-slate-400"}`}>
@@ -346,17 +337,20 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
 
       <AttendanceCalendar supervisor={sv} initialAttendances={attendances} />
 
-      <div className="grid gap-8 md:grid-cols-2">
+      <div className="grid gap-6 sm:gap-8 grid-cols-1 md:grid-cols-2">
         {/* Payment History Section */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
                 <History className="h-4 w-4 text-indigo-600" />
               </div>
-              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Payout History</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">Payout History</h2>
             </div>
-            <SupervisorPaymentForm supervisorId={sv.id} />
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <PaymentSlipAction entityId={sv.id} entityType="SUPERVISOR" variant="statement" />
+              <SupervisorPaymentForm supervisorId={sv.id} />
+            </div>
           </div>
           <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md">
             <div className="overflow-x-auto">
@@ -366,6 +360,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
                     <TH className="font-semibold text-slate-600 dark:text-slate-300">Date</TH>
                     <TH className="font-semibold text-slate-600 dark:text-slate-300">Amount</TH>
                     <TH className="font-semibold text-slate-600 dark:text-slate-300">Details</TH>
+                    <TH className="text-right font-semibold text-slate-600 dark:text-slate-300">Slip</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -377,11 +372,14 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
                         <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{p.reason || "Payout"}</div>
                         {p.transactionId && <div className="text-xs text-slate-500 mt-0.5 font-mono">Tx: {p.transactionId}</div>}
                       </TD>
+                      <TD className="text-right">
+                        <PaymentSlipAction entityId={sv.id} entityType="SUPERVISOR" paymentId={p.id} />
+                      </TD>
                     </TR>
                   ))}
                   {totalPayments === 0 && (
                     <TR>
-                      <TD colSpan={3} className="py-12 text-center">
+                      <TD colSpan={4} className="py-12 text-center">
                         <div className="inline-flex flex-col items-center justify-center">
                           <History className="h-8 w-8 text-slate-300 mb-3" />
                           <p className="text-slate-500 font-medium">No payments recorded yet.</p>
@@ -408,7 +406,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
             <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
               <ArrowRightLeft className="h-4 w-4 text-blue-600" />
             </div>
-            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Transfer History</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">Transfer History</h2>
           </div>
           <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md">
             <div className="overflow-x-auto">
@@ -460,6 +458,57 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
             totalItems={totalTransfers} 
             pageSize={PAGE_SIZE} 
             pageParam="transferPage"
+          />
+        </div>
+
+        {/* Rate History Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
+              <TrendingUp className="h-4 w-4 text-orange-600" />
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">Rate History</h2>
+          </div>
+          <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md">
+            <div className="overflow-x-auto -mx-1">
+              <Table>
+                <THead className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
+                  <TR>
+                    <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Effective Date</TH>
+                    <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Recorded On</TH>
+                    <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Monthly Salary</TH>
+                    <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Daily Rate</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {paginatedWageHistory.map((w: any) => (
+                    <TR key={w.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <TD className="whitespace-nowrap font-medium text-slate-700 dark:text-slate-300 text-xs sm:text-sm">{formatDate(w.effectiveDate)}</TD>
+                      <TD className="whitespace-nowrap font-medium text-slate-500 dark:text-slate-400 text-xs sm:text-sm">{formatDate(w.createdAt)}</TD>
+                      <TD className="font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap text-xs sm:text-sm">₹{w.monthlySalary?.toLocaleString("en-IN")}</TD>
+                      <TD className="font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap text-xs sm:text-sm">₹{w.dailyWage}</TD>
+                    </TR>
+                  ))}
+                  {totalWageHistory === 0 && (
+                    <TR>
+                      <TD colSpan={4} className="py-12 text-center">
+                        <div className="inline-flex flex-col items-center justify-center">
+                          <TrendingUp className="h-8 w-8 text-slate-300 mb-3" />
+                          <p className="text-slate-500 font-medium">No rate changes recorded.</p>
+                        </div>
+                      </TD>
+                    </TR>
+                  )}
+                </TBody>
+              </Table>
+            </div>
+          </Card>
+          <Pagination 
+            currentPage={wageHistoryPage} 
+            totalPages={Math.ceil(totalWageHistory / PAGE_SIZE)} 
+            totalItems={totalWageHistory} 
+            pageSize={PAGE_SIZE} 
+            pageParam="wageHistoryPage"
           />
         </div>
       </div>
