@@ -36,8 +36,14 @@ export async function createSupervisor(formData: FormData) {
   }
 
   if (phone) {
-    const cleanedPhone = phone.replace(/\s+/g, "").replace(/^(\+91|91)/, "");
-    if (!/^[6-9]\d{9}$/.test(cleanedPhone)) {
+    let cleanedPhone = phone.replace(/\D/g, "");
+    if (cleanedPhone.length === 12 && cleanedPhone.startsWith("91")) {
+      cleanedPhone = cleanedPhone.substring(2);
+    } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("0")) {
+      cleanedPhone = cleanedPhone.substring(1);
+    }
+    
+    if (!/^[1-9]\d{9}$/.test(cleanedPhone)) {
       return { error: "Please enter a valid 10-digit Indian mobile number." };
     }
   }
@@ -156,8 +162,14 @@ export async function updateSupervisor(id: string, formData: FormData) {
   }
 
   if (phone) {
-    const cleanedPhone = phone.replace(/\s+/g, "").replace(/^(\+91|91)/, "");
-    if (!/^[6-9]\d{9}$/.test(cleanedPhone)) {
+    let cleanedPhone = phone.replace(/\D/g, "");
+    if (cleanedPhone.length === 12 && cleanedPhone.startsWith("91")) {
+      cleanedPhone = cleanedPhone.substring(2);
+    } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("0")) {
+      cleanedPhone = cleanedPhone.substring(1);
+    }
+    
+    if (!/^[1-9]\d{9}$/.test(cleanedPhone)) {
       throw new Error("Please enter a valid 10-digit Indian mobile number.");
     }
   }

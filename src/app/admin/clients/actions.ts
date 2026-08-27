@@ -21,9 +21,15 @@ export async function createClient(formData: FormData) {
   }
 
   if (parsed.phone && parsed.phone.trim()) {
-    const cleanedPhone = parsed.phone.replace(/\s+/g, "").replace(/^(\+91|91)/, "");
-    if (!/^[6-9]\d{9}$/.test(cleanedPhone)) {
-      throw new Error("Please enter a valid 10-digit Indian mobile number.");
+    let cleanedPhone = parsed.phone.replace(/\D/g, "");
+    if (cleanedPhone.length === 12 && cleanedPhone.startsWith("91")) {
+      cleanedPhone = cleanedPhone.substring(2);
+    } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("0")) {
+      cleanedPhone = cleanedPhone.substring(1);
+    }
+    
+    if (!/^[1-9]\d{9}$/.test(cleanedPhone)) {
+      throw new Error("Please enter a valid 10-digit phone number.");
     }
   }
 
@@ -62,9 +68,15 @@ export async function updateClient(id: string, formData: FormData) {
   }
 
   if (parsed.phone && parsed.phone.trim()) {
-    const cleanedPhone = parsed.phone.replace(/\s+/g, "").replace(/^(\+91|91)/, "");
-    if (!/^[6-9]\d{9}$/.test(cleanedPhone)) {
-      throw new Error("Please enter a valid 10-digit Indian mobile number.");
+    let cleanedPhone = parsed.phone.replace(/\D/g, "");
+    if (cleanedPhone.length === 12 && cleanedPhone.startsWith("91")) {
+      cleanedPhone = cleanedPhone.substring(2);
+    } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("0")) {
+      cleanedPhone = cleanedPhone.substring(1);
+    }
+    
+    if (!/^[1-9]\d{9}$/.test(cleanedPhone)) {
+      throw new Error("Please enter a valid 10-digit phone number.");
     }
   }
 

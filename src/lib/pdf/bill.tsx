@@ -915,16 +915,25 @@ function LedgerPage({ data, logoStr, signStr }: any) {
           );
         })}
         <View style={[styles.towerTr, styles.trTotal, { borderBottomWidth: 0 }]} wrap={false}>
-          <Text style={[styles.towerTd, { width: "29%", textAlign: "right", fontFamily: "Helvetica-Bold" }]}>TOTALS</Text>
-          <Text style={[styles.towerTd, { width: "8%", textAlign: "right" }]}>{formatINR(totGross)}</Text>
-          <Text style={[styles.towerTd, { width: "6%", textAlign: "right", backgroundColor: "#ffedd5", color: "#c2410c", fontFamily: "Helvetica-Bold" }]}>{formatINR(totRet)}</Text>
-          <Text style={[styles.towerTd, { width: "8%", textAlign: "right", backgroundColor: "#e0e7ff", color: "#3730a3", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumNet)}</Text>
-          <Text style={[styles.towerTd, { width: "14%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumRecd)}</Text>
-          <Text style={[styles.towerTd, { width: "5%", textAlign: "right", backgroundColor: "#fee2e2", color: "#b91c1c", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumTds)}</Text>
-          <Text style={[styles.towerTd, { width: "8%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumRecd + runCumTds)}</Text>
-          <Text style={[styles.towerTd, { width: "8%", textAlign: "right" }]}></Text>
-          <Text style={[styles.towerTd, { width: "6%", textAlign: "right", backgroundColor: "#ccfbf1", color: "#0f766e", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumGst)}</Text>
-          <Text style={[styles.towerTd, { width: "8%", textAlign: "right" }]}></Text>
+          {(() => {
+            const finalCumAdv = runCumRecd + runCumTds;
+            const finalRunBal = runCumNet - finalCumAdv;
+            const finalBalWithGst = finalRunBal + runCumGst;
+            return (
+              <>
+                <Text style={[styles.towerTd, { width: "29%", textAlign: "right", fontFamily: "Helvetica-Bold" }]}>TOTALS</Text>
+                <Text style={[styles.towerTd, { width: "8%", textAlign: "right" }]}>{formatINR(totGross)}</Text>
+                <Text style={[styles.towerTd, { width: "6%", textAlign: "right", backgroundColor: "#ffedd5", color: "#c2410c", fontFamily: "Helvetica-Bold" }]}>{formatINR(totRet)}</Text>
+                <Text style={[styles.towerTd, { width: "8%", textAlign: "right", backgroundColor: "#e0e7ff", color: "#3730a3", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumNet)}</Text>
+                <Text style={[styles.towerTd, { width: "14%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumRecd)}</Text>
+                <Text style={[styles.towerTd, { width: "5%", textAlign: "right", backgroundColor: "#fee2e2", color: "#b91c1c", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumTds)}</Text>
+                <Text style={[styles.towerTd, { width: "8%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(finalCumAdv)}</Text>
+                <Text style={[styles.towerTd, { width: "8%", textAlign: "right", fontFamily: "Helvetica-Bold", backgroundColor: finalRunBal > 0 ? "#fef2f2" : "#f0fdf4", color: finalRunBal > 0 ? "#dc2626" : "#16a34a" }]}>{formatINR(finalRunBal)}</Text>
+                <Text style={[styles.towerTd, { width: "6%", textAlign: "right", backgroundColor: "#ccfbf1", color: "#0f766e", fontFamily: "Helvetica-Bold" }]}>{formatINR(runCumGst)}</Text>
+                <Text style={[styles.towerTd, { width: "8%", textAlign: "right", fontFamily: "Helvetica-Bold", backgroundColor: finalBalWithGst > 0 ? "#fef2f2" : "#f0fdf4", color: finalBalWithGst > 0 ? "#dc2626" : "#16a34a" }]}>{formatINR(finalBalWithGst)}</Text>
+              </>
+            );
+          })()}
         </View>
       </View>
       <LegendFooter
