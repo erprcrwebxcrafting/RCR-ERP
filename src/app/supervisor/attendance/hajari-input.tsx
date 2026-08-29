@@ -33,15 +33,19 @@ export function HajariInput({
   labourId,
   defaultValue,
   isLocked,
+  maxLimit = 10,
 }: {
   labourId: string;
   defaultValue?: string;
   isLocked: boolean;
+  maxLimit?: number;
 }) {
   const defaultValStr = defaultValue !== undefined ? defaultValue : "1";
   
+  const availableOptions = HAJARI_OPTIONS.filter(o => parseFloat(o.value) <= maxLimit);
+
   const [isCustom, setIsCustom] = useState(() => {
-    return !HAJARI_OPTIONS.some((o) => o.value === defaultValStr);
+    return !availableOptions.some((o) => o.value === defaultValStr);
   });
   
   const [currentValue, setCurrentValue] = useState(defaultValStr);
@@ -122,7 +126,7 @@ export function HajariInput({
           type="number"
           step="0.01"
           min="0"
-          max="10"
+          max={maxLimit}
           name={`hajari__${labourId}`}
           defaultValue={currentValue}
           className={inputClassName}
@@ -164,7 +168,7 @@ export function HajariInput({
             >
               + Custom Hajari Value...
             </button>
-            {HAJARI_OPTIONS.map((opt) => (
+            {availableOptions.map((opt) => (
               <button
                 key={opt.value}
                 type="button"

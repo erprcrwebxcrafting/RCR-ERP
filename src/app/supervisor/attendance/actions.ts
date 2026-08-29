@@ -59,6 +59,11 @@ export async function saveAttendance(siteId: string, formData: FormData) {
     
     if (!labour) continue;
 
+    // Fitter Foreman Hajari Limit Validation
+    if (labour.labourCategory?.name === "Fitter Foreman" && hajari > 1) {
+      return { error: `Validation Error: Fitter Foreman (${labour.name}) cannot have more than 1 hajari per day.` };
+    }
+
     // 2. Joining Date Validation (Cannot mark attendance before joining date)
     const joiningDate = new Date(labour.joiningDate || labour.createdAt);
     joiningDate.setHours(0, 0, 0, 0);
