@@ -220,7 +220,7 @@ export function LabourForm({
               <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <AadharUpload 
                   type="labour"
-                  id={labour?.id || 'new'}
+                  id={labour?.id || `temp-${Date.now()}`}
                   currentUrl={aadharCardUrl}
                   onUploadSuccess={(url) => {
                     setAadharCardUrl(url);

@@ -10,14 +10,14 @@ export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function validatePhone(phone?: string | null): { valid: boolean; error?: string } {
   if (!phone || !phone.trim()) return { valid: true }; // optional
-  let cleaned = phone.replace(/\s+/g, "");
-  if (cleaned.startsWith("+91")) {
-    cleaned = cleaned.slice(3);
-  } else if (cleaned.length === 12 && cleaned.startsWith("91")) {
-    cleaned = cleaned.slice(2);
+  let cleaned = phone.replace(/\D/g, "");
+  if (cleaned.length === 12 && cleaned.startsWith("91")) {
+    cleaned = cleaned.substring(2);
+  } else if (cleaned.length === 11 && cleaned.startsWith("0")) {
+    cleaned = cleaned.substring(1);
   }
   if (!INDIAN_PHONE_REGEX.test(cleaned)) {
-    return { valid: false, error: "Please enter a valid 10-digit Indian mobile number (starts with 6, 7, 8, or 9)." };
+    return { valid: false, error: "Please enter a valid 10-digit Indian mobile number." };
   }
   return { valid: true };
 }

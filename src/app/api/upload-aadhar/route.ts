@@ -54,9 +54,11 @@ export async function POST(req: NextRequest) {
     // Fetch real-world time to bypass the local 2026 time issue
     let realTimestamp = Math.round(Date.now() / 1000);
     try {
-      const timeRes = await fetch("http://worldtimeapi.org/api/timezone/Etc/UTC", { cache: "no-store" });
-      const timeData = await timeRes.json();
-      realTimestamp = timeData.unixtime;
+      const timeRes = await fetch("https://google.com", { method: "HEAD", cache: "no-store" });
+      const dateHeader = timeRes.headers.get("date");
+      if (dateHeader) {
+        realTimestamp = Math.round(new Date(dateHeader).getTime() / 1000);
+      }
     } catch (e) {
       console.warn("Failed to fetch real time, falling back to local time");
     }
@@ -96,7 +98,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Persist URL to DB
-    if (!id.startsWith("temp-")) {
+    if (!id.startsWith("temp-") && id !== "new") {
       if (type === "labour") {
         await prisma.labour.update({ where: { id }, data: { aadharCardUrl: uploadResult.secure_url } });
       } else {
