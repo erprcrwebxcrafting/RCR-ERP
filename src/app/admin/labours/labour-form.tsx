@@ -117,7 +117,11 @@ export function LabourForm({
 
     startTransition(async () => {
       try {
-        await saveLabour(formData);
+        const res = await saveLabour(formData);
+        if (res && res.error) {
+          toast.error("Validation Error", { description: res.error });
+          return;
+        }
         toast.success(labour ? "Labourer details updated successfully!" : "Labourer registered successfully!", {
           description: `${name} has been saved.`,
         });

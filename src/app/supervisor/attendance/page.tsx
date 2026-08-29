@@ -33,20 +33,33 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
     );
   }
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const selectedDateStr = resolvedSearchParams.date || todayStr;
+  const targetDate = new Date(selectedDateStr);
+
   const siteRaw = await prisma.site.findUnique({
     where: { id: siteId },
     include: {
       buildings: true,
-      labourCategories: { include: { labours: { where: { active: true, supervisorId: userId } as any } } },
+      labourCategories: { 
+        include: { 
+          labours: { 
+            where: { 
+              active: true, 
+              supervisorId: userId,
+              OR: [
+                { joiningDate: { lte: targetDate } },
+                { joiningDate: null, createdAt: { lte: targetDate } }
+              ]
+            } as any 
+          } 
+        } 
+      },
     },
   });
   if (!siteRaw) return <div className="p-8 text-center text-slate-500 font-medium">Site not found.</div>;
   
   const site = siteRaw as any;
-
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const selectedDateStr = resolvedSearchParams.date || todayStr;
-  const targetDate = new Date(selectedDateStr);
 
   const existingAttendances = await prisma.attendance.findMany({
     where: {
@@ -218,6 +231,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                                 labourId={p.id}
                                 defaultValue={existing?.hajari !== undefined ? existing.hajari.toString() : "1"}
                                 isLocked={isLocked}
+                                maxLimit={cat.name === "Fitter Foreman" ? 1 : 10}
                               />
                             </td>
                             <td className="px-6 py-4">
