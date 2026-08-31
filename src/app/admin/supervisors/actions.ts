@@ -48,11 +48,12 @@ export async function createSupervisor(formData: FormData) {
     }
   }
 
-  if (aadharNumber) {
-    const cleanedAadhar = aadharNumber.replace(/[\s-]+/g, "");
-    if (!/^\d{12}$/.test(cleanedAadhar)) {
-      return { error: "Aadhar card number must be exactly 12 digits." };
-    }
+  if (!aadharNumber) {
+    return { error: "Aadhar card number is required." };
+  }
+  const cleanedAadhar = aadharNumber.replace(/[\s-]+/g, "");
+  if (!/^\d{12}$/.test(cleanedAadhar)) {
+    return { error: "Aadhar card number must be exactly 12 digits." };
   }
 
   if (ifscCode) {
@@ -174,11 +175,12 @@ export async function updateSupervisor(id: string, formData: FormData) {
     }
   }
 
-  if (aadharNumber) {
-    const cleanedAadhar = aadharNumber.replace(/[\s-]+/g, "");
-    if (!/^\d{12}$/.test(cleanedAadhar)) {
-      throw new Error("Aadhar card number must be exactly 12 digits.");
-    }
+  if (!aadharNumber) {
+    throw new Error("Aadhar card number is required.");
+  }
+  const cleanedAadhar = aadharNumber.replace(/[\s-]+/g, "");
+  if (!/^\d{12}$/.test(cleanedAadhar)) {
+    throw new Error("Aadhar card number must be exactly 12 digits.");
   }
 
   if (ifscCode) {

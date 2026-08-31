@@ -165,14 +165,20 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="aadharNumber" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Aadhar Number (12 Digits)
+                  Aadhar Number (12 Digits) *
                 </Label>
                 <Input
                   id="aadharNumber"
                   name="aadharNumber"
-                  maxLength={12}
-                  placeholder="12-digit UID"
+                  required
+                  maxLength={14}
+                  placeholder="e.g. 1234 5678 9012"
                   className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-indigo-500/20 shadow-sm font-mono"
+                  onChange={(e) => {
+                    let val = e.target.value.replace(/\D/g, "");
+                    if (val.length > 12) val = val.slice(0, 12);
+                    e.target.value = val.replace(/(\d{4})(?=\d)/g, "$1 ");
+                  }}
                 />
                 <input type="hidden" name="aadharCardUrl" value={aadharUrl || ""} />
                 <div className="pt-2">

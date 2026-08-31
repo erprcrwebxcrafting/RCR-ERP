@@ -193,9 +193,20 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className={labelClass}>
-                    <CreditCard className="h-3.5 w-3.5 text-violet-500" /> Aadhar Number (12 Digits)
+                    <CreditCard className="h-3.5 w-3.5 text-violet-500" /> Aadhar Number *
                   </Label>
-                  <Input name="aadharNumber" maxLength={12} placeholder="1234 5678 9012" className={`${inputClass} mt-1.5 font-mono`} />
+                  <Input 
+                    name="aadharNumber" 
+                    required
+                    maxLength={14} 
+                    placeholder="e.g. 1234 5678 9012" 
+                    className={`${inputClass} mt-1.5 font-mono`} 
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/\D/g, "");
+                      if (val.length > 12) val = val.slice(0, 12);
+                      e.target.value = val.replace(/(\d{4})(?=\d)/g, "$1 ");
+                    }}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label className={labelClass}>
