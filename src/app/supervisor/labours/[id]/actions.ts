@@ -96,3 +96,34 @@ export async function toggleLabourActiveSupervisor(labourId: string, active: boo
   revalidatePath("/supervisor/labours");
   revalidatePath(`/supervisor/labours/${labourId}`);
 }
+
+export async function clearIndividualLabourAttendance(labourId: string, dateStr: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+  
+  if (!labourId || !dateStr) {
+    throw new Error("Labour ID and Date are required.");
+  }
+
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+
+  const existing = await prisma.attendance.findUnique({
+    where: { labourId_date: { labourId, date } }
+  });
+
+  if (!existing) return { success: true };
+
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
+    throw new Error(`Cannot clear attendance as it was recorded more than 24 hours ago.`);
+  }
+
+  await prisma.attendance.delete({
+    where: { labourId_date: { labourId, date } }
+  });
+
+  revalidatePath(`/supervisor/labours/${labourId}`);
+  revalidatePath("/supervisor/labours");
+  return { success: true };
+}
