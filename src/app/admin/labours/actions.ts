@@ -67,12 +67,27 @@ export async function saveLabour(formData: FormData) {
       }
     }
 
-    if (parsed.aadharNumber && parsed.aadharNumber.trim()) {
-      const cleanedAadhar = parsed.aadharNumber.replace(/[\s-]+/g, "");
-      if (!/^\d{12}$/.test(cleanedAadhar)) {
-        return { error: "Aadhar card number must be exactly 12 digits." };
-      }
+    if (!parsed.aadharNumber || !parsed.aadharNumber.trim()) {
+      return { error: "Aadhar card number is required." };
     }
+    
+    const cleanedAadhar = parsed.aadharNumber.replace(/[\s-]+/g, "");
+    if (!/^\d{12}$/.test(cleanedAadhar)) {
+      return { error: "Aadhar card number must be exactly 12 digits." };
+    }
+    
+    const existingLabour = await prisma.labour.findFirst({
+      where: {
+        aadharNumber: cleanedAadhar,
+        ...(parsed.id ? { id: { not: parsed.id } } : {})
+      }
+    });
+    
+    if (existingLabour) {
+      return { error: `Aadhar number already exists for another labourer (${existingLabour.name}).` };
+    }
+    
+    parsed.aadharNumber = cleanedAadhar;
 
     if (parsed.ifscCode && parsed.ifscCode.trim()) {
       const cleanedIFSC = parsed.ifscCode.trim().toUpperCase();

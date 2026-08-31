@@ -44,12 +44,27 @@ export async function saveSupervisorLabour(formData: FormData) {
     }
   }
 
-  if (parsed.aadharNumber && parsed.aadharNumber.trim()) {
-    const cleanedAadhar = parsed.aadharNumber.replace(/[\s-]+/g, "");
-    if (!/^\d{12}$/.test(cleanedAadhar)) {
-      throw new Error("Aadhar card number must be exactly 12 digits.");
-    }
+  if (!parsed.aadharNumber || !parsed.aadharNumber.trim()) {
+    throw new Error("Aadhar card number is required.");
   }
+  
+  const cleanedAadhar = parsed.aadharNumber.replace(/[\s-]+/g, "");
+  if (!/^\d{12}$/.test(cleanedAadhar)) {
+    throw new Error("Aadhar card number must be exactly 12 digits.");
+  }
+  
+  const existingLabour = await prisma.labour.findFirst({
+    where: {
+      aadharNumber: cleanedAadhar,
+      ...(parsed.id ? { id: { not: parsed.id } } : {})
+    }
+  });
+
+  if (existingLabour) {
+    throw new Error(`Aadhar number already exists for another labourer (${existingLabour.name}).`);
+  }
+
+  parsed.aadharNumber = cleanedAadhar;
 
   // Verify that the supervisor is actually assigned to this site
   const assignment = await prisma.siteSupervisor.findUnique({
