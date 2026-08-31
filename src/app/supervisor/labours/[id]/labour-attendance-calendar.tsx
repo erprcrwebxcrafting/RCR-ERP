@@ -33,6 +33,7 @@ type Props = {
     id: string;
     name: string;
     dailyWage: number;
+    isForeman?: boolean;
   };
   initialAttendances: AttendanceRecord[];
 };
@@ -256,27 +257,31 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
                           <option value="0">Absent (0 Hajari)</option>
                           <option value="0.5">0.5 Hajari (Half Day)</option>
                           <option value="1">1.0 Hajari (Full Day)</option>
-                          <option value="1.5">1.5 Hajari (1.5 Shifts)</option>
-                          <option value="2">2.0 Hajari (Double Shift)</option>
-                          <option value="2.5">2.5 Hajari (2.5 Shifts)</option>
-                          <option value="3">3.0 Hajari (Triple Shift)</option>
-                          <option value="3.5">3.5 Hajari</option>
-                          <option value="4">4.0 Hajari</option>
-                          <option value="4.5">4.5 Hajari</option>
-                          <option value="5">5.0 Hajari</option>
-                          <option value="5.5">5.5 Hajari</option>
-                          <option value="6">6.0 Hajari</option>
-                          <option value="6.5">6.5 Hajari</option>
-                          <option value="7">7.0 Hajari</option>
-                          <option value="7.5">7.5 Hajari</option>
-                          <option value="8">8.0 Hajari</option>
-                          <option value="8.5">8.5 Hajari</option>
-                          <option value="9">9.0 Hajari</option>
-                          <option value="9.5">9.5 Hajari</option>
-                          <option value="10">10.0 Hajari</option>
-                          <option value="custom" className="font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900">
-                            + Custom Hajari Value...
-                          </option>
+                          {!labour.isForeman && (
+                            <>
+                              <option value="1.5">1.5 Hajari (1.5 Shifts)</option>
+                              <option value="2">2.0 Hajari (Double Shift)</option>
+                              <option value="2.5">2.5 Hajari (2.5 Shifts)</option>
+                              <option value="3">3.0 Hajari (Triple Shift)</option>
+                              <option value="3.5">3.5 Hajari</option>
+                              <option value="4">4.0 Hajari</option>
+                              <option value="4.5">4.5 Hajari</option>
+                              <option value="5">5.0 Hajari</option>
+                              <option value="5.5">5.5 Hajari</option>
+                              <option value="6">6.0 Hajari</option>
+                              <option value="6.5">6.5 Hajari</option>
+                              <option value="7">7.0 Hajari</option>
+                              <option value="7.5">7.5 Hajari</option>
+                              <option value="8">8.0 Hajari</option>
+                              <option value="8.5">8.5 Hajari</option>
+                              <option value="9">9.0 Hajari</option>
+                              <option value="9.5">9.5 Hajari</option>
+                              <option value="10">10.0 Hajari</option>
+                              <option value="custom" className="font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900">
+                                + Custom Hajari Value...
+                              </option>
+                            </>
+                          )}
                         </select>
                       )}
                     </div>

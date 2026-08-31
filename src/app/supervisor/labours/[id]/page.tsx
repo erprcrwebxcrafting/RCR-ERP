@@ -36,6 +36,7 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
   
   const labour = labourRaw as any;
   const dailyWage = labour.dailyWage ?? labour.labourCategory.dailyWage;
+  const isForeman = labour.labourCategory?.name === "Fitter Foreman";
 
   const formattedAttendances = labour.attendances.map((a: any) => ({
     id: a.id,
@@ -132,7 +133,7 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
                 </h2>
               </div>
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 text-blue-700 dark:text-blue-300 font-black px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl flex items-center justify-between text-lg sm:text-xl border border-blue-100 dark:border-blue-900/50 shadow-inner">
-                <span>{dailyWage}</span>
+                <span>{typeof dailyWage === 'number' ? dailyWage.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : dailyWage}</span>
                 <span className="text-xs font-bold uppercase tracking-wider opacity-70">/ hajari</span>
               </div>
             </div>
@@ -148,7 +149,7 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
         {/* Main Content: Attendance Calendar */}
         <div className="w-full">
           <LabourAttendanceCalendar 
-            labour={{ id: labour.id, name: labour.name, dailyWage }} 
+            labour={{ id: labour.id, name: labour.name, dailyWage, isForeman }} 
             initialAttendances={formattedAttendances} 
           />
         </div>
