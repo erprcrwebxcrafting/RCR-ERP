@@ -15,7 +15,7 @@ import {
   Info,
   Lock,
 } from "lucide-react";
-import { markIndividualLabourAttendance } from "./actions";
+import { markIndividualLabourAttendance, clearIndividualLabourAttendance } from "./actions";
 import { toast } from "sonner";
 
 type AttendanceRecord = {
@@ -81,6 +81,20 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
   }
 
   const handleMarkHajari = (day: number, val: string | number) => {
+    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+    if (val === "clear") {
+      startTransition(async () => {
+        try {
+          await clearIndividualLabourAttendance(labour.id, dateStr);
+          toast.success(`Cleared attendance for ${labour.name}`);
+        } catch (err: any) {
+          toast.error(err.message || "Failed to clear attendance");
+        }
+      });
+      return;
+    }
+
     let hajari = typeof val === 'string' ? parseFloat(val) : val;
 
     if (val === "custom") {
@@ -95,7 +109,6 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
       hajari = parsed;
     }
 
-    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     startTransition(async () => {
       try {
         await markIndividualLabourAttendance(labour.id, dateStr, hajari);
@@ -254,6 +267,9 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
                           onChange={(e) => handleMarkHajari(day, e.target.value)}
                         >
                           <option value="" disabled>Select Hajari</option>
+                          {att && (
+                            <option value="clear" className="font-bold text-rose-600 bg-rose-50 dark:bg-rose-900/20">✖ Clear Record</option>
+                          )}
                           <option value="0">Absent (0 Hajari)</option>
                           <option value="0.5">0.5 Hajari (Half Day)</option>
                           <option value="1">1.0 Hajari (Full Day)</option>
