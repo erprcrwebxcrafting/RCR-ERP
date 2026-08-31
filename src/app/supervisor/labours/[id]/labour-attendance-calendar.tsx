@@ -267,9 +267,6 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
                           onChange={(e) => handleMarkHajari(day, e.target.value)}
                         >
                           <option value="" disabled>Select Hajari</option>
-                          {att && (
-                            <option value="clear" className="font-bold text-rose-600 bg-rose-50 dark:bg-rose-900/20">✖ Clear Record</option>
-                          )}
                           <option value="0">Absent (0 Hajari)</option>
                           <option value="0.5">0.5 Hajari (Half Day)</option>
                           <option value="1">1.0 Hajari (Full Day)</option>
@@ -293,10 +290,15 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
                               <option value="9">9.0 Hajari</option>
                               <option value="9.5">9.5 Hajari</option>
                               <option value="10">10.0 Hajari</option>
-                              <option value="custom" className="font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900">
-                                + Custom Hajari Value...
-                              </option>
                             </>
+                          )}
+                          {att && (
+                            <option value="clear" className="font-bold text-rose-600 bg-rose-50 dark:bg-rose-900/20">✖ Clear Record</option>
+                          )}
+                          {!labour.isForeman && (
+                            <option value="custom" className="font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900">
+                              + Custom Hajari Value...
+                            </option>
                           )}
                         </select>
                       )}
