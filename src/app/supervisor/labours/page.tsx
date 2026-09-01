@@ -47,17 +47,6 @@ export default async function SupervisorLaboursPage({ searchParams }: { searchPa
               Directory of all active labourers across your assigned sites. View their categories, daily wages, and contact information.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-              <form method="GET" action="/supervisor/labours" className="relative flex-1 sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60" />
-                <input
-                  type="text"
-                  name="q"
-                  defaultValue={q}
-                  placeholder="Search labourers..."
-                  className="h-11 w-full rounded-xl bg-white/10 border border-white/20 pl-10 pr-4 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all"
-                />
-                {showInactive && <input type="hidden" name="showInactive" value="1" />}
-              </form>
               <a href="/supervisor/labours/add" className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all bg-white text-indigo-600 shadow-xl shadow-indigo-900/20 hover:bg-white/90 hover:-translate-y-0.5 h-11 px-6 w-full sm:w-auto shrink-0">
                 <UserPlus className="h-4 w-4" /> Add Labourer
               </a>
@@ -79,6 +68,31 @@ export default async function SupervisorLaboursPage({ searchParams }: { searchPa
         <div className="absolute right-0 top-0 -mt-12 -mr-12 text-white/5 opacity-50 pointer-events-none">
           <HardHat className="h-64 w-64" />
         </div>
+      </div>
+
+      {/* Filters and Search */}
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+        <form method="GET" action="/supervisor/labours" className="flex w-full sm:w-auto gap-2">
+          <div className="relative flex-1 sm:w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              name="q"
+              defaultValue={q}
+              placeholder="Search labourers by name..."
+              className="h-10 w-full rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-4 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+            />
+            {showInactive && <input type="hidden" name="showInactive" value="1" />}
+          </div>
+          <button type="submit" className="h-10 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-colors shadow-sm">
+            Search
+          </button>
+          {q && (
+            <Link href={showInactive ? "/supervisor/labours?showInactive=1" : "/supervisor/labours"} className="h-10 px-4 flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-sm font-bold transition-colors shadow-sm">
+              Clear
+            </Link>
+          )}
+        </form>
       </div>
 
       {/* Data Table */}
