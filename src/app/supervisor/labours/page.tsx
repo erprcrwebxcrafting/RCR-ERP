@@ -2,23 +2,28 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { formatINR } from "@/lib/utils";
-import { HardHat, Phone, Users, IndianRupee, UserPlus, UserCheck, UserX } from "lucide-react";
+import { HardHat, Phone, Users, IndianRupee, UserPlus, UserCheck, UserX, Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { ActiveToggle } from "@/components/ui/active-toggle";
 import { toggleLabourActiveSupervisor } from "./[id]/actions";
 
-export default async function SupervisorLaboursPage({ searchParams }: { searchParams: Promise<{ showInactive?: string }> }) {
+export default async function SupervisorLaboursPage({ searchParams }: { searchParams: Promise<{ showInactive?: string; q?: string }> }) {
   const resolvedParams = await searchParams;
   const showInactive = resolvedParams.showInactive === "1";
+  const q = resolvedParams.q || "";
   const session = await auth();
   const userId = (session?.user as any)?.id as string;
   const assigned = await prisma.siteSupervisor.findMany({ where: { supervisorId: userId }, select: { siteId: true } });
   const siteIds = assigned.map((a) => a.siteId);
 
   const labours = await prisma.labour.findMany({
-    where: { siteId: { in: siteIds }, ...(showInactive ? {} : { active: true }) },
+    where: { 
+      siteId: { in: siteIds }, 
+      ...(showInactive ? {} : { active: true }),
+      ...(q ? { name: { contains: q, mode: 'insensitive' } } : {})
+    },
     include: { labourCategory: true },
     orderBy: { name: "asc" },
   });
@@ -41,12 +46,23 @@ export default async function SupervisorLaboursPage({ searchParams }: { searchPa
             <p className="text-blue-100 max-w-xl mb-6 text-sm sm:text-base font-medium">
               Directory of all active labourers across your assigned sites. View their categories, daily wages, and contact information.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <a href="/supervisor/labours/add" className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all bg-white text-indigo-600 shadow-xl shadow-indigo-900/20 hover:bg-white/90 hover:-translate-y-0.5 h-11 px-6 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <form method="GET" action="/supervisor/labours" className="relative flex-1 sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60" />
+                <input
+                  type="text"
+                  name="q"
+                  defaultValue={q}
+                  placeholder="Search labourers..."
+                  className="h-11 w-full rounded-xl bg-white/10 border border-white/20 pl-10 pr-4 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all"
+                />
+                {showInactive && <input type="hidden" name="showInactive" value="1" />}
+              </form>
+              <a href="/supervisor/labours/add" className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all bg-white text-indigo-600 shadow-xl shadow-indigo-900/20 hover:bg-white/90 hover:-translate-y-0.5 h-11 px-6 w-full sm:w-auto shrink-0">
                 <UserPlus className="h-4 w-4" /> Add Labourer
               </a>
               <Link
-                href={showInactive ? "/supervisor/labours" : "/supervisor/labours?showInactive=1"}
+                href={showInactive ? (q ? `/supervisor/labours?q=${q}` : "/supervisor/labours") : `/supervisor/labours?showInactive=1${q ? `&q=${q}` : ''}`}
                 className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold border transition-colors h-11 shrink-0 ${
                   showInactive
                     ? "bg-amber-500/20 text-amber-100 border-amber-300/30 hover:bg-amber-500/30"
