@@ -91,13 +91,13 @@ export function LabourCalendar({ attendances, payments, transfers = [] }: { atte
             </div>
           ))}
           {days.map((date, i) => {
-            if (!date) return <div key={`empty-${i}`} className="bg-card min-h-[100px]" />;
+            if (!date) return <div key={`empty-${currentDate.getFullYear()}-${currentDate.getMonth()}-${i}`} className="bg-card min-h-[100px]" />;
             
             const { att, payments, transfers } = getDayData(date);
             const isToday = todayString === toLocalString(date);
             
             return (
-              <div key={i} className={`bg-card min-h-[100px] p-2 flex flex-col gap-1 transition-colors hover:bg-muted/30 ${isToday ? "bg-primary/5" : ""}`}>
+              <div key={`day-${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`} className={`bg-card min-h-[100px] p-2 flex flex-col gap-1 transition-colors hover:bg-muted/30 ${isToday ? "bg-primary/5" : ""}`}>
                 <div className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full ${isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
                   {date.getDate()}
                 </div>
