@@ -39,6 +39,7 @@ import {
   markAllSupervisorsAttendanceUniversal,
   clearSupervisorAttendanceUniversal,
 } from "./actions";
+import { getDaysInMonth } from "date-fns";
 
 interface SupervisorRecord {
   id: string;
@@ -483,7 +484,8 @@ export function SupervisorAttendanceHub({
                   const currentAtt = attendanceMap[key];
                   const status = currentAtt?.status;
                   const monthlySalary = sup.monthlySalary || 0;
-                  const dailyRate = Math.round((monthlySalary / 30) * 100) / 100;
+                  const daysInSelectedMonth = getDaysInMonth(new Date(selectedDate));
+                  const dailyRate = Math.round((monthlySalary / daysInSelectedMonth) * 100) / 100;
                   const earnedAmt = currentAtt?.earnedAmount ?? (status === "PRESENT" ? dailyRate : status === "HALF_DAY" ? dailyRate / 2 : 0);
 
                   let isLocked = false;

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { getDaysInMonth } from "date-fns";
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -45,7 +46,8 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   const monthlySalary = supervisor.monthlySalary || 0;
-  const standardDailyRate = Math.round((monthlySalary / 30) * 100) / 100;
+  const currentMonthDays = getDaysInMonth(currentDate);
+  const standardDailyRate = Math.round((monthlySalary / currentMonthDays) * 100) / 100;
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth(); // 0-indexed
@@ -108,7 +110,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
       startTransition(async () => {
         try {
           await deleteSupervisorAttendanceAction(att.id, supervisor.id);
-          toast.success(`Cleared attendance for ${dateStr}`);
+          toast.success(`Cleared attendance for day ${day}`);
         } catch (err: any) {
           toast.error(err.message || "Failed to clear attendance");
         }
@@ -119,7 +121,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
   return (
     <div className="space-y-6">
       {/* KPI Cards for Selected Month */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
@@ -128,7 +130,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
                 <p className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">
                   ₹{standardDailyRate.toLocaleString("en-IN")}
                 </p>
-                <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-0.5">Fixed (Monthly ₹{monthlySalary.toLocaleString("en-IN")} ÷ 30)</p>
+                <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-0.5">Dynamic (Monthly ₹{monthlySalary.toLocaleString("en-IN")} ÷ {currentMonthDays})</p>
               </div>
               <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
                 <IndianRupee className="h-5 w-5" />
@@ -261,7 +263,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
           <div className="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2">
             {/* Blank cells for offset */}
             {Array.from({ length: firstDayIndex }).map((_, idx) => (
-              <div key={`blank-${idx}`} className="min-h-[80px] sm:min-h-[95px] md:min-h-[105px] rounded-xl bg-slate-50/30 dark:bg-slate-800/10 border border-dashed border-slate-100 dark:border-slate-800/40 opacity-40" />
+              <div key={`blank-${year}-${month}-${idx}`} className="min-h-[80px] sm:min-h-[95px] md:min-h-[105px] rounded-xl bg-slate-50/30 dark:bg-slate-800/10 border border-dashed border-slate-100 dark:border-slate-800/40 opacity-40" />
             ))}
 
             {/* Days of Month */}
@@ -302,7 +304,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
 
               return (
                 <div
-                  key={day}
+                  key={`day-${year}-${month}-${day}`}
                   className={`group relative min-h-[80px] sm:min-h-[95px] md:min-h-[110px] p-1.5 sm:p-2 md:p-2.5 rounded-xl border transition-all flex flex-col justify-between ${cardBg} ${
                     isToday ? "ring-2 ring-blue-500 ring-offset-1" : ""
                   }`}

@@ -6,6 +6,7 @@ import { formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { AttendanceCalendar } from "./attendance-calendar";
 import { PaymentSlipAction } from "@/components/ui/payment-slip-actions";
+import { getDaysInMonth } from "date-fns";
 import {
   ArrowLeft,
   Wallet,
@@ -112,7 +113,8 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
   if (!sv) return notFound();
 
   const monthlySalary = sv.monthlySalary || 0;
-  const standardDailyRate = Math.round((monthlySalary / 30) * 100) / 100;
+  const daysInCurrentMonth = getDaysInMonth(new Date());
+  const standardDailyRate = Math.round((monthlySalary / daysInCurrentMonth) * 100) / 100;
 
   // Attendance calculations
   const attendances = sv.supervisorAttendances || [];
@@ -138,7 +140,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
   const currentYear = new Date().getFullYear().toString();
 
   return (
-    <div className="space-y-8 pb-10 animate-in fade-in duration-700">
+    <div className="space-y-8 pb-10 animate-in fade-in duration-700 min-w-0">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div className="flex items-start gap-4">
@@ -177,7 +179,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
 
       {/* KPI Cards */}
       <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900">
+        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900 min-w-0">
           <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-blue-500/10 blur-2xl transition-all duration-500 group-hover:bg-blue-500/20" />
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -191,7 +193,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900">
+        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900 min-w-0">
           <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-emerald-500/10 blur-2xl transition-all duration-500 group-hover:bg-emerald-500/20" />
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -209,7 +211,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900">
+        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900 min-w-0">
           <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-indigo-500/10 blur-2xl transition-all duration-500 group-hover:bg-indigo-500/20" />
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -223,7 +225,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
           </CardContent>
         </Card>
 
-        <Card className={`group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${balance > 0 ? "border-rose-200 bg-rose-50/50 dark:border-rose-900/50 dark:bg-rose-950/20" : "border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900"}`}>
+        <Card className={`group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 min-w-0 ${balance > 0 ? "border-rose-200 bg-rose-50/50 dark:border-rose-900/50 dark:bg-rose-950/20" : "border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900"}`}>
           <div className={`absolute -right-8 -top-8 h-28 w-28 rounded-full blur-2xl transition-all duration-500 ${balance > 0 ? "bg-rose-500/10 group-hover:bg-rose-500/20" : "bg-slate-500/10 group-hover:bg-slate-500/20"}`} />
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -245,28 +247,28 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
       {/* Supervisor Details Grid (Personal, Bank, Assigned Sites) */}
       <div className="grid gap-6 md:grid-cols-3">
         {/* Personal Details */}
-        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md">
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md min-w-0">
           <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
             <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
               <User className="h-4 w-4 text-blue-500" /> Personal Info
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4 space-y-3 text-sm">
-            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 min-w-0">
               <Phone className="h-4 w-4 text-slate-400 shrink-0" />
-              <span>{sv.phone || "No phone number"}</span>
+              <span className="truncate">{sv.phone || "No phone number"}</span>
             </div>
-            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 min-w-0">
               <Mail className="h-4 w-4 text-slate-400 shrink-0" />
               <span className="truncate">{sv.email}</span>
             </div>
-            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 min-w-0">
               <MapPin className="h-4 w-4 text-slate-400 shrink-0" />
               <span className="truncate">{sv.address || "No address on file"}</span>
             </div>
-            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 min-w-0">
               <CreditCard className="h-4 w-4 text-slate-400 shrink-0" />
-              <span>Aadhar: {sv.aadharNumber || "—"}</span>
+              <span className="truncate">Aadhar: {sv.aadharNumber || "—"}</span>
             </div>
             <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
               <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
@@ -279,31 +281,31 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
         </Card>
 
         {/* Bank Details */}
-        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md">
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md min-w-0">
           <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
             <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
               <Landmark className="h-4 w-4 text-emerald-500" /> Bank Details
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4 space-y-3 text-sm">
-            <div>
+            <div className="min-w-0">
               <p className="text-xs text-slate-400 font-semibold uppercase">Account Number</p>
-              <p className="font-mono font-bold text-slate-800 dark:text-slate-200">{sv.accountNumber || "—"}</p>
+              <p className="font-mono font-bold text-slate-800 dark:text-slate-200 truncate">{sv.accountNumber || "—"}</p>
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs text-slate-400 font-semibold uppercase">IFSC Code</p>
-              <p className="font-mono font-bold text-slate-800 dark:text-slate-200">{sv.ifscCode || "—"}</p>
+              <p className="font-mono font-bold text-slate-800 dark:text-slate-200 truncate">{sv.ifscCode || "—"}</p>
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs text-slate-400 font-semibold uppercase">Bank & Branch</p>
-              <p className="font-medium text-slate-800 dark:text-slate-200">{[sv.bankName, sv.bankBranch].filter(Boolean).join(", ") || "—"}</p>
+              <p className="font-medium text-slate-800 dark:text-slate-200 truncate">{[sv.bankName, sv.bankBranch].filter(Boolean).join(", ") || "—"}</p>
             </div>
           </CardContent>
         </Card>
 
         {/* Assigned Sites & Attendance Summary */}
-        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md">
-          <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between">
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md min-w-0">
+          <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800 flex flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
               <Building2 className="h-4 w-4 text-indigo-500" /> Assigned Sites ({sv.assignedSites.length})
             </CardTitle>
@@ -337,11 +339,13 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
         </Card>
       </div>
 
-      <AttendanceCalendar supervisor={sv} initialAttendances={attendances} />
+      <div className="min-w-0 w-full">
+        <AttendanceCalendar supervisor={sv} initialAttendances={attendances} />
+      </div>
 
-      <div className="grid gap-6 sm:gap-8 grid-cols-1 md:grid-cols-2">
+      <div className="grid gap-6 sm:gap-8 grid-cols-1 md:grid-cols-2 min-w-0">
         {/* Payment History Section */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
@@ -354,7 +358,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
               <SupervisorPaymentForm supervisorId={sv.id} />
             </div>
           </div>
-          <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md">
+          <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md min-w-0">
             <div className="overflow-x-auto">
               <Table>
                 <THead className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
@@ -403,15 +407,15 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
         </div>
 
         {/* Transfer History Section */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
               <ArrowRightLeft className="h-4 w-4 text-blue-600" />
             </div>
             <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">Transfer History</h2>
           </div>
-          <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md">
-            <div className="overflow-x-auto">
+          <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md min-w-0">
+            <div className="overflow-x-auto w-full">
               <Table>
                 <THead className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
                   <TR>
@@ -469,22 +473,21 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
         </div>
 
         {/* Rate History Section */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
               <TrendingUp className="h-4 w-4 text-orange-600" />
             </div>
             <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">Rate History</h2>
           </div>
-          <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md">
-            <div className="overflow-x-auto -mx-1">
+          <Card className="overflow-hidden border-slate-200 dark:border-slate-800/60 shadow-md min-w-0">
+            <div className="overflow-x-auto w-full -mx-1">
               <Table>
                 <THead className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
                   <TR>
                     <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Effective Date</TH>
                     <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Recorded On</TH>
                     <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Monthly Salary</TH>
-                    <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Daily Rate</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -493,12 +496,11 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
                       <TD className="whitespace-nowrap font-medium text-slate-700 dark:text-slate-300 text-xs sm:text-sm">{formatDate(w.effectiveDate)}</TD>
                       <TD className="whitespace-nowrap font-medium text-slate-500 dark:text-slate-400 text-xs sm:text-sm">{formatDate(w.createdAt)}</TD>
                       <TD className="font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap text-xs sm:text-sm">₹{w.monthlySalary?.toLocaleString("en-IN")}</TD>
-                      <TD className="font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap text-xs sm:text-sm">₹{w.dailyWage}</TD>
                     </TR>
                   ))}
                   {totalWageHistory === 0 && (
                     <TR>
-                      <TD colSpan={4} className="py-12 text-center">
+                      <TD colSpan={3} className="py-12 text-center">
                         <div className="inline-flex flex-col items-center justify-center">
                           <TrendingUp className="h-8 w-8 text-slate-300 mb-3" />
                           <p className="text-slate-500 font-medium">No rate changes recorded.</p>

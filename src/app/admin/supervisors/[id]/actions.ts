@@ -1,6 +1,7 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getDaysInMonth } from "date-fns";
 
 export async function recordSupervisorPayment(formData: FormData) {
   const supervisorId = formData.get("supervisorId") as string;
@@ -91,11 +92,15 @@ export async function markSupervisorAttendanceAction(
   });
 
   if (existing) {
-    throw new Error("Attendance is permanently locked once marked and cannot be changed.");
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
+      throw new Error("Attendance cannot be edited for dates older than 24 hours from creation.");
+    }
   }
 
   const monthlySalary = supervisor?.monthlySalary || 0;
-  const currentDailyRate = Math.round((monthlySalary / 30) * 100) / 100;
+  const daysInMonth = getDaysInMonth(date);
+  const currentDailyRate = Math.round((monthlySalary / daysInMonth) * 100) / 100;
   
   let historicalDailyRate = currentDailyRate;
   // @ts-ignore: Prisma client cache issue in IDE
@@ -161,10 +166,22 @@ export async function markSupervisorAttendanceAction(
 }
 
 export async function deleteSupervisorAttendanceAction(attendanceId: string, supervisorId: string) {
-  throw new Error("Attendance deletion is disabled. Once marked, attendance is permanently locked.");
-  // await prisma.supervisorAttendance.delete({
-  //   where: { id: attendanceId },
-  // });
+  const existing = await prisma.supervisorAttendance.findUnique({
+    where: { id: attendanceId },
+  });
+  
+  if (!existing) {
+    throw new Error("Attendance record not found.");
+  }
+
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
+    throw new Error("Attendance deletion is disabled for records older than 24 hours from creation.");
+  }
+
+  await prisma.supervisorAttendance.delete({
+    where: { id: attendanceId },
+  });
   revalidatePath(`/admin/supervisors/${supervisorId}/attendance`);
   revalidatePath(`/admin/supervisors/${supervisorId}`);
   revalidatePath("/admin/supervisors");
@@ -222,7 +239,8 @@ export async function getSupervisorMonthlySlipData(supervisorId: string, year: n
   } else {
     const firstValidAttendance = attendances.find(a => a.dailyRate && a.dailyRate > 0);
     if (firstValidAttendance) {
-      activeMonthlySalary = Math.round(firstValidAttendance.dailyRate * 30);
+      const daysInThisMonth = getDaysInMonth(firstValidAttendance.date);
+      activeMonthlySalary = Math.round(firstValidAttendance.dailyRate * daysInThisMonth);
     }
   }
 
@@ -233,7 +251,8 @@ export async function getSupervisorMonthlySlipData(supervisorId: string, year: n
   if (distinctDailyRates.length > 1) {
     hasMultipleRates = true;
     distinctDailyRates.sort((a, b) => a - b); // Assuming it increased
-    const salaries = distinctDailyRates.map(r => Math.round(r * 30));
+    const daysInThisMonth = getDaysInMonth(startDate);
+    const salaries = distinctDailyRates.map(r => Math.round(r * daysInThisMonth));
     salaryString = salaries.map(s => `₹${s.toLocaleString("en-IN")}`).join(" ➔ ");
   }
 

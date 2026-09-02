@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getFinancialYearDates } from "@/lib/get-fy";
+import { getDaysInMonth } from "date-fns";
 
 export async function fetchReportsDataAction(range: string, siteId: string, customStartDate?: string, customEndDate?: string) {
   const { startDate: fyStart, endDate: fyEnd } = await getFinancialYearDates();
@@ -285,7 +286,7 @@ export async function fetchReportsDataAction(range: string, siteId: string, cust
       id: sup.id,
       name: sup.name,
       monthlySalary: sup.monthlySalary || 30000,
-      dailyRate: Math.round(((sup.monthlySalary || 30000) / 30) * 100) / 100,
+      dailyRate: Math.round(((sup.monthlySalary || 30000) / getDaysInMonth(customStartDate ? new Date(customStartDate) : new Date())) * 100) / 100,
       presentCount,
       halfCount,
       absentCount,

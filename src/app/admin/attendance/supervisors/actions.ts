@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getDaysInMonth } from "date-fns";
 
 export async function markSupervisorAttendanceUniversal(
   supervisorId: string,
@@ -56,7 +57,8 @@ export async function markSupervisorAttendanceUniversal(
   }
 
   const monthlySalary = supervisor?.monthlySalary || 0;
-  const currentDailyRate = Math.round((monthlySalary / 30) * 100) / 100;
+  const daysInMonth = getDaysInMonth(date);
+  const currentDailyRate = Math.round((monthlySalary / daysInMonth) * 100) / 100;
   const dailyRate = existing ? existing.dailyRate : currentDailyRate;
 
   let earnedAmount = 0;
@@ -152,7 +154,8 @@ export async function markAllSupervisorsAttendanceUniversal(
     }
 
     const monthlySalary = sup.monthlySalary || 0;
-    const currentDailyRate = Math.round((monthlySalary / 30) * 100) / 100;
+    const daysInMonth = getDaysInMonth(date);
+    const currentDailyRate = Math.round((monthlySalary / daysInMonth) * 100) / 100;
     const dailyRate = existing ? existing.dailyRate : currentDailyRate;
 
     let earnedAmount = 0;

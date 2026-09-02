@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, PDFFont } from "pdf-lib";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import fs from "fs";
 import path from "path";
 
@@ -24,7 +24,7 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
   return lines;
 }
 
-export async function generateAttendancePdf(attendances: any[], siteName: string, startDate: string, endDate: string): Promise<Uint8Array> {
+export async function generateAttendancePdf(attendances: any[], siteName: string, startDateStr: string, endDateStr: string): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -37,13 +37,59 @@ export async function generateAttendancePdf(attendances: any[], siteName: string
   const darkGray = rgb(0.3, 0.3, 0.3);
   const lightGray = rgb(0.9, 0.9, 0.92);
   const zebraColor = rgb(0.97, 0.97, 0.97);
+  const green = rgb(0.1, 0.6, 0.2);
+  const red = rgb(0.8, 0.1, 0.1);
 
   function newPageIfNeeded(minSpace = 60) {
     if (y < minSpace) {
       page = pdfDoc.addPage([PAGE_W, PAGE_H]);
       y = PAGE_H - MARGIN;
+      return true;
     }
+    return false;
   }
+
+  // Generate Date Range
+  const start = new Date(startDateStr);
+  const end = new Date(endDateStr);
+  const dates: Date[] = [];
+  let current = new Date(start);
+  while (current <= end) {
+    dates.push(new Date(current));
+    current = addDays(current, 1);
+  }
+
+  // Map to group attendances by labour
+  const labourMap = new Map<string, any>();
+  attendances.forEach(a => {
+    if (!labourMap.has(a.labourId)) {
+      labourMap.set(a.labourId, {
+        id: a.labourId,
+        name: a.labour.name,
+        category: a.labour.labourCategory.name,
+        dailyWage: a.hajariRate || a.labour.dailyWage || 0,
+        attendanceByDate: {},
+        totalHajari: 0,
+        totalOT: 0,
+        totalEarned: 0,
+      });
+    }
+
+    const worker = labourMap.get(a.labourId);
+    const dateKey = format(new Date(a.date), "yyyy-MM-dd");
+    
+    worker.attendanceByDate[dateKey] = {
+      hajari: a.hajari,
+      ot: a.overtimeHrs,
+      remarks: a.remarks
+    };
+
+    worker.totalHajari += a.hajari || 0;
+    worker.totalOT += a.overtimeHrs || 0;
+    worker.totalEarned += (a.hajari > 0 ? a.hajari * worker.dailyWage : 0);
+  });
+
+  const sortedWorkers = Array.from(labourMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 
   try {
     const logoPath = path.join(process.cwd(), "public", "rcr-logo.png");
@@ -64,23 +110,39 @@ export async function generateAttendancePdf(attendances: any[], siteName: string
   y -= 25;
   page.drawText(`Attendance Report - ${siteName}`, { x: textStartX, y, size: 14, font: bold, color: primary });
   y -= 16;
-  page.drawText(`Period: ${startDate} to ${endDate}`, { x: textStartX, y, size: 10, font, color: darkGray });
-  page.drawText(`Total Records: ${attendances.length}`, { x: PAGE_W - MARGIN - 100, y: y + 41, size: 10, font: bold, color: darkGray });
+  page.drawText(`Period: ${format(start, "dd MMM yyyy")} to ${format(end, "dd MMM yyyy")}`, { x: textStartX, y, size: 10, font, color: darkGray });
+  page.drawText(`Total Workers: ${sortedWorkers.length}`, { x: PAGE_W - MARGIN - 100, y: y + 41, size: 10, font: bold, color: darkGray });
   y -= 25;
 
-  // --- Table ---
-  // Columns: Date, Building, Category, Name, Status, OT, Rate, Total, Remarks
+  // --- Table Configuration ---
+  const usableWidth = PAGE_W - (2 * MARGIN);
+  
+  // Calculate column widths
+  const nameWidth = 90;
+  const categoryWidth = 60;
+  const rateWidth = 40;
+  const hajariWidth = 45;
+  const earnedWidth = 55;
+  
+  const fixedWidths = nameWidth + categoryWidth + rateWidth + hajariWidth + earnedWidth;
+  const remainingWidth = usableWidth - fixedWidths;
+  
+  // Dynamic day width depending on how many days we have, but cap it so it looks nice
+  const maxDayWidth = dates.length > 0 ? Math.floor(remainingWidth / dates.length) : 0;
+  const dayColWidth = Math.min(25, maxDayWidth); // Don't make them too wide
+
   const cols = [
-    { name: "Date", w: 60 },
-    { name: "Building", w: 90 },
-    { name: "Category", w: 90 },
-    { name: "Labour Name", w: 120 },
-    { name: "Status", w: 60 },
-    { name: "OT Hrs", w: 50 },
-    { name: "Rate", w: 60 },
-    { name: "Total", w: 60 },
-    { name: "Remarks", w: PAGE_W - 2 * MARGIN - 590 },
+    { name: "Name", w: nameWidth },
+    { name: "Type", w: categoryWidth },
+    { name: "Rate", w: rateWidth },
   ];
+  
+  dates.forEach(d => {
+    cols.push({ name: format(d, "dd"), w: dayColWidth });
+  });
+
+  cols.push({ name: "T.Hajari", w: hajariWidth });
+  cols.push({ name: "T.Earned", w: earnedWidth });
 
   let colX: number[] = [MARGIN];
   for (let i = 0; i < cols.length; i++) {
@@ -88,100 +150,104 @@ export async function generateAttendancePdf(attendances: any[], siteName: string
   }
 
   const drawRowLine = (yPos: number, thickness = 1, color = black) => {
-    page.drawLine({ start: { x: MARGIN, y: yPos }, end: { x: PAGE_W - MARGIN, y: yPos }, thickness, color });
+    page.drawLine({ start: { x: MARGIN, y: yPos }, end: { x: colX[colX.length - 1], y: yPos }, thickness, color });
   };
 
   const drawVerticalLines = (yTop: number, yBottom: number) => {
     colX.forEach(x => {
-      page.drawLine({ start: { x, y: yTop }, end: { x, y: yBottom }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
+      page.drawLine({ start: { x, y: yTop }, end: { x, y: yBottom }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) });
     });
   };
 
   let tableTopY = y;
   
-  // Header row Background
-  page.drawRectangle({ x: MARGIN, y: y - 20, width: PAGE_W - 2 * MARGIN, height: 20, color: lightGray });
-  drawRowLine(y, 1.5, primary);
+  const drawHeaders = (currentY: number) => {
+    // Header row Background
+    page.drawRectangle({ x: MARGIN, y: currentY - 24, width: colX[colX.length - 1] - MARGIN, height: 24, color: lightGray });
+    drawRowLine(currentY, 1.5, primary);
+    
+    // Draw Day names above dates
+    dates.forEach((d, i) => {
+      const idx = i + 3; // Offset for Name, Type, Rate
+      page.drawText(format(d, "E").charAt(0), { x: colX[idx] + 2, y: currentY - 10, size: 6, font, color: darkGray });
+    });
 
-  cols.forEach((col, i) => {
-    page.drawText(col.name, { x: colX[i] + 5, y: y - 14, size: 9, font: bold, color: black });
-  });
+    // Draw Column Headers
+    cols.forEach((col, i) => {
+      const yOffset = (i >= 3 && i < 3 + dates.length) ? currentY - 20 : currentY - 15;
+      const fontSize = (i >= 3 && i < 3 + dates.length) ? 7 : 8;
+      page.drawText(col.name, { x: colX[i] + 3, y: yOffset, size: fontSize, font: bold, color: black });
+    });
 
-  y -= 20;
-  drawRowLine(y, 1.5, primary);
+    const nextY = currentY - 24;
+    drawRowLine(nextY, 1.5, primary);
+    return nextY;
+  };
+
+  y = drawHeaders(y);
 
   // Rows
-  attendances.forEach((a, i) => {
-    newPageIfNeeded(50);
-    if (y === PAGE_H - MARGIN) {
-        // Just added new page, draw headers again
+  sortedWorkers.forEach((worker, i) => {
+    const isNewPage = newPageIfNeeded(50);
+    if (isNewPage) {
         tableTopY = y;
-        page.drawRectangle({ x: MARGIN, y: y - 20, width: PAGE_W - 2 * MARGIN, height: 20, color: lightGray });
-        drawRowLine(y, 1.5, primary);
-        cols.forEach((col, i) => {
-            page.drawText(col.name, { x: colX[i] + 5, y: y - 14, size: 9, font: bold, color: black });
-        });
-        y -= 20;
-        drawRowLine(y, 1.5, primary);
+        y = drawHeaders(y);
     }
 
-    const remarksLines = wrapText(a.remarks || "", font, 8, cols[8].w - 10);
-    const nameLines = wrapText(a.labour.name, bold, 9, cols[3].w - 10);
-    const rowH = Math.max(20, (Math.max(remarksLines.length, nameLines.length) * 12) + 8);
+    const nameLines = wrapText(worker.name, bold, 8, cols[0].w - 6);
+    const rowH = Math.max(16, (nameLines.length * 10) + 6);
     
     // Zebra Stripe
     if (i % 2 === 1) {
-      page.drawRectangle({ x: MARGIN, y: y - rowH, width: PAGE_W - 2 * MARGIN, height: rowH, color: zebraColor });
+      page.drawRectangle({ x: MARGIN, y: y - rowH, width: colX[colX.length - 1] - MARGIN, height: rowH, color: zebraColor });
     }
-    
-    // Date
-    page.drawText(format(new Date(a.date), "dd MMM yyyy"), { x: colX[0] + 5, y: y - 14, size: 9, font, color: black });
-    
-    // Building
-    page.drawText((a.building?.name || "General").substring(0, 20), { x: colX[1] + 5, y: y - 14, size: 9, font, color: black });
-    
-    // Category
-    page.drawText((a.labour.labourCategory.name).substring(0, 18), { x: colX[2] + 5, y: y - 14, size: 9, font, color: darkGray });
     
     // Name
-    nameLines.forEach((l, li) => page.drawText(l, { x: colX[3] + 5, y: y - 14 - li * 12, size: 9, font: bold, color: primary }));
+    nameLines.forEach((l, li) => page.drawText(l, { x: colX[0] + 3, y: y - 10 - li * 10, size: 8, font: bold, color: primary }));
     
-    // Status
-    let statusColor = black;
-    if (a.hajari > 0) statusColor = rgb(0.1, 0.6, 0.2);
-    else statusColor = rgb(0.8, 0.1, 0.1);
+    // Type (Category)
+    page.drawText(worker.category.substring(0, 15), { x: colX[1] + 3, y: y - 11, size: 7, font, color: darkGray });
 
-    page.drawText(a.hajari > 0 ? `${a.hajari} Hajari` : "Absent", { x: colX[4] + 5, y: y - 14, size: 9, font: bold, color: statusColor });
+    // Rate
+    page.drawText(`Rs ${worker.dailyWage}`, { x: colX[2] + 3, y: y - 11, size: 7, font, color: black });
     
-    // OT
-    if (a.overtimeHrs > 0) {
-      page.drawText(`+${a.overtimeHrs}h`, { x: colX[5] + 5, y: y - 14, size: 9, font: bold, color: primary });
-    }
-    
-    // Rate & Total
-    const appliedRate = a.hajariRate || a.labour.dailyWage || 0;
-    const totalEarned = a.hajari > 0 ? a.hajari * appliedRate : 0;
-    
-    if (appliedRate > 0) {
-      page.drawText(`Rs ${appliedRate}`, { x: colX[6] + 5, y: y - 14, size: 9, font, color: black });
-    } else {
-      page.drawText(`-`, { x: colX[6] + 5, y: y - 14, size: 9, font, color: darkGray });
-    }
+    // Day Columns
+    dates.forEach((d, di) => {
+      const dateKey = format(d, "yyyy-MM-dd");
+      const record = worker.attendanceByDate[dateKey];
+      const colIdx = di + 3;
+      
+      let text = "-";
+      let color = darkGray;
+      let textFont = font;
 
-    if (totalEarned > 0) {
-      page.drawText(`Rs ${totalEarned}`, { x: colX[7] + 5, y: y - 14, size: 9, font: bold, color: black });
-    } else {
-      page.drawText(`-`, { x: colX[7] + 5, y: y - 14, size: 9, font, color: darkGray });
-    }
+      if (record) {
+        if (record.hajari > 0) {
+          text = record.hajari.toString();
+          color = green;
+          textFont = bold;
+        } else {
+          text = "A";
+          color = red;
+          textFont = bold;
+        }
+      }
 
-    // Remarks
-    remarksLines.forEach((l, li) => page.drawText(l, { x: colX[8] + 5, y: y - 14 - li * 12, size: 8, font, color: darkGray }));
+      page.drawText(text, { x: colX[colIdx] + 3, y: y - 11, size: 7, font: textFont, color });
+    });
+    
+    // Total Hajari
+    page.drawText(worker.totalHajari.toString(), { x: colX[3 + dates.length] + 3, y: y - 11, size: 8, font: bold, color: black });
+    
+    // Total Earned
+    page.drawText(`Rs ${worker.totalEarned}`, { x: colX[4 + dates.length] + 3, y: y - 11, size: 8, font: bold, color: black });
     
     y -= rowH;
-    drawRowLine(y, 1, rgb(0.85, 0.85, 0.85));
+    drawRowLine(y, 0.5, rgb(0.85, 0.85, 0.85));
   });
   
   drawVerticalLines(tableTopY, y);
 
   return pdfDoc.save();
 }
+
