@@ -1,6 +1,7 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getDaysInMonth } from "date-fns";
 import { hashPassword } from "@/lib/hash-password";
 import { auth } from "@/auth";
 
@@ -95,14 +96,16 @@ export async function createSupervisor(formData: FormData) {
   });
 
   if (monthlySalary !== null) {
-    const dailyWage = monthlySalary / 30;
+    const effectiveD = dateOfJoining || new Date();
+    const daysInMonth = getDaysInMonth(effectiveD);
+    const dailyWage = monthlySalary / daysInMonth;
     // @ts-ignore
     await prisma.supervisorWageHistory.create({
       data: {
         supervisorId: supervisor.id,
         monthlySalary,
         dailyWage,
-        effectiveDate: dateOfJoining || new Date(),
+        effectiveDate: effectiveD,
       }
     });
   }
@@ -232,7 +235,8 @@ export async function updateSupervisor(id: string, formData: FormData) {
   });
 
   if (effectiveDate && monthlySalary !== null && oldSupervisor?.monthlySalary !== monthlySalary) {
-    const dailyWage = monthlySalary / 30;
+    const daysInMonth = getDaysInMonth(effectiveDate);
+    const dailyWage = monthlySalary / daysInMonth;
     
     // @ts-ignore: Prisma client cache issue in IDE
     await prisma.supervisorWageHistory.create({

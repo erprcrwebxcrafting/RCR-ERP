@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
 export function DownloadHajariSlip({ labourId }: { labourId: string }) {
-  const [generatingAction, setGeneratingAction] = useState<"download" | "share" | null>(null);
+  const [generatingAction, setGeneratingAction] = useState<"slip" | "grid-excel" | "grid-pdf" | "share" | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   
   const [fromDate, setFromDate] = useState(() => {
@@ -20,20 +20,32 @@ export function DownloadHajariSlip({ labourId }: { labourId: string }) {
     return new Date().toISOString().split("T")[0];
   });
 
-  const handleAction = async (actionType: "download" | "share") => {
+  const handleAction = async (actionType: "slip" | "grid-excel" | "grid-pdf" | "share") => {
     setGeneratingAction(actionType);
     
     try {
-      const url = `/api/labours/${labourId}/export-hajari-pdf?from=${fromDate}&to=${toDate}`;
+      let url = "";
+      let isExcel = false;
+      
+      if (actionType === "slip" || actionType === "share") {
+        url = `/api/labours/${labourId}/export-hajari-pdf?from=${fromDate}&to=${toDate}`;
+      } else if (actionType === "grid-excel") {
+        url = `/api/attendance/export?format=excel&labourId=${labourId}&startDate=${fromDate}&endDate=${toDate}`;
+        isExcel = true;
+      } else if (actionType === "grid-pdf") {
+        url = `/api/attendance/export?format=pdf&labourId=${labourId}&startDate=${fromDate}&endDate=${toDate}`;
+      }
       
       const response = await fetch(url);
       if (!response.ok) {
         const err = await response.text();
-        throw new Error(err || "Failed to generate slip");
+        throw new Error(err || "Failed to generate report");
       }
 
       const blob = await response.blob();
-      const filename = "Hajari_Statement.pdf";
+      let filename = "Hajari_Statement.pdf";
+      if (isExcel) filename = "Attendance_Grid.xlsx";
+      else if (actionType === "grid-pdf") filename = "Attendance_Grid.pdf";
 
       if (actionType === "share") {
         const file = new File([blob], filename, { type: "application/pdf" });
@@ -109,15 +121,27 @@ export function DownloadHajariSlip({ labourId }: { labourId: string }) {
             />
           </div>
         </div>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => handleAction("download")} disabled={!!generatingAction}>
-            {generatingAction === "download" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-            Download
-          </Button>
-          <Button onClick={() => handleAction("share")} disabled={!!generatingAction}>
-            {generatingAction === "share" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Share2 className="h-4 w-4 mr-2" />}
-            Share
-          </Button>
+        <div className="flex flex-col gap-2">
+          <div className="flex justify-end gap-2 border-b border-slate-100 pb-3">
+            <Button variant="outline" onClick={() => handleAction("slip")} disabled={!!generatingAction}>
+              {generatingAction === "slip" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Hajari Slip (PDF)
+            </Button>
+            <Button onClick={() => handleAction("share")} disabled={!!generatingAction}>
+              {generatingAction === "share" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Share2 className="h-4 w-4 mr-2" />}
+              Share
+            </Button>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" className="text-emerald-600 hover:text-emerald-700" onClick={() => handleAction("grid-excel")} disabled={!!generatingAction}>
+              {generatingAction === "grid-excel" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Grid Export (Excel)
+            </Button>
+            <Button variant="outline" className="text-rose-600 hover:text-rose-700" onClick={() => handleAction("grid-pdf")} disabled={!!generatingAction}>
+              {generatingAction === "grid-pdf" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Grid Export (PDF)
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

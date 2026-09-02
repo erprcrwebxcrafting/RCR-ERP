@@ -13,11 +13,12 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const siteId = searchParams.get("siteId");
+    const labourId = searchParams.get("labourId");
     const startDateStr = searchParams.get("startDate");
     const endDateStr = searchParams.get("endDate");
     const format = searchParams.get("format");
 
-    if (!siteId || !startDateStr || !endDateStr || !format) {
+    if ((!siteId && !labourId) || !startDateStr || !endDateStr || !format) {
       return new NextResponse("Missing required parameters", { status: 400 });
     }
 
@@ -26,22 +27,29 @@ export async function GET(request: NextRequest) {
     const endDate = new Date(endDateStr);
     endDate.setHours(23, 59, 59, 999);
 
-    const site = await prisma.site.findUnique({
-      where: { id: siteId },
-    });
-
-    if (!site) {
-      return new NextResponse("Site not found", { status: 404 });
+    let siteName = "Unknown Site";
+    
+    if (labourId) {
+      const labour = await prisma.labour.findUnique({ where: { id: labourId }, include: { site: true } });
+      if (!labour) return new NextResponse("Labour not found", { status: 404 });
+      siteName = labour.site.projectName;
+    } else if (siteId) {
+      const site = await prisma.site.findUnique({ where: { id: siteId } });
+      if (!site) return new NextResponse("Site not found", { status: 404 });
+      siteName = site.projectName;
     }
 
-    const attendances = await prisma.attendance.findMany({
-      where: {
-        siteId,
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
+    const whereClause: any = {
+      date: {
+        gte: startDate,
+        lte: endDate,
       },
+    };
+    if (labourId) whereClause.labourId = labourId;
+    if (siteId && !labourId) whereClause.siteId = siteId;
+
+    const attendances = await prisma.attendance.findMany({
+      where: whereClause,
       orderBy: [
         { date: "asc" },
         { labour: { labourCategory: { name: "asc" } } },
@@ -54,18 +62,18 @@ export async function GET(request: NextRequest) {
     });
 
     if (format === "excel") {
-      const buffer = await generateAttendanceExcel(attendances, site.projectName, startDateStr, endDateStr);
+      const buffer = await generateAttendanceExcel(attendances, siteName, startDateStr, endDateStr);
       return new NextResponse(buffer as any, {
         headers: {
-          "Content-Disposition": `attachment; filename="Attendance_${site.projectName.replace(/\s+/g, "_")}_${startDateStr}_to_${endDateStr}.xlsx"`,
+          "Content-Disposition": `attachment; filename="Attendance_${siteName.replace(/\s+/g, "_")}_${startDateStr}_to_${endDateStr}.xlsx"`,
           "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         },
       });
     } else if (format === "pdf") {
-      const buffer = await generateAttendancePdf(attendances, site.projectName, startDateStr, endDateStr);
+      const buffer = await generateAttendancePdf(attendances, siteName, startDateStr, endDateStr);
       return new NextResponse(buffer as any, {
         headers: {
-          "Content-Disposition": `attachment; filename="Attendance_${site.projectName.replace(/\s+/g, "_")}_${startDateStr}_to_${endDateStr}.pdf"`,
+          "Content-Disposition": `attachment; filename="Attendance_${siteName.replace(/\s+/g, "_")}_${startDateStr}_to_${endDateStr}.pdf"`,
           "Content-Type": "application/pdf",
         },
       });
