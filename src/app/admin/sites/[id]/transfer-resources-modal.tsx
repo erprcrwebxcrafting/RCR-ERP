@@ -27,17 +27,19 @@ export function TransferResourcesModal({
 
   const otherSites = allSites.filter(s => s.id !== siteId);
 
-  // Labour transfer state
   const [selectedLabourId, setSelectedLabourId] = useState("");
   const [labourTargetSiteId, setLabourTargetSiteId] = useState("");
   const [labourTargetCategoryId, setLabourTargetCategoryId] = useState("");
   const [labourTargetSupervisorId, setLabourTargetSupervisorId] = useState("");
   const [newDailyWage, setNewDailyWage] = useState("");
   const [newOvertimeRate, setNewOvertimeRate] = useState("");
+  const [labourTransferDate, setLabourTransferDate] = useState(new Date().toISOString().split("T")[0]);
 
   // Supervisor transfer state
   const [selectedSupervisorId, setSelectedSupervisorId] = useState("");
   const [supervisorTargetSiteId, setSupervisorTargetSiteId] = useState("");
+  const [supervisorTransferDate, setSupervisorTransferDate] = useState(new Date().toISOString().split("T")[0]);
+  const [supervisorTransferRole, setSupervisorTransferRole] = useState("SUPERVISOR");
   const [selectedLaboursToTransfer, setSelectedLaboursToTransfer] = useState<{
     labourId: string;
     toLabourCategoryId: string;
@@ -56,6 +58,7 @@ export function TransferResourcesModal({
       toSupervisorId: labourTargetSupervisorId || undefined,
       newDailyWage: newDailyWage ? parseFloat(newDailyWage) : undefined,
       newOvertimeRate: newOvertimeRate ? parseFloat(newOvertimeRate) : undefined,
+      transferDate: labourTransferDate,
     });
 
     setLoading(false);
@@ -77,6 +80,8 @@ export function TransferResourcesModal({
       supervisorId: selectedSupervisorId,
       fromSiteId: siteId,
       toSiteId: supervisorTargetSiteId,
+      transferDate: supervisorTransferDate,
+      transferRole: supervisorTransferRole,
       laboursToTransfer: selectedLaboursToTransfer.map(lt => ({
         labourId: lt.labourId,
         toLabourCategoryId: lt.toLabourCategoryId,
@@ -198,6 +203,16 @@ export function TransferResourcesModal({
                   </div>
                 </>
               )}
+              
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Transfer Date *</label>
+                <Input 
+                  type="date" 
+                  value={labourTransferDate} 
+                  onChange={e => setLabourTransferDate(e.target.value)} 
+                  required
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -257,6 +272,29 @@ export function TransferResourcesModal({
                   {otherSites.map(s => (
                     <option key={s.id} value={s.id}>{s.projectName}</option>
                   ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Transfer Date *</label>
+                <Input 
+                  type="date" 
+                  value={supervisorTransferDate} 
+                  onChange={e => setSupervisorTransferDate(e.target.value)} 
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Role on New Site *</label>
+                <select 
+                  className="w-full h-10 rounded-md border bg-background text-foreground px-3" 
+                  value={supervisorTransferRole} 
+                  onChange={e => setSupervisorTransferRole(e.target.value)}
+                  required
+                >
+                  <option value="SUPERVISOR">As a Supervisor</option>
+                  <option value="FOREMAN">As a Foreman</option>
                 </select>
               </div>
             </div>

@@ -23,6 +23,7 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
         labourCategories: { orderBy: { order: "asc" }, include: { labours: { include: { payments: { orderBy: { date: "desc" } }, attendances: { select: { hajari: true } }, supervisor: { select: { name: true } } } } } },
         supervisors: { 
           select: { 
+            supervisorId: true,
             supervisor: { select: { id: true, name: true, email: true, phone: true } }
           } 
         },
