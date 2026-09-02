@@ -400,6 +400,7 @@ model SupervisorTransferHistory {
   fromSiteId         String?
   toSiteId           String
   laboursTransferred Int      @default(0)
+  transferRole       String?  @default("SUPERVISOR")
   transferDate       DateTime @default(now())
   createdAt          DateTime @default(now())
   fromSite           Site?    @relation("SupervisorTransferFromSite", fields: [fromSiteId], references: [id])

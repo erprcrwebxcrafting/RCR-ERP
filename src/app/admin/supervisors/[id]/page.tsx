@@ -79,10 +79,12 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
             site: { select: { id: true, projectName: true } }
           }
         },
+        // @ts-ignore - Suppressing until npx prisma db push is run by the user
         supervisorTransfers: {
           select: {
             id: true,
             transferDate: true,
+            transferRole: true,
             laboursTransferred: true,
             fromSite: { select: { projectName: true } },
             toSite: { select: { projectName: true } },
@@ -431,8 +433,13 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
                             <span className="text-slate-500 w-10">To:</span>
                             <span className="font-semibold text-slate-800 dark:text-slate-200">{t.toSite.projectName}</span>
                           </div>
-                          <div className="inline-flex items-center mt-2 rounded-full bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-400 w-max">
-                            {t.laboursTransferred} labours transferred
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <div className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:text-blue-400 w-max border border-blue-200 dark:border-blue-800/50">
+                              {t.laboursTransferred} labours transferred
+                            </div>
+                            <div className="inline-flex items-center rounded-full bg-indigo-50 dark:bg-indigo-900/20 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-400 w-max border border-indigo-200 dark:border-indigo-800/50">
+                              Role: {t.transferRole === "FOREMAN" ? "Foreman" : "Supervisor"}
+                            </div>
                           </div>
                         </div>
                       </TD>

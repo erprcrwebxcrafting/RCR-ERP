@@ -8,7 +8,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 type Attendance = { id: string; date: string | Date; status: string; overtimeHrs: number; hajari: number; hajariRate: number; remarks?: string | null };
 type Payment = { id: string; date: string | Date; amount: number; reason?: string | null };
 
-export function LabourCalendar({ attendances, payments }: { attendances: Attendance[], payments: Payment[] }) {
+type Transfer = { id: string; transferDate: string | Date; fromSite?: { projectName: string } | null; toSite?: { projectName: string } | null };
+
+export function LabourCalendar({ attendances, payments, transfers = [] }: { attendances: Attendance[], payments: Payment[], transfers?: Transfer[] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const year = currentDate.getFullYear();
@@ -56,7 +58,12 @@ export function LabourCalendar({ attendances, payments }: { attendances: Attenda
       return pDateStr === dateString;
     });
 
-    return { att: dayAttendances[0], payments: dayPayments };
+    const dayTransfers = transfers.filter(t => {
+      const tDateStr = typeof t.transferDate === "string" ? t.transferDate.substring(0, 10) : toLocalString(t.transferDate);
+      return tDateStr === dateString;
+    });
+
+    return { att: dayAttendances[0], payments: dayPayments, transfers: dayTransfers };
   };
 
   const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -86,7 +93,7 @@ export function LabourCalendar({ attendances, payments }: { attendances: Attenda
           {days.map((date, i) => {
             if (!date) return <div key={`empty-${i}`} className="bg-card min-h-[100px]" />;
             
-            const { att, payments } = getDayData(date);
+            const { att, payments, transfers } = getDayData(date);
             const isToday = todayString === toLocalString(date);
             
             return (
@@ -110,6 +117,12 @@ export function LabourCalendar({ attendances, payments }: { attendances: Attenda
                     <div key={p.id} className="text-[11px] text-red-600 bg-red-50 dark:bg-red-950/40 px-1.5 py-0.5 rounded w-fit border border-red-100 dark:border-red-900/50">
                       <span className="font-bold">-₹{p.amount.toLocaleString("en-IN")}</span>
                       {p.reason && <span className="block text-[9px] leading-tight text-red-500/80 mt-0.5">{p.reason}</span>}
+                    </div>
+                  ))}
+                  {transfers && transfers.map(t => (
+                    <div key={t.id} className="text-[10px] text-blue-700 bg-blue-100 dark:bg-blue-900/40 dark:text-blue-400 px-1.5 py-0.5 rounded w-fit border border-blue-200 dark:border-blue-800/50">
+                      <span className="font-bold block">Transferred</span>
+                      {t.fromSite && <span className="block mt-0.5 opacity-90 truncate max-w-[80px]" title={t.fromSite.projectName}>From: {t.fromSite.projectName}</span>}
                     </div>
                   ))}
                 </div>

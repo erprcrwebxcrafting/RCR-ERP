@@ -11,6 +11,7 @@ export async function transferLabourAction(data: {
   toSupervisorId?: string;
   newDailyWage?: number;
   newOvertimeRate?: number;
+  transferDate?: string;
 }) {
   const {
     labourId,
@@ -20,6 +21,7 @@ export async function transferLabourAction(data: {
     toSupervisorId,
     newDailyWage,
     newOvertimeRate,
+    transferDate,
   } = data;
 
   try {
@@ -42,6 +44,7 @@ export async function transferLabourAction(data: {
           newDailyWage: newDailyWage ?? labour.dailyWage,
           previousOvertimeRate: labour.overtimeRate,
           newOvertimeRate: newOvertimeRate ?? labour.overtimeRate,
+          transferDate: transferDate ? new Date(transferDate) : new Date(),
         },
       });
 
@@ -74,6 +77,8 @@ export async function transferSupervisorAction(data: {
   supervisorId: string;
   fromSiteId: string;
   toSiteId: string;
+  transferDate?: string;
+  transferRole?: string;
   laboursToTransfer: {
     labourId: string;
     toLabourCategoryId: string;
@@ -81,7 +86,7 @@ export async function transferSupervisorAction(data: {
     newOvertimeRate?: number;
   }[];
 }) {
-  const { supervisorId, fromSiteId, toSiteId, laboursToTransfer } = data;
+  const { supervisorId, fromSiteId, toSiteId, transferDate, transferRole, laboursToTransfer } = data;
 
   try {
     await prisma.$transaction(async (tx: any) => {
@@ -110,6 +115,8 @@ export async function transferSupervisorAction(data: {
           fromSiteId,
           toSiteId,
           laboursTransferred: laboursToTransfer.length,
+          transferDate: transferDate ? new Date(transferDate) : new Date(),
+          transferRole: transferRole || "SUPERVISOR",
         },
       });
 
@@ -131,6 +138,7 @@ export async function transferSupervisorAction(data: {
             newDailyWage: labourTransfer.newDailyWage ?? labour.dailyWage,
             previousOvertimeRate: labour.overtimeRate,
             newOvertimeRate: labourTransfer.newOvertimeRate ?? labour.overtimeRate,
+            transferDate: transferDate ? new Date(transferDate) : new Date(),
           },
         });
 
