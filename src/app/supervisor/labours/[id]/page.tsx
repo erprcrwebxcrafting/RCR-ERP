@@ -133,8 +133,8 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
                 </h2>
               </div>
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 text-blue-700 dark:text-blue-300 font-black px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl flex items-center justify-between text-lg sm:text-xl border border-blue-100 dark:border-blue-900/50 shadow-inner">
-                <span>{typeof dailyWage === 'number' ? dailyWage.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : dailyWage}</span>
-                <span className="text-xs font-bold uppercase tracking-wider opacity-70">/ hajari</span>
+                <span>{isForeman ? Math.round((typeof dailyWage === 'number' ? dailyWage : parseFloat(dailyWage || '0')) * 30).toLocaleString("en-IN") : (typeof dailyWage === 'number' ? dailyWage.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : dailyWage)}</span>
+                <span className="text-xs font-bold uppercase tracking-wider opacity-70">{isForeman ? "/ month" : "/ hajari"}</span>
               </div>
             </div>
 

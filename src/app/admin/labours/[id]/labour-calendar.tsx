@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -10,7 +10,7 @@ type Payment = { id: string; date: string | Date; amount: number; reason?: strin
 
 type Transfer = { id: string; transferDate: string | Date; fromSite?: { projectName: string } | null; toSite?: { projectName: string } | null };
 
-export function LabourCalendar({ attendances, payments, transfers = [] }: { attendances: Attendance[], payments: Payment[], transfers?: Transfer[] }) {
+export function LabourCalendar({ labour, attendances, payments, transfers = [] }: { labour: any, attendances: Attendance[], payments: Payment[], transfers?: Transfer[] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const year = currentDate.getFullYear();
@@ -23,6 +23,18 @@ export function LabourCalendar({ attendances, payments, transfers = [] }: { atte
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
   const goToday = () => setCurrentDate(new Date());
 
+  const monthName = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+  useEffect(() => {
+    if (labour?.labourCategory?.name === "Fitter Foreman") {
+      const el = document.getElementById("foreman-dynamic-rate");
+      if (el) {
+        const rate = Math.round(((labour.dailyWage * 30) / daysInMonth) * 100) / 100;
+        el.innerText = `Daily Rate (${monthName}): ₹${rate}`;
+      }
+    }
+  }, [currentDate, daysInMonth, labour, monthName]);
+
   const days = [];
   for (let i = 0; i < firstDayOfMonth; i++) {
     days.push(null);
@@ -30,8 +42,6 @@ export function LabourCalendar({ attendances, payments, transfers = [] }: { atte
   for (let i = 1; i <= daysInMonth; i++) {
     days.push(new Date(year, month, i));
   }
-
-  const monthName = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
 
   // Get local date string YYYY-MM-DD safely
   const toLocalString = (d: Date) => {

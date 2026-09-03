@@ -5,6 +5,7 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { PaymentForm } from "@/app/admin/labours/[id]/payment-form";
+import { getDaysInMonth } from "date-fns";
 import { DownloadHajariSlip } from "./download-hajari-slip";
 import Link from "next/link";
 import { ArrowLeft, User, Phone, Calendar, CreditCard, Building, WalletCards, History, TrendingUp, IndianRupee, ArrowRightLeft, FileText, AlertCircle } from "lucide-react";
@@ -63,6 +64,9 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
 
   const dailyWage = labour.dailyWage || 0;
   const overtimeRate = labour.overtimeRate || 0;
+  
+  const currentMonthDays = getDaysInMonth(new Date());
+  const currentDynamicRate = Math.round(((dailyWage * 30) / currentMonthDays) * 100) / 100;
 
   // ✅ Use DB aggregate for KPIs instead of JS loops
   const [attendanceAgg, presentAgg, allAttendance] = await Promise.all([
@@ -203,9 +207,15 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
                 <IndianRupee className="h-5 w-5 text-blue-600" />
               </div>
             </div>
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Hajari Rate</p>
-            <p className="text-2xl sm:text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{dailyWage}</p>
-            <p className="text-xs text-slate-400 font-medium mt-1">Per Hajari</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">
+              {labour.labourCategory.name === "Fitter Foreman" ? "Monthly Salary" : "Hajari Rate"}
+            </p>
+            <p className="text-2xl sm:text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">
+              ₹{labour.labourCategory.name === "Fitter Foreman" ? Math.round(dailyWage * 30).toLocaleString("en-IN") : dailyWage.toLocaleString("en-IN")}
+            </p>
+            <p className="text-xs text-slate-400 font-medium mt-1">
+              {labour.labourCategory.name === "Fitter Foreman" ? <span id="foreman-dynamic-rate">Daily Rate (This Month): ₹{currentDynamicRate}</span> : "Per Hajari"}
+            </p>
           </CardContent>
         </Card>
 
@@ -254,7 +264,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
         </Card>
       </div>
 
-      <LabourCalendar attendances={allAttendance as any} payments={labour.payments} transfers={labour.transferHistory} />
+      <LabourCalendar labour={labour} attendances={allAttendance as any} payments={labour.payments} transfers={labour.transferHistory} />
 
       <div className="grid gap-6 sm:gap-8 grid-cols-1 md:grid-cols-2">
         {/* Payouts Section */}

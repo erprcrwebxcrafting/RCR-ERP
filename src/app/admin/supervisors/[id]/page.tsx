@@ -93,7 +93,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
           orderBy: { transferDate: "desc" }
         },
         supervisorAttendances: {
-          select: { id: true, date: true, status: true, earnedAmount: true, dailyRate: true },
+          select: { id: true, date: true, status: true, earnedAmount: true, dailyRate: true, createdAt: true },
           orderBy: { date: "desc" }
         },
         // @ts-ignore

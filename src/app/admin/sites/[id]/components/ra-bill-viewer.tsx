@@ -294,17 +294,23 @@ export function RABillViewer({ site }: { site: any }) {
                     const curPct = items[i].currentPct ?? 0;
                     const curQty = items[i].currentQty ?? 0;
                     const prevPct = items[i].previousPct ?? 0;
+                    const prevQty = items[i].previousQty ?? 0;
                     const cumPct = prevPct + curPct;
+                    const cumQty = prevQty + curQty;
 
-                    if (curPct > 0 || curQty > 0 || cumPct > 0) {
+                    if (curPct > 0 || curQty > 0 || cumPct > 0 || cumQty > 0) {
                       for (let j = 0; j < i; j++) {
                         const priorPrev = items[j].previousPct ?? 0;
                         const priorCur = items[j].currentPct ?? 0;
                         const priorCum = priorPrev + priorCur;
 
-                        if (priorCum <= 0) {
+                        const priorPrevQty = items[j].previousQty ?? 0;
+                        const priorCurQty = items[j].currentQty ?? 0;
+                        const priorCumQty = priorPrevQty + priorCurQty;
+
+                        if (priorCum <= 0 && priorCumQty <= 0) {
                           setFormError(
-                            `Sequence Error in "${b.name}"! Item #${i + 1} ("${items[i].name}") has progress (${curPct > 0 ? curPct + "%" : cumPct + "%"}), but earlier stage Item #${j + 1} ("${items[j].name}") has 0% progress! Work items must be executed in order.`
+                            `Sequence Error in "${b.name}"! Item #${i + 1} ("${items[i].name}") has progress (${curPct > 0 ? curPct + "%" : cumPct > 0 ? cumPct + "%" : curQty > 0 ? curQty + " Sft" : cumQty + " Sft"}), but earlier stage Item #${j + 1} ("${items[j].name}") has 0 completion! Work items must be executed in order.`
                           );
                           return;
                         }
@@ -643,36 +649,42 @@ export function RABillViewer({ site }: { site: any }) {
 
                 <Table className="border">
                   <THead className="bg-muted/60">
-                    <TR>
-                      <TH>#</TH>
-                      <TH>Particulars of Item</TH>
-                      <TH>Unit</TH>
-                      <TH className="text-right">Item Amount (₹)</TH>
-                      <TH className="text-center">Previous Qty (%)</TH>
-                      <TH className="text-center">This Bill Qty (%)</TH>
-                      <TH className="text-center">Cumulative Qty (%)</TH>
-                      <TH className="text-right">Previous Amt (₹)</TH>
-                      <TH className="text-right">This Bill Amt (₹)</TH>
-                      <TH className="text-right">Cumulative Amt (₹)</TH>
-                    </TR>
+                    {(() => {
+                      const isQty = b.calculationMethod === "QUANTITY";
+                      return (
+                        <TR>
+                          <TH>#</TH>
+                          <TH>Particulars of Item</TH>
+                          <TH>Unit</TH>
+                          <TH className="text-right">{isQty ? "Item Amount (₹) / Area" : "Item Amount (₹)"}</TH>
+                          <TH className="text-center">Previous Qty ({isQty ? "Sft" : "%"})</TH>
+                          <TH className="text-center">This Bill Qty ({isQty ? "Sft" : "%"})</TH>
+                          <TH className="text-center">Cumulative Qty ({isQty ? "Sft" : "%"})</TH>
+                          <TH className="text-right">Previous Amt (₹)</TH>
+                          <TH className="text-right">This Bill Amt (₹)</TH>
+                          <TH className="text-right">Cumulative Amt (₹)</TH>
+                        </TR>
+                      );
+                    })()}
                   </THead>
                   <TBody>
                     {items.map((item: any, i: number) => {
-                      const prevQ = item.previousPct ?? item.previousQty ?? 0;
-                      const currQ = item.currentPct ?? item.currentQty ?? 0;
-                      const cumQ = item.cumulativePct ?? (prevQ + currQ);
-                      const prevA = (item.previousAmt !== undefined && item.previousAmt !== null) ? item.previousAmt : (prevQ > 0 ? (item.partAmount * prevQ / 100) : 0);
-                      const currA = (item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : (currQ > 0 ? (item.partAmount * currQ / 100) : 0);
+                      const prevQ = item.previousPct > 0 ? item.previousPct : item.previousQty ?? 0;
+                      const currQ = item.currentPct > 0 ? item.currentPct : item.currentQty ?? 0;
+                      const cumQ = item.cumulativePct > 0 ? item.cumulativePct : item.cumulativeQty ?? (prevQ + currQ);
+                      const prevA = (item.previousAmt !== undefined && item.previousAmt !== null) ? item.previousAmt : (item.previousPct > 0 ? (item.partAmount * item.previousPct / 100) : item.previousQty * item.rate);
+                      const currA = (item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : (item.currentPct > 0 ? (item.partAmount * item.currentPct / 100) : item.currentQty * item.rate);
                       const cumA = item.cumulativeAmt ?? (prevA + currA);
+                      const isQty = b.calculationMethod === "QUANTITY";
                       return (
                         <TR key={item.id}>
                           <TD>{i + 1}</TD>
                           <TD className="font-medium">{item.name}</TD>
-                          <TD>{item.unit || "%"}</TD>
-                          <TD className="font-mono text-right font-semibold text-muted-foreground">{formatINR(item.partAmount || (item.buWork && item.rate ? item.buWork * item.rate : item.rate || 0))}</TD>
-                          <TD className="font-mono text-center">{prevQ}%</TD>
-                          <TD className="font-mono text-emerald-500 font-semibold text-center">{currQ}%</TD>
-                          <TD className="font-mono text-center font-bold">{cumQ}%</TD>
+                          <TD>{item.unit || (isQty ? "Sft" : "%")}</TD>
+                          <TD className="font-mono text-right font-semibold text-muted-foreground">{isQty && b.contractRate ? (item.partAmount / b.contractRate).toFixed(2) : formatINR(item.partAmount || (item.buWork && item.rate ? item.buWork * item.rate : item.rate || 0))}</TD>
+                          <TD className="font-mono text-center">{isQty ? prevQ.toFixed(2) : prevQ + "%"}</TD>
+                          <TD className="font-mono text-emerald-500 font-semibold text-center">{isQty ? currQ.toFixed(2) : currQ + "%"}</TD>
+                          <TD className="font-mono text-center font-bold">{isQty ? cumQ.toFixed(2) : cumQ + "%"}</TD>
                           <TD className="font-mono text-right">{formatINR(prevA)}</TD>
                           <TD className="font-mono text-emerald-500 font-bold text-right">{formatINR(currA)}</TD>
                           <TD className="font-mono font-bold text-right">{formatINR(cumA)}</TD>
@@ -681,15 +693,20 @@ export function RABillViewer({ site }: { site: any }) {
                     })}
 
                     {/* Prominent TOTAL Row at the bottom of Tower Sheet */}
-                    <TR className="bg-muted/80 font-bold border-t-2 text-xs">
-                      <TD colSpan={4} className="text-right uppercase tracking-wider">TOTAL {b.name.toUpperCase()} AMOUNT</TD>
-                      <TD className="text-center font-mono">{totPrevQ}%</TD>
-                      <TD className="text-center font-mono text-emerald-500">{totCurrQ}%</TD>
-                      <TD className="text-center font-mono font-bold">{totCumQ}%</TD>
-                      <TD className="text-right font-mono">{formatINR(totPrevA)}</TD>
-                      <TD className="text-right font-mono text-emerald-500 font-black text-sm">{formatINR(totCurrA)}</TD>
-                      <TD className="text-right font-mono font-black text-sm">{formatINR(totCumA)}</TD>
-                    </TR>
+                    {(() => {
+                      const isQty = b.calculationMethod === "QUANTITY";
+                      return (
+                        <TR className="bg-muted/80 font-bold border-t-2 text-xs">
+                          <TD colSpan={4} className="text-right uppercase tracking-wider">TOTAL {b.name.toUpperCase()} AMOUNT</TD>
+                          <TD className="text-center font-mono">{isQty ? totPrevQ.toFixed(2) + " Sft" : totPrevQ + "%"}</TD>
+                          <TD className="text-center font-mono text-emerald-500">{isQty ? totCurrQ.toFixed(2) + " Sft" : totCurrQ + "%"}</TD>
+                          <TD className="text-center font-mono font-bold">{isQty ? totCumQ.toFixed(2) + " Sft" : totCumQ + "%"}</TD>
+                          <TD className="text-right font-mono">{formatINR(totPrevA)}</TD>
+                          <TD className="text-right font-mono text-emerald-500 font-black text-sm">{formatINR(totCurrA)}</TD>
+                          <TD className="text-right font-mono font-black text-sm">{formatINR(totCumA)}</TD>
+                        </TR>
+                      );
+                    })()}
                     <TR className="bg-muted/30 font-bold text-xs border-t">
                       <TD colSpan={7} className="text-right">GROSS CONTRACT AMOUNT FOR {b.name.toUpperCase()}</TD>
                       <TD colSpan={3} className="text-right font-mono pr-4">{formatINR(totalVal)}</TD>

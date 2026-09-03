@@ -203,7 +203,11 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
                             {l.labourCategory.name}
                           </div>
                           <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex flex-col gap-0.5 mt-1">
-                            <span className="text-emerald-600 dark:text-emerald-500">₹{l.dailyWage ?? l.labourCategory.dailyWage}/day</span>
+                            <span className="text-emerald-600 dark:text-emerald-500">
+                              ₹{l.labourCategory.name === "Fitter Foreman" 
+                                ? Math.round((l.dailyWage ?? l.labourCategory.dailyWage) * 30).toLocaleString("en-IN") + "/month" 
+                                : (l.dailyWage ?? l.labourCategory.dailyWage) + "/day"}
+                            </span>
                             {l.overtimeRate && <span>₹{l.overtimeRate}/hr OT</span>}
                           </div>
                         </TD>

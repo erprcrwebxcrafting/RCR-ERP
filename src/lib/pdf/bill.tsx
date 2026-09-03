@@ -603,6 +603,7 @@ function TowerPages({ data, logoStr, signStr }: any) {
     const contractRate = tower.contractRate || 0;
     const totalTowerVal = approxArea * contractRate;
     const items = tower.workItems || [];
+    const isQty = tower.calculationMethod === "QUANTITY";
     
     let tPrevTotal = 0, tCurrTotal = 0, tCumTotal = 0;
     let tPrevQ = 0, tCurrQ = 0, tCumQ = 0, tPartAmt = 0;
@@ -629,10 +630,10 @@ function TowerPages({ data, logoStr, signStr }: any) {
           <View style={styles.towerTr} fixed>
             <Text style={[styles.towerTh, { width: "4%", backgroundColor: "#f1f5f9" }]}>Sr.</Text>
             <Text style={[styles.towerTh, { width: "22%", backgroundColor: "#f1f5f9" }]}>Particulars</Text>
-            <Text style={[styles.towerTh, { width: "14%", textAlign: "right", backgroundColor: "#fef3c7", color: "#92400e" }]}>Item Amt(Rs)</Text>
-            <Text style={[styles.towerTh, { width: "6%", textAlign: "center", backgroundColor: "#dbeafe", color: "#1e40af" }]}>Prv %</Text>
-            <Text style={[styles.towerTh, { width: "6%", textAlign: "center", backgroundColor: "#dcfce7", color: "#15803d" }]}>Cur %</Text>
-            <Text style={[styles.towerTh, { width: "6%", textAlign: "center", backgroundColor: "#ede9fe", color: "#6b21a8" }]}>Cum %</Text>
+            <Text style={[styles.towerTh, { width: "14%", textAlign: "right", backgroundColor: "#fef3c7", color: "#92400e" }]}>{isQty ? "Item Amt/Area" : "Item Amt(Rs)"}</Text>
+            <Text style={[styles.towerTh, { width: "6%", textAlign: "center", backgroundColor: "#dbeafe", color: "#1e40af" }]}>{isQty ? "Prv Sft" : "Prv %"}</Text>
+            <Text style={[styles.towerTh, { width: "6%", textAlign: "center", backgroundColor: "#dcfce7", color: "#15803d" }]}>{isQty ? "Cur Sft" : "Cur %"}</Text>
+            <Text style={[styles.towerTh, { width: "6%", textAlign: "center", backgroundColor: "#ede9fe", color: "#6b21a8" }]}>{isQty ? "Cum Sft" : "Cum %"}</Text>
             <Text style={[styles.towerTh, { width: "14%", textAlign: "right", backgroundColor: "#dbeafe", color: "#1e40af" }]}>Prev Amt(Rs)</Text>
             <Text style={[styles.towerTh, { width: "14%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d" }]}>This Bill(Rs)</Text>
             <Text style={[styles.towerTh, { width: "14%", textAlign: "right", backgroundColor: "#ede9fe", color: "#6b21a8" }]}>Cum Amt(Rs)</Text>
@@ -658,28 +659,31 @@ function TowerPages({ data, logoStr, signStr }: any) {
             return (
               <View style={styles.towerTr} key={item.id} wrap={false}>
                 <Text style={[styles.towerTd, { width: "4%" }]}>{i + 1}</Text>
-                <Text style={[styles.towerTd, { width: "22%", fontFamily: "Helvetica-Bold" }]}>{item.name}</Text>
-                <Text style={[styles.towerTd, { width: "14%", textAlign: "right", backgroundColor: "#fffdf5", color: "#92400e" }]}>{formatNum(item.partAmount)}</Text>
-                <Text style={[styles.towerTd, { width: "6%", textAlign: "center", backgroundColor: "#f0f7ff", color: "#1e40af" }]}>{prevQ}%</Text>
-                <Text style={[styles.towerTd, { width: "6%", textAlign: "center", backgroundColor: "#f2fbf5", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{currQ}%</Text>
-                <Text style={[styles.towerTd, { width: "6%", textAlign: "center", backgroundColor: "#fbf8ff", color: "#6b21a8", fontFamily: "Helvetica-Bold" }]}>{cumQ}%</Text>
-                <Text style={[styles.towerTd, { width: "14%", textAlign: "right", backgroundColor: "#f0f7ff", color: "#1e40af" }]}>{formatNum(prevA)}</Text>
-                <Text style={[styles.towerTd, { width: "14%", textAlign: "right", backgroundColor: "#f2fbf5", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatNum(currA)}</Text>
-                <Text style={[styles.towerTd, { width: "14%", textAlign: "right", backgroundColor: "#fbf8ff", color: "#6b21a8", fontFamily: "Helvetica-Bold" }]}>{formatNum(cumA)}</Text>
+                <Text style={[styles.towerTd, { width: "22%", textAlign: "left" }]}>{item.description || item.name}</Text>
+                <Text style={[styles.towerTd, { width: "14%", textAlign: "right", color: "#92400e", backgroundColor: "#fffbeb" }]}>
+                  {isQty && tower.contractRate ? (item.partAmount / tower.contractRate).toFixed(2) : formatINR(item.partAmount || 0)}
+                </Text>
+                <Text style={[styles.towerTd, { width: "6%", textAlign: "center", color: "#1e40af", backgroundColor: "#eff6ff" }]}>{isQty ? prevQ.toFixed(2) : prevQ + "%"}</Text>
+                <Text style={[styles.towerTd, { width: "6%", textAlign: "center", color: "#15803d", backgroundColor: "#f0fdf4", fontFamily: "Helvetica-Bold" }]}>{isQty ? currQ.toFixed(2) : currQ + "%"}</Text>
+                <Text style={[styles.towerTd, { width: "6%", textAlign: "center", color: "#6b21a8", backgroundColor: "#faf5ff", fontFamily: "Helvetica-Bold" }]}>{isQty ? cumQ.toFixed(2) : cumQ + "%"}</Text>
+                <Text style={[styles.towerTd, { width: "14%", textAlign: "right", color: "#1e40af", backgroundColor: "#eff6ff" }]}>{formatINR(prevA)}</Text>
+                <Text style={[styles.towerTd, { width: "14%", textAlign: "right", color: "#15803d", backgroundColor: "#f0fdf4", fontFamily: "Helvetica-Bold" }]}>{formatINR(currA)}</Text>
+                <Text style={[styles.towerTd, { width: "14%", textAlign: "right", color: "#6b21a8", backgroundColor: "#faf5ff", fontFamily: "Helvetica-Bold" }]}>{formatINR(cumA)}</Text>
               </View>
             );
           })}
           
-          {/* Footer Total */}
-          <View style={[styles.towerTr, styles.trTotal]} wrap={false}>
+          <View style={[styles.towerTr, { backgroundColor: "#f8fafc" }]} wrap={false}>
             <Text style={[styles.towerTd, { width: "26%", textAlign: "right", fontFamily: "Helvetica-Bold" }]}>TOTAL AMOUNT</Text>
-            <Text style={[styles.towerTd, { width: "14%", textAlign: "right", backgroundColor: "#fef3c7", color: "#92400e", fontFamily: "Helvetica-Bold" }]}>{formatNum(tPartAmt)}</Text>
-            <Text style={[styles.towerTd, { width: "6%", textAlign: "center", backgroundColor: "#dbeafe", color: "#1e40af" }]}>{tPrevQ}%</Text>
-            <Text style={[styles.towerTd, { width: "6%", textAlign: "center", backgroundColor: "#dcfce7", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{tCurrQ}%</Text>
-            <Text style={[styles.towerTd, { width: "6%", textAlign: "center", backgroundColor: "#ede9fe", color: "#6b21a8", fontFamily: "Helvetica-Bold" }]}>{tCumQ}%</Text>
-            <Text style={[styles.towerTd, { width: "14%", textAlign: "right", backgroundColor: "#dbeafe", color: "#1e40af", fontFamily: "Helvetica-Bold" }]}>{formatNum(tPrevTotal)}</Text>
-            <Text style={[styles.towerTd, { width: "14%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatNum(tCurrTotal)}</Text>
-            <Text style={[styles.towerTd, { width: "14%", textAlign: "right", backgroundColor: "#ede9fe", color: "#6b21a8", fontFamily: "Helvetica-Bold" }]}>{formatNum(tCumTotal)}</Text>
+            <Text style={[styles.towerTd, { width: "14%", textAlign: "right", color: "#92400e", backgroundColor: "#fef3c7", fontFamily: "Helvetica-Bold" }]}>
+              {isQty && tower.contractRate ? (tPartAmt / tower.contractRate).toFixed(2) : formatINR(tPartAmt)}
+            </Text>
+            <Text style={[styles.towerTd, { width: "6%", textAlign: "center", color: "#1e40af", backgroundColor: "#dbeafe", fontFamily: "Helvetica-Bold" }]}>{isQty ? tPrevQ.toFixed(2) : tPrevQ + "%"}</Text>
+            <Text style={[styles.towerTd, { width: "6%", textAlign: "center", color: "#15803d", backgroundColor: "#dcfce7", fontFamily: "Helvetica-Bold" }]}>{isQty ? tCurrQ.toFixed(2) : tCurrQ + "%"}</Text>
+            <Text style={[styles.towerTd, { width: "6%", textAlign: "center", color: "#6b21a8", backgroundColor: "#ede9fe", fontFamily: "Helvetica-Bold" }]}>{isQty ? tCumQ.toFixed(2) : tCumQ + "%"}</Text>
+            <Text style={[styles.towerTd, { width: "14%", textAlign: "right", color: "#1e40af", backgroundColor: "#dbeafe", fontFamily: "Helvetica-Bold" }]}>{formatINR(tPrevTotal)}</Text>
+            <Text style={[styles.towerTd, { width: "14%", textAlign: "right", color: "#15803d", backgroundColor: "#dcfce7", fontFamily: "Helvetica-Bold" }]}>{formatINR(tCurrTotal)}</Text>
+            <Text style={[styles.towerTd, { width: "14%", textAlign: "right", color: "#6b21a8", backgroundColor: "#ede9fe", fontFamily: "Helvetica-Bold" }]}>{formatINR(tCumTotal)}</Text>
           </View>
           <View style={styles.towerTr} wrap={false}>
             <Text style={[styles.towerTd, { width: "86%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#475569" }]}>GROSS CONTRACT AMOUNT FOR {tower.name.toUpperCase()}</Text>

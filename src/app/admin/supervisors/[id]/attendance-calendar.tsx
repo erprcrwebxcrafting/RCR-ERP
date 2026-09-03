@@ -16,6 +16,7 @@ import {
   CalendarDays,
   Sparkles,
   Info,
+  Lock,
 } from "lucide-react";
 import { markSupervisorAttendanceAction, deleteSupervisorAttendanceAction } from "./actions";
 import { toast } from "sonner";
@@ -28,6 +29,7 @@ type AttendanceRecord = {
   dailyRate: number;
   earnedAmount: number;
   remarks?: string | null;
+  createdAt?: string | Date;
 };
 
 type Props = {
@@ -95,7 +97,11 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     startTransition(async () => {
       try {
-        await markSupervisorAttendanceAction(supervisor.id, dateStr, status);
+        const res = await markSupervisorAttendanceAction(supervisor.id, dateStr, status);
+        if (res && res.error) {
+          toast.error(res.error);
+          return;
+        }
         toast.success(`Attendance marked as ${status} for ${dateStr}`);
       } catch (err: any) {
         toast.error(err.message || "Failed to mark attendance");
@@ -109,7 +115,11 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
     if (att) {
       startTransition(async () => {
         try {
-          await deleteSupervisorAttendanceAction(att.id, supervisor.id);
+          const res = await deleteSupervisorAttendanceAction(att.id, supervisor.id);
+          if (res && res.error) {
+            toast.error(res.error);
+            return;
+          }
           toast.success(`Cleared attendance for day ${day}`);
         } catch (err: any) {
           toast.error(err.message || "Failed to clear attendance");
@@ -302,6 +312,13 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
                 );
               }
 
+              let isLocked = false;
+              if (att && att.createdAt) {
+                const createdAtTime = new Date(att.createdAt).getTime();
+                const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+                isLocked = createdAtTime < twentyFourHoursAgo;
+              }
+
               return (
                 <div
                   key={`day-${year}-${month}-${day}`}
@@ -327,11 +344,14 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
                   <div className="my-1">
                     {att ? (
                       <div className="text-left">
-                        <div className="text-[11px] sm:text-xs font-black tracking-tight text-slate-800 dark:text-slate-100">
-                          ₹{att.earnedAmount.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                        <div className="flex items-center gap-1">
+                          <div className="text-[11px] sm:text-xs font-black tracking-tight text-slate-800 dark:text-slate-100">
+                            ₹{att.earnedAmount.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          </div>
+                          {isLocked && <span title="Locked (24h past)"><Lock className="h-3 w-3 text-slate-400" /></span>}
                         </div>
                         <p className="text-[9px] text-slate-400 font-medium truncate">
-                          Rate: ₹{att.dailyRate}
+                          Rate: ₹{Math.round(att.dailyRate * 100) / 100}
                         </p>
                         {att.remarks && (
                           <p className="text-[9px] mt-1 text-slate-500 italic leading-tight opacity-90 truncate" title={att.remarks}>
@@ -347,46 +367,48 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
                   </div>
 
                   {/* Quick Action Buttons on Hover */}
-                  <div className="flex items-center gap-1 pt-1 border-t border-slate-100 dark:border-slate-800/60 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => handleMarkStatus(day, "PRESENT")}
-                      title="Mark Present (Full Day)"
-                      className="flex-1 py-1 text-[10px] font-bold rounded bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
-                    >
-                      P
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => handleMarkStatus(day, "HALF_DAY")}
-                      title="Mark Half Day (0.5x Pay)"
-                      className="flex-1 py-1 text-[10px] font-bold rounded bg-amber-500 hover:bg-amber-600 text-white transition-colors"
-                    >
-                      HD
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => handleMarkStatus(day, "ABSENT")}
-                      title="Mark Absent (₹0 Pay)"
-                      className="flex-1 py-1 text-[10px] font-bold rounded bg-rose-500 hover:bg-rose-600 text-white transition-colors"
-                    >
-                      A
-                    </button>
-                    {att && (
+                  {!isLocked && (
+                    <div className="flex items-center gap-1 pt-1 border-t border-slate-100 dark:border-slate-800/60 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         type="button"
                         disabled={isPending}
-                        onClick={() => handleClear(day)}
-                        title="Clear Attendance"
-                        className="py-1 px-1.5 text-[10px] font-bold rounded bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                        onClick={() => handleMarkStatus(day, "PRESENT")}
+                        title="Mark Present (Full Day)"
+                        className="flex-1 py-1 text-[10px] font-bold rounded bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
                       >
-                        ×
+                        P
                       </button>
-                    )}
-                  </div>
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => handleMarkStatus(day, "HALF_DAY")}
+                        title="Mark Half Day (0.5x Pay)"
+                        className="flex-1 py-1 text-[10px] font-bold rounded bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+                      >
+                        HD
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => handleMarkStatus(day, "ABSENT")}
+                        title="Mark Absent (₹0 Pay)"
+                        className="flex-1 py-1 text-[10px] font-bold rounded bg-rose-500 hover:bg-rose-600 text-white transition-colors"
+                      >
+                        A
+                      </button>
+                      {att && (
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => handleClear(day)}
+                          title="Clear Attendance"
+                          className="py-1 px-1.5 text-[10px] font-bold rounded bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

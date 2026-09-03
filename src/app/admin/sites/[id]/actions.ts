@@ -7,6 +7,7 @@ export async function addBuildingAction(siteId: string, formData: FormData) {
   const name = formData.get("name") as string;
   const approxArea = parseFloat((formData.get("approxArea") as string) || "0");
   const contractRate = parseFloat((formData.get("contractRate") as string) || "0");
+  const calculationMethod = (formData.get("calculationMethod") as string) || "PERCENTAGE";
   if (!name) return;
 
   const lastBldg = await prisma.building.findFirst({
@@ -16,7 +17,7 @@ export async function addBuildingAction(siteId: string, formData: FormData) {
   });
   const nextOrder = (lastBldg?.order ?? -1) + 1;
 
-  await prisma.building.create({ data: { siteId, name, approxArea, contractRate, order: nextOrder } });
+  await prisma.building.create({ data: { siteId, name, approxArea, contractRate, calculationMethod, order: nextOrder } });
   revalidatePath(`/admin/sites/${siteId}`);
 }
 

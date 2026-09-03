@@ -248,20 +248,26 @@ export async function updateSupervisor(id: string, formData: FormData) {
       }
     });
     
-    await prisma.$transaction([
-      prisma.supervisorAttendance.updateMany({
-        where: { supervisorId: id, date: { gte: effectiveDate }, status: "PRESENT" },
-        data: { dailyRate: dailyWage, earnedAmount: dailyWage }
-      }),
-      prisma.supervisorAttendance.updateMany({
-        where: { supervisorId: id, date: { gte: effectiveDate }, status: "HALF_DAY" },
-        data: { dailyRate: dailyWage, earnedAmount: Math.round((dailyWage / 2) * 100) / 100 }
-      }),
-      prisma.supervisorAttendance.updateMany({
-        where: { supervisorId: id, date: { gte: effectiveDate }, status: "ABSENT" },
-        data: { dailyRate: dailyWage, earnedAmount: 0 }
-      })
-    ]);
+    const attendancesToUpdate = await prisma.supervisorAttendance.findMany({
+      where: { supervisorId: id, date: { gte: effectiveDate } }
+    });
+
+    const updatePromises = attendancesToUpdate.map((attendance) => {
+      const days = getDaysInMonth(attendance.date);
+      const rate = Math.round((monthlySalary / days) * 100) / 100;
+      let earned = 0;
+      if (attendance.status === "PRESENT") earned = rate;
+      else if (attendance.status === "HALF_DAY") earned = Math.round((rate / 2) * 100) / 100;
+      
+      return prisma.supervisorAttendance.update({
+        where: { id: attendance.id },
+        data: { dailyRate: rate, earnedAmount: earned }
+      });
+    });
+
+    if (updatePromises.length > 0) {
+      await prisma.$transaction(updatePromises);
+    }
   }
 
   // Sync site assignments: delete removed, add new

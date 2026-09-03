@@ -132,7 +132,11 @@ export default async function SupervisorLaboursPage({ searchParams }: { searchPa
                     <TD className="px-6">
                       <div className="flex items-center text-slate-600 dark:text-slate-400">
                         <IndianRupee className="h-4 w-4 mr-1 text-emerald-500" />
-                        <span className="font-bold text-slate-800 dark:text-slate-200">{formatINR(l.dailyWage ?? l.labourCategory.dailyWage).replace('₹', '')}</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                          {l.labourCategory.name === "Fitter Foreman" 
+                            ? formatINR(Math.round((l.dailyWage ?? l.labourCategory.dailyWage) * 30)).replace('₹', '') + "/month"
+                            : formatINR(l.dailyWage ?? l.labourCategory.dailyWage).replace('₹', '') + "/day"}
+                        </span>
                       </div>
                     </TD>
                     <TD className="px-6">
