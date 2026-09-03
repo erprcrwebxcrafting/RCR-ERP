@@ -203,9 +203,15 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
                 <IndianRupee className="h-5 w-5 text-blue-600" />
               </div>
             </div>
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Hajari Rate</p>
-            <p className="text-2xl sm:text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{dailyWage}</p>
-            <p className="text-xs text-slate-400 font-medium mt-1">Per Hajari</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">
+              {labour.labourCategory.name === "Fitter Foreman" ? "Monthly Salary" : "Hajari Rate"}
+            </p>
+            <p className="text-2xl sm:text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">
+              ₹{labour.labourCategory.name === "Fitter Foreman" ? Math.round(dailyWage * 30).toLocaleString("en-IN") : dailyWage.toLocaleString("en-IN")}
+            </p>
+            <p className="text-xs text-slate-400 font-medium mt-1">
+              {labour.labourCategory.name === "Fitter Foreman" ? `Base Rate: ₹${dailyWage} / day` : "Per Hajari"}
+            </p>
           </CardContent>
         </Card>
 
