@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -22,6 +22,16 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
   const goToday = () => setCurrentDate(new Date());
+
+  useEffect(() => {
+    if (labour?.labourCategory?.name === "Fitter Foreman") {
+      const el = document.getElementById("foreman-dynamic-rate");
+      if (el) {
+        const rate = Math.round(((labour.dailyWage * 30) / daysInMonth) * 100) / 100;
+        el.innerText = `Daily Rate (${monthName}): ₹${rate}`;
+      }
+    }
+  }, [currentDate, daysInMonth, labour, monthName]);
 
   const days = [];
   for (let i = 0; i < firstDayOfMonth; i++) {

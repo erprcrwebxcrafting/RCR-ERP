@@ -214,7 +214,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
               ₹{labour.labourCategory.name === "Fitter Foreman" ? Math.round(dailyWage * 30).toLocaleString("en-IN") : dailyWage.toLocaleString("en-IN")}
             </p>
             <p className="text-xs text-slate-400 font-medium mt-1">
-              {labour.labourCategory.name === "Fitter Foreman" ? `Daily Rate (This Month): ₹${currentDynamicRate}` : "Per Hajari"}
+              {labour.labourCategory.name === "Fitter Foreman" ? <span id="foreman-dynamic-rate">Daily Rate (This Month): ₹{currentDynamicRate}</span> : "Per Hajari"}
             </p>
           </CardContent>
         </Card>
