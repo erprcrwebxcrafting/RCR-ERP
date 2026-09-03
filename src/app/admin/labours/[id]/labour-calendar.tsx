@@ -10,7 +10,7 @@ type Payment = { id: string; date: string | Date; amount: number; reason?: strin
 
 type Transfer = { id: string; transferDate: string | Date; fromSite?: { projectName: string } | null; toSite?: { projectName: string } | null };
 
-export function LabourCalendar({ attendances, payments, transfers = [] }: { attendances: Attendance[], payments: Payment[], transfers?: Transfer[] }) {
+export function LabourCalendar({ labour, attendances, payments, transfers = [] }: { labour: any, attendances: Attendance[], payments: Payment[], transfers?: Transfer[] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const year = currentDate.getFullYear();
@@ -73,6 +73,11 @@ export function LabourCalendar({ attendances, payments, transfers = [] }: { atte
       <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
         <CardTitle className="text-lg font-medium">Calendar Overview</CardTitle>
         <div className="flex flex-wrap items-center gap-2">
+          {labour?.labourCategory?.name === "Fitter Foreman" && (
+            <div className="mr-4 text-sm bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-100 font-medium hidden sm:block">
+              Daily Rate for {monthName}: <span className="font-bold">₹{Math.round(((labour.dailyWage * 30) / daysInMonth) * 100) / 100}</span>
+            </div>
+          )}
           <Button variant="outline" size="sm" onClick={goToday}>Today</Button>
           <div className="flex items-center gap-1">
             <Button variant="outline" size="icon" onClick={prevMonth}><ChevronLeft className="h-4 w-4" /></Button>

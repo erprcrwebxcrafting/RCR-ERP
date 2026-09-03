@@ -121,7 +121,26 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{labour.isForeman ? "Daily Salary Rate" : "Fixed Hajari Rate"}</p>
+                <p className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">
+                  ₹{labour.isForeman ? Math.round(((standardDailyRate * 30) / daysInMonth) * 100) / 100 : standardDailyRate}
+                </p>
+                <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-0.5">
+                  {labour.isForeman ? `Dynamic (₹${Math.round(standardDailyRate * 30)} ÷ ${daysInMonth} days)` : "Standard Daily Rate"}
+                </p>
+              </div>
+              <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
+                <IndianRupee className="h-5 w-5" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="border-emerald-200 dark:border-emerald-800/60 bg-gradient-to-br from-emerald-50/70 to-teal-50/70 dark:from-emerald-950/40 dark:to-teal-950/40 shadow-md">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
