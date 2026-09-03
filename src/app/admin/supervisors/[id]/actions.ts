@@ -112,7 +112,9 @@ export async function markSupervisorAttendanceAction(
     orderBy: { effectiveDate: 'desc' }
   });
 
-  if (history && history.dailyWage) {
+  if (history && history.monthlySalary) {
+    historicalDailyRate = Math.round((history.monthlySalary / daysInMonth) * 100) / 100;
+  } else if (history && history.dailyWage) {
     historicalDailyRate = history.dailyWage;
   } else {
     // Fallback heuristic for transitional data: if no history exists for this old date,
