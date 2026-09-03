@@ -21,11 +21,18 @@ export async function addBuildingAction(siteId: string, formData: FormData) {
 }
 
 export async function updateBuildingHeaderAction(siteId: string, buildingId: string, formData: FormData) {
+  const name = formData.get("name") as string;
   const approxArea = parseFloat((formData.get("approxArea") as string) || "0");
   const contractRate = parseFloat((formData.get("contractRate") as string) || "0");
+  
+  const data: any = { approxArea, contractRate };
+  if (name && name.trim()) {
+    data.name = name.trim();
+  }
+
   await prisma.building.update({
     where: { id: buildingId },
-    data: { approxArea, contractRate },
+    data,
   });
   revalidatePath(`/admin/sites/${siteId}`);
 }
