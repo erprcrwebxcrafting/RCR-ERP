@@ -75,13 +75,13 @@ export async function markSupervisorAttendanceAction(
   targetDate.setHours(0, 0, 0, 0);
 
   if (targetDate.getTime() > today.getTime()) {
-    throw new Error("Attendance date cannot be in the future.");
+    return { error: "Attendance date cannot be in the future." };
   }
 
   const joiningDate = new Date(supervisor.dateOfJoining || supervisor.createdAt);
   joiningDate.setHours(0, 0, 0, 0);
   if (targetDate.getTime() < joiningDate.getTime()) {
-    throw new Error(`Cannot mark attendance for ${supervisor.name} before their joining date (${joiningDate.toLocaleDateString()}).`);
+    return { error: `Cannot mark attendance for ${supervisor.name} before their joining date (${joiningDate.toLocaleDateString()}).` };
   }
 
   const yesterday = new Date(today);
@@ -94,7 +94,7 @@ export async function markSupervisorAttendanceAction(
   if (existing) {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
-      throw new Error("Attendance cannot be edited for dates older than 24 hours from creation.");
+      return { error: "Attendance cannot be edited. It was recorded more than 24 hours ago and is now locked." };
     }
   }
 
@@ -165,6 +165,7 @@ export async function markSupervisorAttendanceAction(
   revalidatePath(`/admin/supervisors/${supervisorId}/attendance`);
   revalidatePath(`/admin/supervisors/${supervisorId}`);
   revalidatePath("/admin/supervisors");
+  return { success: true };
 }
 
 export async function deleteSupervisorAttendanceAction(attendanceId: string, supervisorId: string) {
@@ -173,12 +174,12 @@ export async function deleteSupervisorAttendanceAction(attendanceId: string, sup
   });
   
   if (!existing) {
-    throw new Error("Attendance record not found.");
+    return { error: "Attendance record not found." };
   }
 
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
-    throw new Error("Attendance deletion is disabled for records older than 24 hours from creation.");
+    return { error: "Attendance deletion is disabled. It was recorded more than 24 hours ago and is now locked." };
   }
 
   await prisma.supervisorAttendance.delete({
