@@ -312,7 +312,7 @@ export function TowerWorkManager({ site }: { site: any }) {
                       className="gap-1 border-indigo-400/40 text-indigo-200 hover:bg-indigo-500/20"
                     >
                       <Edit2 className="h-3.5 w-3.5" />
-                      {isEditingHeader ? "Close Edit" : "Edit BUA Area & Rate"}
+                      {isEditingHeader ? "Close Edit" : "Edit Tower Info"}
                     </Button>
                   </div>
 
@@ -323,8 +323,12 @@ export function TowerWorkManager({ site }: { site: any }) {
                         await updateBuildingHeaderAction(site.id, selectedBuilding.id, formData);
                         setIsEditingHeader(false);
                       }}
-                      className="grid gap-3 md:grid-cols-3 bg-white/10 p-4 rounded-lg items-end mb-4 border border-indigo-400/30"
+                      className="grid gap-3 md:grid-cols-4 bg-white/10 p-4 rounded-lg items-end mb-4 border border-indigo-400/30"
                     >
+                      <div>
+                        <label className="text-xs font-medium text-indigo-200 block mb-1">Tower / Wing Name *</label>
+                        <Input name="name" type="text" defaultValue={selectedBuilding.name} required className="bg-slate-900 text-white" />
+                      </div>
                       <div>
                         <label className="text-xs font-medium text-indigo-200 block mb-1">Approximate BUA Area (Sft / Sq) *</label>
                         <Input name="approxArea" type="number" step="0.01" defaultValue={approxArea} onFocus={(e) => e.target.select()} required className="bg-slate-900 text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
