@@ -5,6 +5,7 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { PaymentForm } from "@/app/admin/labours/[id]/payment-form";
+import { getDaysInMonth } from "date-fns";
 import { DownloadHajariSlip } from "./download-hajari-slip";
 import Link from "next/link";
 import { ArrowLeft, User, Phone, Calendar, CreditCard, Building, WalletCards, History, TrendingUp, IndianRupee, ArrowRightLeft, FileText, AlertCircle } from "lucide-react";
@@ -63,6 +64,9 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
 
   const dailyWage = labour.dailyWage || 0;
   const overtimeRate = labour.overtimeRate || 0;
+  
+  const currentMonthDays = getDaysInMonth(new Date());
+  const currentDynamicRate = Math.round(((dailyWage * 30) / currentMonthDays) * 100) / 100;
 
   // ✅ Use DB aggregate for KPIs instead of JS loops
   const [attendanceAgg, presentAgg, allAttendance] = await Promise.all([
@@ -210,7 +214,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
               ₹{labour.labourCategory.name === "Fitter Foreman" ? Math.round(dailyWage * 30).toLocaleString("en-IN") : dailyWage.toLocaleString("en-IN")}
             </p>
             <p className="text-xs text-slate-400 font-medium mt-1">
-              {labour.labourCategory.name === "Fitter Foreman" ? `Base Rate: ₹${dailyWage} / day` : "Per Hajari"}
+              {labour.labourCategory.name === "Fitter Foreman" ? `Daily Rate (This Month): ₹${currentDynamicRate}` : "Per Hajari"}
             </p>
           </CardContent>
         </Card>
