@@ -103,17 +103,18 @@ model SiteSupervisor {
 }
 
 model Building {
-  id           String       @id @default(cuid())
-  siteId       String
-  name         String
-  order        Int          @default(0)
-  createdAt    DateTime     @default(now())
-  approxArea   Float?       @default(0)
-  contractRate Float?       @default(0)
-  attendances  Attendance[]
-  billLines    BillLine[]
-  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  workItems    WorkItem[]
+  id                String       @id @default(cuid())
+  siteId            String
+  name              String
+  order             Int          @default(0)
+  createdAt         DateTime     @default(now())
+  approxArea        Float?       @default(0)
+  contractRate      Float?       @default(0)
+  calculationMethod String       @default("PERCENTAGE")
+  attendances       Attendance[]
+  billLines         BillLine[]
+  site              Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  workItems         WorkItem[]
 
   @@index([siteId])
 }

@@ -34,6 +34,7 @@ export function TowerWorkManager({ site }: { site: any }) {
           previousPct: item.previousPct || 0,
           currentPct: item.currentPct || 0,
           cumulativePct: item.cumulativePct || 0,
+          cumulativeQty: (item.previousQty || 0) + (item.currentQty || 0),
           partAmount: item.partAmount || 0,
           previousAmt: item.previousAmt || 0,
           currentAmt: item.currentAmt || 0,
@@ -48,8 +49,8 @@ export function TowerWorkManager({ site }: { site: any }) {
   const selectedBuilding = site.buildings.find((b: any) => b.id === selectedBuildingId) || site.buildings[0];
 
   // Local state for editing progress quantities/percentages and part amounts
-  const [progressState, setProgressState] = useState<Record<string, { name: string; previousQty: number; currentQty: number; previousPct: number; currentPct: number; cumulativePct: number; partAmount: number; previousAmt: number; currentAmt: number; cumulativeAmt: number }>>(() => {
-    const initialState: Record<string, { name: string; previousQty: number; currentQty: number; previousPct: number; currentPct: number; cumulativePct: number; partAmount: number; previousAmt: number; currentAmt: number; cumulativeAmt: number }> = {};
+  const [progressState, setProgressState] = useState<Record<string, { name: string; previousQty: number; currentQty: number; previousPct: number; currentPct: number; cumulativePct: number; cumulativeQty: number; partAmount: number; previousAmt: number; currentAmt: number; cumulativeAmt: number }>>(() => {
+    const initialState: Record<string, { name: string; previousQty: number; currentQty: number; previousPct: number; currentPct: number; cumulativePct: number; cumulativeQty: number; partAmount: number; previousAmt: number; currentAmt: number; cumulativeAmt: number }> = {};
     site.buildings.forEach((b: any) => {
       b.workItems?.forEach((item: any) => {
         initialState[item.id] = {
@@ -59,6 +60,7 @@ export function TowerWorkManager({ site }: { site: any }) {
           previousPct: item.previousPct || 0,
           currentPct: item.currentPct || 0,
           cumulativePct: item.cumulativePct || 0,
+          cumulativeQty: (item.previousQty || 0) + (item.currentQty || 0),
           partAmount: item.partAmount || 0,
           previousAmt: item.previousAmt || 0,
           currentAmt: item.currentAmt || 0,
@@ -89,8 +91,10 @@ export function TowerWorkManager({ site }: { site: any }) {
         [field]: updatedValue,
       };
 
+      const isQuantityMode = selectedBuilding?.calculationMethod === "QUANTITY";
+
       // Auto-calculate dependent fields if relevant fields change
-      if (["partAmount", "previousPct", "currentPct"].includes(field)) {
+      if (!isQuantityMode && ["partAmount", "previousPct", "currentPct"].includes(field)) {
         const partAmt = newState.partAmount || 0;
         const prevPct = newState.previousPct || 0;
         const currPct = newState.currentPct || 0;
@@ -99,6 +103,15 @@ export function TowerWorkManager({ site }: { site: any }) {
         newState.currentAmt = (currPct / 100) * partAmt;
         newState.cumulativePct = prevPct + currPct;
         newState.cumulativeAmt = newState.previousAmt + newState.currentAmt;
+      } else if (isQuantityMode && ["partAmount", "previousQty", "currentQty"].includes(field)) {
+        const rate = selectedBuilding?.contractRate || 0;
+        const prevQty = newState.previousQty || 0;
+        const currQty = newState.currentQty || 0;
+
+        newState.previousAmt = prevQty * rate;
+        newState.currentAmt = currQty * rate;
+        newState.cumulativeAmt = newState.previousAmt + newState.currentAmt;
+        newState.cumulativeQty = prevQty + currQty;
       }
 
       return {
@@ -251,19 +264,26 @@ export function TowerWorkManager({ site }: { site: any }) {
                 await addBuildingAction(site.id, formData);
                 setIsAddingBuilding(false);
               }}
-              className="grid gap-4 md:grid-cols-4 items-end"
+              className="grid gap-4 md:grid-cols-5 items-end"
             >
               <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">Tower / Wing Name *</label>
                 <Input name="name" placeholder="e.g. Tower S2 Wing, S3 Wing" required />
               </div>
               <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Approx BUA Area (Sft / Sq)</label>
-                <Input name="approxArea" type="number" step="0.01" placeholder="e.g. 184464 or 314554" />
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">Billing Method *</label>
+                <select name="calculationMethod" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                  <option value="PERCENTAGE">Percentage (%)</option>
+                  <option value="QUANTITY">Quantity (Sft)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">Approx BUA Area (Sft)</label>
+                <Input name="approxArea" type="number" step="0.01" placeholder="e.g. 184464" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">Contract Rate (₹ / Sft)</label>
-                <Input name="contractRate" type="number" step="0.01" placeholder="e.g. 49.60 or 53.00" />
+                <Input name="contractRate" type="number" step="0.01" placeholder="e.g. 53.00" />
               </div>
               <div>
                 <Button type="submit" className="w-full">Create Tower</Button>
@@ -396,7 +416,18 @@ export function TowerWorkManager({ site }: { site: any }) {
               {isAddingItem && (
                 <form
                   action={async (formData) => {
-                    const newPartAmt = parseFloat((formData.get("partAmount") as string) || "0");
+                    const isQty = selectedBuilding.calculationMethod === "QUANTITY";
+                    const rate = selectedBuilding.contractRate || 0;
+                    
+                    let newPartAmt = parseFloat((formData.get("partAmount") as string) || "0");
+                    
+                    if (isQty) {
+                      const inputArea = parseFloat((formData.get("partArea") as string) || "0");
+                      newPartAmt = inputArea * rate;
+                      // Overwrite partAmount in formData so the action reads the calculated amount
+                      formData.set("partAmount", newPartAmt.toString());
+                    }
+
                     if (sumPartAmounts + newPartAmt > totalContractValue + 1) {
                       toast.warning("Contract Value Exceeded", {
                         description: `Adding ₹${newPartAmt.toLocaleString('en-IN')} exceeds the remaining tower contract budget of ₹${(totalContractValue - sumPartAmounts).toLocaleString('en-IN')}.`,
@@ -414,8 +445,17 @@ export function TowerWorkManager({ site }: { site: any }) {
                     <Input name="name" placeholder="e.g. 40th Terrace Slab, 16th Slab" required />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground block mb-1">Part Amount (₹)</label>
-                    <Input name="partAmount" type="number" step="0.01" placeholder="e.g. 50000" onFocus={(e) => e.target.select()} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                    {selectedBuilding.calculationMethod === "QUANTITY" ? (
+                      <>
+                        <label className="text-xs font-semibold text-muted-foreground block mb-1">Part Area (Sft)</label>
+                        <Input name="partArea" type="number" step="0.01" placeholder="e.g. 2750" onFocus={(e) => e.target.select()} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" required />
+                      </>
+                    ) : (
+                      <>
+                        <label className="text-xs font-semibold text-muted-foreground block mb-1">Part Amount (₹)</label>
+                        <Input name="partAmount" type="number" step="0.01" placeholder="e.g. 50000" onFocus={(e) => e.target.select()} className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" required />
+                      </>
+                    )}
                   </div>
                   <div className="flex justify-end gap-2 mt-2">
                     <Button type="button" variant="ghost" onClick={() => setIsAddingItem(false)}>Cancel</Button>
@@ -432,10 +472,21 @@ export function TowerWorkManager({ site }: { site: any }) {
                       <TR>
                         <TH className="w-12 whitespace-nowrap">#</TH>
                         <TH className="whitespace-nowrap min-w-[200px]">Particulars of Item</TH>
-                        <TH className="text-right whitespace-nowrap">Part Amount (₹)</TH>
-                        <TH className="text-center whitespace-nowrap">Previous Qty (%)</TH>
-                        <TH className="text-center whitespace-nowrap">This Bill Qty (%)</TH>
-                        <TH className="text-center whitespace-nowrap">Cumulative Qty (%)</TH>
+                        {selectedBuilding.calculationMethod === "QUANTITY" ? (
+                          <>
+                            <TH className="text-right whitespace-nowrap">Part Area (Sft)</TH>
+                            <TH className="text-center whitespace-nowrap">Previous Qty (Sft)</TH>
+                            <TH className="text-center whitespace-nowrap">This Bill Qty (Sft)</TH>
+                            <TH className="text-center whitespace-nowrap">Cumulative Qty (Sft)</TH>
+                          </>
+                        ) : (
+                          <>
+                            <TH className="text-right whitespace-nowrap">Part Amount (₹)</TH>
+                            <TH className="text-center whitespace-nowrap">Previous Qty (%)</TH>
+                            <TH className="text-center whitespace-nowrap">This Bill Qty (%)</TH>
+                            <TH className="text-center whitespace-nowrap">Cumulative Qty (%)</TH>
+                          </>
+                        )}
                         <TH className="text-right whitespace-nowrap">Previous Amt (₹)</TH>
                         <TH className="text-right whitespace-nowrap">This Bill Amt (₹)</TH>
                         <TH className="text-right whitespace-nowrap">Cumulative Amt (₹)</TH>
@@ -465,39 +516,50 @@ export function TowerWorkManager({ site }: { site: any }) {
                               />
                             </TD>
                             <TD className="text-right">
-                              <Input
-                                type="text"
-                                inputMode="decimal"
-                                value={partAmt}
-                                onFocus={(e) => e.target.select()}
-                                onChange={(e) => {
-                                  let val = e.target.value.replace(/^0+(?=\d)/, '');
-                                  if (val === '') val = '0';
-                                  handleFieldChange(item.id, "partAmount", parseFloat(val));
-                                }}
-                                className="w-28 h-8 font-mono text-xs text-right font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              />
+                              {selectedBuilding.calculationMethod === "QUANTITY" ? (
+                                <Input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={selectedBuilding.contractRate ? (partAmt / selectedBuilding.contractRate).toFixed(2) : 0}
+                                  disabled
+                                  className="w-28 h-8 font-mono text-xs text-right font-semibold bg-muted/50 cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                              ) : (
+                                <Input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={partAmt}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => {
+                                    let val = e.target.value.replace(/^0+(?=\d)/, '');
+                                    if (val === '') val = '0';
+                                    handleFieldChange(item.id, "partAmount", parseFloat(val));
+                                  }}
+                                  className="w-28 h-8 font-mono text-xs text-right font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                              )}
                             </TD>
                             <TD className="text-center">
                               {(() => {
-                                const isBilledPrev = (item.previousPct || 0) > 0 || (item.previousAmt || 0) > 0;
+                                const isBilledPrev = (item.previousPct || 0) > 0 || (item.previousQty || 0) > 0 || (item.previousAmt || 0) > 0;
+                                const isQty = selectedBuilding.calculationMethod === "QUANTITY";
                                 return (
                                   <div className="flex flex-col items-center justify-center gap-0.5">
                                     <div className="flex items-center justify-center gap-1">
                                       <Input
                                         type="text"
                                         inputMode="numeric"
-                                        value={prevPct}
+                                        value={isQty ? (state.previousQty || 0) : prevPct}
                                         disabled={isBilledPrev}
                                         onFocus={(e) => e.target.select()}
                                         onChange={(e) => {
                                           let val = e.target.value.replace(/^0+(?=\d)/, '');
                                           if (val === '') val = '0';
-                                          handleFieldChange(item.id, "previousPct", parseFloat(val));
+                                          handleFieldChange(item.id, isQty ? "previousQty" : "previousPct", parseFloat(val));
                                         }}
                                         className="w-16 h-8 font-mono text-xs text-center disabled:bg-muted/70 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                       />
-                                      <span className="text-xs text-muted-foreground">%</span>
+                                      <span className="text-xs text-muted-foreground">{isQty ? 'Sft' : '%'}</span>
                                     </div>
                                     {isBilledPrev && (
                                       <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-0.5">
@@ -513,16 +575,16 @@ export function TowerWorkManager({ site }: { site: any }) {
                                 <Input
                                   type="text"
                                   inputMode="numeric"
-                                  value={currPct}
+                                  value={selectedBuilding.calculationMethod === "QUANTITY" ? (state.currentQty || 0) : currPct}
                                   onFocus={(e) => e.target.select()}
                                   onChange={(e) => {
                                     let val = e.target.value.replace(/^0+(?=\d)/, '');
                                     if (val === '') val = '0';
-                                    handleFieldChange(item.id, "currentPct", parseFloat(val));
+                                    handleFieldChange(item.id, selectedBuilding.calculationMethod === "QUANTITY" ? "currentQty" : "currentPct", parseFloat(val));
                                   }}
                                   className="w-16 h-8 font-mono text-xs text-center bg-emerald-500/10 border-emerald-500/30 font-bold text-emerald-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
-                                <span className="text-xs text-emerald-600 font-bold">%</span>
+                                <span className="text-xs text-emerald-600 font-bold">{selectedBuilding.calculationMethod === "QUANTITY" ? 'Sft' : '%'}</span>
                               </div>
                             </TD>
                             <TD className="text-center">
@@ -530,11 +592,11 @@ export function TowerWorkManager({ site }: { site: any }) {
                                 <Input
                                   type="number"
                                   step="1"
-                                  value={cumPct}
+                                  value={selectedBuilding.calculationMethod === "QUANTITY" ? ((state.previousQty || 0) + (state.currentQty || 0)) : cumPct}
                                   disabled
                                   className="w-16 h-8 font-mono text-xs text-center font-semibold bg-muted/50 cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
-                                <span className="text-xs font-semibold">%</span>
+                                <span className="text-xs font-semibold">{selectedBuilding.calculationMethod === "QUANTITY" ? 'Sft' : '%'}</span>
                               </div>
                             </TD>
                             <TD className="text-right">
@@ -586,6 +648,9 @@ export function TowerWorkManager({ site }: { site: any }) {
                         let totPrevPct = 0;
                         let totCurrPct = 0;
                         let totCumPct = 0;
+                        let totPrevQty = 0;
+                        let totCurrQty = 0;
+                        let totCumQty = 0;
                         let totPrevA = 0;
                         let totCurrA = 0;
                         let totCumA = 0;
@@ -595,18 +660,23 @@ export function TowerWorkManager({ site }: { site: any }) {
                           totPrevPct += state.previousPct || 0;
                           totCurrPct += state.currentPct || 0;
                           totCumPct += state.cumulativePct || 0;
+                          totPrevQty += state.previousQty || 0;
+                          totCurrQty += state.currentQty || 0;
+                          totCumQty += (state.previousQty || 0) + (state.currentQty || 0);
                           totPrevA += state.previousAmt || 0;
                           totCurrA += state.currentAmt || 0;
                           totCumA += state.cumulativeAmt || 0;
                         });
 
+                        const isQty = selectedBuilding.calculationMethod === "QUANTITY";
+
                         return (
                           <TR className="bg-muted/80 font-bold border-t-2">
                             <TD colSpan={2} className="text-right uppercase tracking-wider text-xs">TOTAL AMOUNT ({selectedBuilding.name})</TD>
-                            <TD className="font-mono text-right text-blue-500">{formatINR(totPartA)}</TD>
-                            <TD className="text-center font-mono text-xs">{totPrevPct}%</TD>
-                            <TD className="text-center font-mono text-xs text-emerald-500 font-bold">{totCurrPct}%</TD>
-                            <TD className="text-center font-mono text-xs">{totCumPct}%</TD>
+                            <TD className="font-mono text-right text-blue-500">{isQty ? (selectedBuilding.contractRate ? (totPartA / selectedBuilding.contractRate).toFixed(2) : 0) : formatINR(totPartA)}</TD>
+                            <TD className="text-center font-mono text-xs">{isQty ? totPrevQty.toFixed(2) + ' Sft' : totPrevPct + '%'}</TD>
+                            <TD className="text-center font-mono text-xs text-emerald-500 font-bold">{isQty ? totCurrQty.toFixed(2) + ' Sft' : totCurrPct + '%'}</TD>
+                            <TD className="text-center font-mono text-xs">{isQty ? totCumQty.toFixed(2) + ' Sft' : totCumPct + '%'}</TD>
                             <TD className="font-mono text-right">{formatINR(totPrevA)}</TD>
                             <TD className="font-mono text-emerald-500 text-right">{formatINR(totCurrA)}</TD>
                             <TD className="font-mono text-right">{formatINR(totCumA)}</TD>
