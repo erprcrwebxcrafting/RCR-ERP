@@ -119,7 +119,8 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
                         att.status === 'ABSENT' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' : 
                         'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400'}`}>
                       {att.status === 'PRESENT' ? `${att.hajari} Hajari` : att.status === 'ABSENT' ? 'Absent' : 'Half Day'}
-                      {att.status === 'PRESENT' && att.hajariRate > 0 && <span className="block font-bold mt-0.5 opacity-80">@ ₹{att.hajariRate}</span>}
+                      {att.status === 'PRESENT' && att.hajariRate > 0 && <span className="block font-bold mt-0.5 opacity-80">@ ₹{Math.round(att.hajariRate * 100) / 100}</span>}
+                      {att.status === 'HALF_DAY' && att.hajariRate > 0 && <span className="block font-bold mt-0.5 opacity-80">@ ₹{Math.round(att.hajariRate * 100) / 100}</span>}
                       {att.remarks && <span className="block text-[9px] leading-tight opacity-90 mt-0.5 italic">{att.remarks}</span>}
                     </div>
                   )}
