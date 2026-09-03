@@ -60,7 +60,7 @@ export async function markIndividualLabourAttendance(
   if (!existing && labour.labourCategory?.name === "Fitter Foreman") {
     const monthlySalary = Math.round((labour.dailyWage || 0) * 30);
     const daysInMonth = getDaysInMonth(date);
-    appliedRate = Math.round((monthlySalary / daysInMonth) * 100) / 100;
+    appliedRate = monthlySalary / daysInMonth;
   }
   const status = hajari > 0 ? "PRESENT" : "ABSENT";
 

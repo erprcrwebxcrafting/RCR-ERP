@@ -54,7 +54,7 @@ async function main() {
     
     const monthlySalary = Math.round(baseDailyWage * 30);
     const daysInMonth = getDaysInMonth(attendance.date);
-    const newRate = Math.round((monthlySalary / daysInMonth) * 100) / 100;
+    const newRate = monthlySalary / daysInMonth;
 
     if (newRate !== attendance.hajariRate) {
       await prisma.attendance.update({

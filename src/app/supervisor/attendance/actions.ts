@@ -87,7 +87,7 @@ export async function saveAttendance(siteId: string, formData: FormData) {
     if (!existing && labour.labourCategory?.name === "Fitter Foreman") {
       const monthlySalary = Math.round(appliedRate * 30);
       const daysInMonth = getDaysInMonth(date);
-      appliedRate = Math.round((monthlySalary / daysInMonth) * 100) / 100;
+      appliedRate = monthlySalary / daysInMonth;
     }
 
     await prisma.attendance.upsert({
