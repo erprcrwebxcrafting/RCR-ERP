@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { getDaysInMonth } from "date-fns";
 
 export async function saveAttendance(siteId: string, formData: FormData) {
   const session = await auth();
@@ -81,7 +82,13 @@ export async function saveAttendance(siteId: string, formData: FormData) {
 
     // 4. Rate Snapshot Protection
     // If it's an existing record, keep its original saved rate. Otherwise use the current rate.
-    const appliedRate = existing ? existing.hajariRate : (rateMap.get(labourId) || 0);
+    let appliedRate = existing ? existing.hajariRate : (rateMap.get(labourId) || 0);
+    
+    if (!existing && labour.labourCategory?.name === "Fitter Foreman") {
+      const monthlySalary = Math.round(appliedRate * 30);
+      const daysInMonth = getDaysInMonth(date);
+      appliedRate = Math.round((monthlySalary / daysInMonth) * 100) / 100;
+    }
 
     await prisma.attendance.upsert({
       where: { labourId_date: { labourId, date } },

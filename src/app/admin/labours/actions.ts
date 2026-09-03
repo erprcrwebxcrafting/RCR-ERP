@@ -23,6 +23,8 @@ const labourSchema = z.object({
   effectiveDate: z.string().optional(),
 });
 
+import { getDaysInMonth } from "date-fns";
+
 export async function saveLabour(formData: FormData) {
   try {
     const parsed = labourSchema.parse(Object.fromEntries(formData));
@@ -114,7 +116,7 @@ export async function saveLabour(formData: FormData) {
     };
 
     if (parsed.id) {
-      const oldLabour = await prisma.labour.findUnique({ where: { id: parsed.id } });
+      const oldLabour = await prisma.labour.findUnique({ where: { id: parsed.id }, include: { labourCategory: true } });
       await prisma.labour.update({ where: { id: parsed.id }, data });
 
       // Handle retroactive wage updates if effectiveDate is provided and wage changed
@@ -137,15 +139,33 @@ export async function saveLabour(formData: FormData) {
         });
         
         // 2. Retroactively update all attendances from effectiveDate onwards
-        await prisma.attendance.updateMany({
-          where: {
-            labourId: parsed.id,
-            date: { gte: effectiveDate }
-          },
-          data: {
-            hajariRate: data.dailyWage
+        if (oldLabour?.labourCategory?.name === "Fitter Foreman") {
+          const pastAttendances = await prisma.attendance.findMany({
+            where: { labourId: parsed.id, date: { gte: effectiveDate } }
+          });
+          const updatePromises = pastAttendances.map(att => {
+            const monthlySalary = Math.round(data.dailyWage! * 30);
+            const daysInMonth = getDaysInMonth(att.date);
+            const newRate = Math.round((monthlySalary / daysInMonth) * 100) / 100;
+            return prisma.attendance.update({
+              where: { id: att.id },
+              data: { hajariRate: newRate }
+            });
+          });
+          if (updatePromises.length > 0) {
+            await prisma.$transaction(updatePromises);
           }
-        });
+        } else {
+          await prisma.attendance.updateMany({
+            where: {
+              labourId: parsed.id,
+              date: { gte: effectiveDate }
+            },
+            data: {
+              hajariRate: data.dailyWage
+            }
+          });
+        }
       }
 
     } else {

@@ -331,7 +331,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
                           ₹{att.earnedAmount.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                         </div>
                         <p className="text-[9px] text-slate-400 font-medium truncate">
-                          Rate: ₹{att.dailyRate}
+                          Rate: ₹{Math.round(att.dailyRate * 100) / 100}
                         </p>
                         {att.remarks && (
                           <p className="text-[9px] mt-1 text-slate-500 italic leading-tight opacity-90 truncate" title={att.remarks}>

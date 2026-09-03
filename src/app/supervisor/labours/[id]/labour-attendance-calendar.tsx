@@ -246,7 +246,7 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
                         <div className="text-[11px] sm:text-xs font-black tracking-tight text-slate-800 dark:text-slate-100">
                           ₹{(att.hajari * att.hajariRate).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                         </div>
-                        <p className="text-[9px] text-slate-400 font-medium truncate">Rate: ₹{att.hajariRate}</p>
+                        <p className="text-[9px] text-slate-400 font-medium truncate">Rate: ₹{Math.round(att.hajariRate * 100) / 100}</p>
                       </div>
                     ) : (
                       <div className="text-[10px] text-slate-300 dark:text-slate-600 italic">Not marked</div>
