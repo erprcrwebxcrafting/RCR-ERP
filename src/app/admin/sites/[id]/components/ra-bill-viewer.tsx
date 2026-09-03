@@ -294,17 +294,23 @@ export function RABillViewer({ site }: { site: any }) {
                     const curPct = items[i].currentPct ?? 0;
                     const curQty = items[i].currentQty ?? 0;
                     const prevPct = items[i].previousPct ?? 0;
+                    const prevQty = items[i].previousQty ?? 0;
                     const cumPct = prevPct + curPct;
+                    const cumQty = prevQty + curQty;
 
-                    if (curPct > 0 || curQty > 0 || cumPct > 0) {
+                    if (curPct > 0 || curQty > 0 || cumPct > 0 || cumQty > 0) {
                       for (let j = 0; j < i; j++) {
                         const priorPrev = items[j].previousPct ?? 0;
                         const priorCur = items[j].currentPct ?? 0;
                         const priorCum = priorPrev + priorCur;
 
-                        if (priorCum <= 0) {
+                        const priorPrevQty = items[j].previousQty ?? 0;
+                        const priorCurQty = items[j].currentQty ?? 0;
+                        const priorCumQty = priorPrevQty + priorCurQty;
+
+                        if (priorCum <= 0 && priorCumQty <= 0) {
                           setFormError(
-                            `Sequence Error in "${b.name}"! Item #${i + 1} ("${items[i].name}") has progress (${curPct > 0 ? curPct + "%" : cumPct + "%"}), but earlier stage Item #${j + 1} ("${items[j].name}") has 0% progress! Work items must be executed in order.`
+                            `Sequence Error in "${b.name}"! Item #${i + 1} ("${items[i].name}") has progress (${curPct > 0 ? curPct + "%" : cumPct > 0 ? cumPct + "%" : curQty > 0 ? curQty + " Sft" : cumQty + " Sft"}), but earlier stage Item #${j + 1} ("${items[j].name}") has 0 completion! Work items must be executed in order.`
                           );
                           return;
                         }
