@@ -23,6 +23,8 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
   const goToday = () => setCurrentDate(new Date());
 
+  const monthName = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+
   useEffect(() => {
     if (labour?.labourCategory?.name === "Fitter Foreman") {
       const el = document.getElementById("foreman-dynamic-rate");
@@ -40,8 +42,6 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
   for (let i = 1; i <= daysInMonth; i++) {
     days.push(new Date(year, month, i));
   }
-
-  const monthName = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
 
   // Get local date string YYYY-MM-DD safely
   const toLocalString = (d: Date) => {
