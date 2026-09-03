@@ -29,7 +29,7 @@ async function main() {
 
     if (history && history.monthlySalary) {
       const daysInMonth = getDaysInMonth(attendance.date);
-      newDailyRate = Math.round((history.monthlySalary / daysInMonth) * 100) / 100;
+      newDailyRate = history.monthlySalary / daysInMonth;
     } else if (history && history.dailyWage) {
       newDailyRate = history.dailyWage;
     }
@@ -38,7 +38,7 @@ async function main() {
     if (attendance.status === "PRESENT") {
       newEarnedAmount = newDailyRate;
     } else if (attendance.status === "HALF_DAY") {
-      newEarnedAmount = Math.round((newDailyRate / 2) * 100) / 100;
+      newEarnedAmount = newDailyRate / 2;
     }
 
     if (newDailyRate !== attendance.dailyRate || newEarnedAmount !== attendance.earnedAmount) {

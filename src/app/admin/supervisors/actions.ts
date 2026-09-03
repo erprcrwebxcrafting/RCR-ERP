@@ -254,10 +254,10 @@ export async function updateSupervisor(id: string, formData: FormData) {
 
     const updatePromises = attendancesToUpdate.map((attendance) => {
       const days = getDaysInMonth(attendance.date);
-      const rate = Math.round((monthlySalary / days) * 100) / 100;
+      const rate = monthlySalary / days;
       let earned = 0;
       if (attendance.status === "PRESENT") earned = rate;
-      else if (attendance.status === "HALF_DAY") earned = Math.round((rate / 2) * 100) / 100;
+      else if (attendance.status === "HALF_DAY") earned = rate / 2;
       
       return prisma.supervisorAttendance.update({
         where: { id: attendance.id },

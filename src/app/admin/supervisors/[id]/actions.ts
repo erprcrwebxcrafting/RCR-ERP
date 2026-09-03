@@ -100,7 +100,7 @@ export async function markSupervisorAttendanceAction(
 
   const monthlySalary = supervisor?.monthlySalary || 0;
   const daysInMonth = getDaysInMonth(date);
-  const currentDailyRate = Math.round((monthlySalary / daysInMonth) * 100) / 100;
+  const currentDailyRate = monthlySalary / daysInMonth;
   
   let historicalDailyRate = currentDailyRate;
   // @ts-ignore: Prisma client cache issue in IDE
@@ -113,7 +113,7 @@ export async function markSupervisorAttendanceAction(
   });
 
   if (history && history.monthlySalary) {
-    historicalDailyRate = Math.round((history.monthlySalary / daysInMonth) * 100) / 100;
+    historicalDailyRate = history.monthlySalary / daysInMonth;
   } else if (history && history.dailyWage) {
     historicalDailyRate = history.dailyWage;
   } else {
@@ -134,7 +134,7 @@ export async function markSupervisorAttendanceAction(
   if (status === "PRESENT") {
     earnedAmount = dailyRate;
   } else if (status === "HALF_DAY") {
-    earnedAmount = Math.round((dailyRate / 2) * 100) / 100;
+    earnedAmount = dailyRate / 2;
   } else {
     earnedAmount = 0;
   }
