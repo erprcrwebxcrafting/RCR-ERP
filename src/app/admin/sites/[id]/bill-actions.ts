@@ -36,10 +36,10 @@ export async function updateTowerWorkProgressAction(
     const currPct = item.currentPct ?? 0;
     const partAmt = item.partAmount ?? 0;
     
-    const previousAmt = (prevPct / 100) * partAmt;
-    const currentAmt = (currPct / 100) * partAmt;
-    const cumulativePct = prevPct + currPct;
-    const cumulativeAmt = previousAmt + currentAmt;
+    const previousAmt = item.previousAmt ?? ((prevPct / 100) * partAmt);
+    const currentAmt = item.currentAmt ?? ((currPct / 100) * partAmt);
+    const cumulativePct = item.cumulativePct ?? (prevPct + currPct);
+    const cumulativeAmt = item.cumulativeAmt ?? (previousAmt + currentAmt);
 
     return prisma.workItem.update({
       where: { id: item.id },
@@ -353,7 +353,9 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
       const curPct = items[i].currentPct ?? 0;
       const curQty = items[i].currentQty ?? 0;
       const prevPct = items[i].previousPct ?? 0;
+      const prevQty = items[i].previousQty ?? 0;
       const cumPct = prevPct + curPct;
+      const cumQty = prevQty + curQty;
 
       if (curPct > 0 || curQty > 0 || cumPct > 0) {
         for (let j = 0; j < i; j++) {
@@ -361,9 +363,13 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
           const priorCur = items[j].currentPct ?? 0;
           const priorCum = priorPrev + priorCur;
 
-          if (priorCum <= 0) {
+          const priorPrevQty = items[j].previousQty ?? 0;
+          const priorCurQty = items[j].currentQty ?? 0;
+          const priorCumQty = priorPrevQty + priorCurQty;
+
+          if (priorCum <= 0 && priorCumQty <= 0) {
             throw new Error(
-              `WORK STAGE SEQUENCE ERROR in "${b.name}": Item #${i + 1} ("${items[i].name}") has progress (${curPct > 0 ? curPct + "%" : cumPct + "%"}), but prior stage Item #${j + 1} ("${items[j].name}") has 0% completion! Work items must be executed in sequence without skipping earlier stages.`
+              `WORK STAGE SEQUENCE ERROR in "${b.name}": Item #${i + 1} ("${items[i].name}") has progress (${curPct > 0 ? curPct + "%" : cumPct > 0 ? cumPct + "%" : curQty > 0 ? curQty + " Sft" : cumQty + " Sft"}), but prior stage Item #${j + 1} ("${items[j].name}") has 0 completion! Work items must be executed in sequence without skipping earlier stages.`
             );
           }
         }

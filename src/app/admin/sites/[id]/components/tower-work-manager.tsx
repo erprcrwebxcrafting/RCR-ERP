@@ -148,15 +148,23 @@ export function TowerWorkManager({ site }: { site: any }) {
       const prevPct = state?.previousPct ?? (items[i].previousPct || 0);
       const cumPct = prevPct + curPct;
 
-      if (cumPct > 0 || curPct > 0) {
+      const curQty = state?.currentQty ?? (items[i].currentQty || 0);
+      const prevQty = state?.previousQty ?? (items[i].previousQty || 0);
+      const cumQty = prevQty + curQty;
+
+      if (cumPct > 0 || curPct > 0 || cumQty > 0 || curQty > 0) {
         for (let j = 0; j < i; j++) {
           const priorState = progressState[items[j].id];
           const priorCur = priorState?.currentPct ?? (items[j].currentPct || 0);
           const priorPrev = priorState?.previousPct ?? (items[j].previousPct || 0);
           const priorCum = priorPrev + priorCur;
 
-          if (priorCum <= 0) {
-            const warnMsg = `⚠️ SEQUENCE ERROR / WARNING:\n\nItem #${i + 1} ("${items[i].name}") has ${cumPct}% progress, but earlier stage Item #${j + 1} ("${items[j].name}") has 0% progress!\n\nIn construction sequencing, earlier stages cannot be skipped.\n\nDo you still wish to proceed?`;
+          const priorCurQty = priorState?.currentQty ?? (items[j].currentQty || 0);
+          const priorPrevQty = priorState?.previousQty ?? (items[j].previousQty || 0);
+          const priorCumQty = priorPrevQty + priorCurQty;
+
+          if (priorCum <= 0 && priorCumQty <= 0) {
+            const warnMsg = `⚠️ SEQUENCE ERROR / WARNING:\n\nItem #${i + 1} ("${items[i].name}") has progress, but earlier stage Item #${j + 1} ("${items[j].name}") has 0 progress!\n\nIn construction sequencing, earlier stages cannot be skipped.\n\nDo you still wish to proceed?`;
             if (!confirm(warnMsg)) {
               return;
             }
