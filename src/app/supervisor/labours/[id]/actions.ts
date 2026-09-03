@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { getDaysInMonth } from "date-fns";
 
 export async function markIndividualLabourAttendance(
   labourId: string,
@@ -55,7 +56,12 @@ export async function markIndividualLabourAttendance(
     }
   }
 
-  const appliedRate = existing ? existing.hajariRate : (labour.dailyWage || labour.labourCategory.dailyWage);
+  let appliedRate = existing ? existing.hajariRate : (labour.dailyWage || labour.labourCategory.dailyWage);
+  if (!existing && labour.labourCategory?.name === "Fitter Foreman") {
+    const monthlySalary = Math.round((labour.dailyWage || 0) * 30);
+    const daysInMonth = getDaysInMonth(date);
+    appliedRate = Math.round((monthlySalary / daysInMonth) * 100) / 100;
+  }
   const status = hajari > 0 ? "PRESENT" : "ABSENT";
 
   await prisma.attendance.upsert({
