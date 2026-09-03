@@ -527,18 +527,23 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
 
                 <Table className="border">
                   <THead className="bg-muted/60">
-                    <TR>
-                      <TH>#</TH>
-                      <TH>Particulars of Item</TH>
-                      <TH>Unit</TH>
-                      <TH className="text-right">Item Amount (₹)</TH>
-                      <TH className="text-center">Previous Qty (%)</TH>
-                      <TH className="text-center">This Bill Qty (%)</TH>
-                      <TH className="text-center">Cumulative Qty (%)</TH>
-                      <TH className="text-right">Previous Amt (₹)</TH>
-                      <TH className="text-right">This Bill Amt (₹)</TH>
-                      <TH className="text-right">Cumulative Amt (₹)</TH>
-                    </TR>
+                    {(() => {
+                      const isQty = b.calculationMethod === "QUANTITY";
+                      return (
+                        <TR>
+                          <TH>#</TH>
+                          <TH>Particulars of Item</TH>
+                          <TH>Unit</TH>
+                          <TH className="text-right">{isQty ? "Item Amount (₹) / Area" : "Item Amount (₹)"}</TH>
+                          <TH className="text-center">Previous Qty ({isQty ? "Sft" : "%"})</TH>
+                          <TH className="text-center">This Bill Qty ({isQty ? "Sft" : "%"})</TH>
+                          <TH className="text-center">Cumulative Qty ({isQty ? "Sft" : "%"})</TH>
+                          <TH className="text-right">Previous Amt (₹)</TH>
+                          <TH className="text-right">This Bill Amt (₹)</TH>
+                          <TH className="text-right">Cumulative Amt (₹)</TH>
+                        </TR>
+                      );
+                    })()}
                   </THead>
                   <TBody>
                     {items.map((item: any, i: number) => {
@@ -548,16 +553,17 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                       const prevA = item.previousAmt || 0;
                       const currA = item.currentAmt || 0;
                       const cumA = item.cumulativeAmt || (prevA + currA);
+                      const isQty = b.calculationMethod === "QUANTITY";
 
                       return (
                         <TR key={item.id}>
                           <TD>{i + 1}</TD>
                           <TD className="font-medium">{item.name}</TD>
-                          <TD>{item.unit || "%"}</TD>
-                          <TD className="font-mono text-right font-semibold text-muted-foreground">{formatINR(item.partAmount || 0)}</TD>
-                          <TD className="font-mono text-center">{prevQ}%</TD>
-                          <TD className="font-mono text-emerald-500 font-semibold text-center">{currQ}%</TD>
-                          <TD className="font-mono text-center font-bold">{cumQ}%</TD>
+                          <TD>{item.unit || (isQty ? "Sft" : "%")}</TD>
+                          <TD className="font-mono text-right font-semibold text-muted-foreground">{isQty && contractRate ? (item.partAmount / contractRate).toFixed(2) : formatINR(item.partAmount || 0)}</TD>
+                          <TD className="font-mono text-center">{isQty ? prevQ.toFixed(2) : prevQ + "%"}</TD>
+                          <TD className="font-mono text-emerald-500 font-semibold text-center">{isQty ? currQ.toFixed(2) : currQ + "%"}</TD>
+                          <TD className="font-mono text-center font-bold">{isQty ? cumQ.toFixed(2) : cumQ + "%"}</TD>
                           <TD className="font-mono text-right">{formatINR(prevA)}</TD>
                           <TD className="font-mono text-emerald-500 font-bold text-right">{formatINR(currA)}</TD>
                           <TD className="font-mono font-bold text-right">{formatINR(cumA)}</TD>
@@ -565,16 +571,21 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                       );
                     })}
 
-                    <TR className="bg-muted/80 font-bold border-t-2 text-xs">
-                      <TD colSpan={3} className="text-right uppercase tracking-wider">TOTAL {b.name.toUpperCase()} AMOUNT</TD>
-                      <TD className="text-right font-mono text-muted-foreground">{formatINR(totPartAmt)}</TD>
-                      <TD className="text-center font-mono">{totPrevQ}%</TD>
-                      <TD className="text-center font-mono text-emerald-500">{totCurrQ}%</TD>
-                      <TD className="text-center font-mono font-bold">{totCumQ}%</TD>
-                      <TD className="text-right font-mono">{formatINR(totPrevA)}</TD>
-                      <TD className="text-right font-mono text-emerald-500 font-black text-sm">{formatINR(totCurrA)}</TD>
-                      <TD className="text-right font-mono font-black text-sm">{formatINR(totCumA)}</TD>
-                    </TR>
+                    {(() => {
+                      const isQty = b.calculationMethod === "QUANTITY";
+                      return (
+                        <TR className="bg-muted/80 font-bold border-t-2 text-xs">
+                          <TD colSpan={3} className="text-right uppercase tracking-wider">TOTAL {b.name.toUpperCase()} AMOUNT</TD>
+                          <TD className="text-right font-mono text-muted-foreground">{isQty && contractRate ? (totPartAmt / contractRate).toFixed(2) : formatINR(totPartAmt)}</TD>
+                          <TD className="text-center font-mono">{isQty ? totPrevQ.toFixed(2) + " Sft" : totPrevQ + "%"}</TD>
+                          <TD className="text-center font-mono text-emerald-500">{isQty ? totCurrQ.toFixed(2) + " Sft" : totCurrQ + "%"}</TD>
+                          <TD className="text-center font-mono font-bold">{isQty ? totCumQ.toFixed(2) + " Sft" : totCumQ + "%"}</TD>
+                          <TD className="text-right font-mono">{formatINR(totPrevA)}</TD>
+                          <TD className="text-right font-mono text-emerald-500 font-black text-sm">{formatINR(totCurrA)}</TD>
+                          <TD className="text-right font-mono font-black text-sm">{formatINR(totCumA)}</TD>
+                        </TR>
+                      );
+                    })()}
                     <TR className="bg-muted/30 font-bold text-xs border-t">
                       <TD colSpan={7} className="text-right">GROSS CONTRACT AMOUNT FOR {b.name.toUpperCase()}</TD>
                       <TD colSpan={3} className="text-right font-mono pr-4">{formatINR(totalVal)}</TD>
