@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Users, CheckCircle2, XCircle, Clock, Building, FileText, FileSpreadsheet, MapPin, CalendarDays, Filter, UserCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Users, CheckCircle2, XCircle, Clock, Building, FileText, FileSpreadsheet, MapPin, CalendarDays, Filter, UserCheck, Banknote, Wallet } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { getFinancialYearDates } from "@/lib/get-fy";
@@ -36,9 +36,6 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
   endDate.setHours(23, 59, 59, 999);
 
   // If user hasn't explicitly filtered by date, default to today within FY
-  // Note: Attendance page has its own date filter, which is fine, but we can constrain it to FY if needed.
-  // Actually, since it defaults to `today`, it usually doesn't load much anyway.
-  // We'll enforce that `startDate` cannot be before `fyStart`
   let wasClamped = false;
   if (startDate < fyStart) {
     startDate.setTime(fyStart.getTime());
@@ -71,8 +68,20 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
     ];
   }
 
+  // Define payment where clause mirroring attendance search
+  const paymentWhereClause: any = {
+    date: { gte: startDate, lte: endDate },
+  };
+  if (siteId) paymentWhereClause.labour = { siteId };
+  if (q) {
+    paymentWhereClause.labour = {
+      ...paymentWhereClause.labour,
+      name: { contains: q, mode: "insensitive" }
+    };
+  }
+
   // ✅ Run KPI aggregates + paginated data in parallel — no full scan in JS
-  const [total, presentAgg, absentAgg, hajariAgg, attendance] = await Promise.all([
+  const [total, presentAgg, absentAgg, hajariAgg, attendanceForEarned, paymentAgg, attendance] = await Promise.all([
     // Total count for pagination
     prisma.attendance.count({ where: whereClause }),
 
@@ -88,7 +97,19 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
       _sum: { hajari: true },
     }),
 
-    // ✅ Paginated — only 100 rows at a time!
+    // Earned wages (requires fetching to multiply by daily wage)
+    prisma.attendance.findMany({
+      where: { ...whereClause, hajari: { gt: 0 } },
+      select: { hajari: true, hajariRate: true, labour: { select: { dailyWage: true } } }
+    }),
+
+    // Total Payments
+    prisma.labourPayment.aggregate({
+      where: paymentWhereClause,
+      _sum: { amount: true }
+    }),
+
+    // ✅ Paginated — only PAGE_SIZE rows at a time!
     prisma.attendance.findMany({
       where: whereClause,
       orderBy: { date: "desc" },
@@ -113,10 +134,29 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
     }),
   ]);
 
+  // Fetch payments for the paginated labours on their respective dates
+  const pageLabourIds = Array.from(new Set(attendance.map((a: any) => a.labourId)));
+  const pagePayments = await prisma.labourPayment.findMany({
+    where: {
+      labourId: { in: pageLabourIds },
+      date: { gte: startDate, lte: endDate }
+    }
+  });
+
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const totalHajari = hajariAgg._sum.hajari ?? 0;
 
+  // Calculate gross earned
+  let grossEarned = 0;
+  for (const a of attendanceForEarned) {
+    const rate = a.hajariRate || a.labour?.dailyWage || 0;
+    grossEarned += a.hajari * rate;
+  }
+  const totalAdvance = paymentAgg._sum.amount || 0;
+  const netPayable = grossEarned - totalAdvance;
+
   const exportUrlParams = new URLSearchParams({ siteId, startDate: startDateStr, endDate: endDateStr });
+  if (q) exportUrlParams.set("q", q);
 
   const buildPageUrl = (p: number) => {
     const params = new URLSearchParams({ siteId, startDate: startDateStr, endDate: endDateStr, q, page: String(p) });
@@ -138,7 +178,7 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
             </div>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight">Attendance Explorer</h1>
             <p className="text-blue-100 max-w-xl text-sm sm:text-base font-medium">
-              View, filter, and export attendance records across all sites. Track worker hajaris and attendance status centrally.
+              View, filter, and export attendance and payment ledgers across all sites. Track worker hajaris and payments centrally.
             </p>
           </div>
 
@@ -151,7 +191,7 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
                 className={!siteId ? "cursor-not-allowed pointer-events-none bg-white/20 border-white/30 text-white shadow-none font-medium h-10 rounded-xl px-5" : "border-transparent bg-white hover:bg-white/90 text-emerald-600 shadow-xl shadow-emerald-900/10 transition-all font-bold h-10 rounded-xl px-5"}
               >
                 <a href={`/api/attendance/export?format=excel&${exportUrlParams.toString()}`} target="_blank" rel="noreferrer">
-                  <FileSpreadsheet className={`w-4 h-4 mr-2 ${!siteId ? "text-white/70" : ""}`} /> Excel
+                  <FileSpreadsheet className={`w-4 h-4 mr-2 ${!siteId ? "text-white/70" : ""}`} /> Excel Ledger
                 </a>
               </Button>
               <Button
@@ -161,7 +201,7 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
                 className={!siteId ? "cursor-not-allowed pointer-events-none bg-white/20 border-white/30 text-white shadow-none font-medium h-10 rounded-xl px-5" : "border-transparent bg-white hover:bg-white/90 text-rose-600 shadow-xl shadow-rose-900/10 transition-all font-bold h-10 rounded-xl px-5"}
               >
                 <a href={`/api/attendance/export?format=pdf&${exportUrlParams.toString()}`} target="_blank" rel="noreferrer">
-                  <FileText className={`w-4 h-4 mr-2 ${!siteId ? "text-white/70" : ""}`} /> PDF
+                  <FileText className={`w-4 h-4 mr-2 ${!siteId ? "text-white/70" : ""}`} /> PDF Ledger
                 </a>
               </Button>
             </div>
@@ -192,57 +232,70 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
         wasClamped={wasClamped}
       />
 
-      {/* KPI Cards — powered by DB aggregates, not JS loops */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+      {/* KPI Cards — powered by DB aggregates */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900">
           <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-slate-500/10 blur-2xl" />
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                <Users className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <Users className="h-4 w-4 text-slate-600 dark:text-slate-300" />
               </div>
             </div>
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Logs</p>
-            <p className="text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">{total.toLocaleString("en-IN")}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900">
-          <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-emerald-500/10 blur-2xl" />
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              </div>
-            </div>
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Days Present</p>
-            <p className="text-3xl font-black tracking-tight text-emerald-600 dark:text-emerald-500">{presentAgg.toLocaleString("en-IN")}</p>
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Logs</p>
+            <p className="text-xl sm:text-2xl font-black tracking-tight text-slate-800 dark:text-slate-100">{total.toLocaleString("en-IN")}</p>
           </CardContent>
         </Card>
 
         <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900">
           <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-blue-500/10 blur-2xl" />
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-10 w-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                <Clock className="h-5 w-5 text-blue-600" />
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-9 w-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <Clock className="h-4 w-4 text-blue-600" />
               </div>
             </div>
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Hajaris</p>
-            <p className="text-3xl font-black tracking-tight text-blue-600 dark:text-blue-500">{totalHajari.toLocaleString("en-IN")}</p>
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Hajaris</p>
+            <p className="text-xl sm:text-2xl font-black tracking-tight text-blue-600 dark:text-blue-500">{totalHajari.toLocaleString("en-IN")}</p>
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-rose-200 bg-rose-50/50 dark:border-rose-900/50 dark:bg-rose-950/20">
-          <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-rose-500/10 blur-2xl" />
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                <XCircle className="h-5 w-5 text-rose-600" />
+        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-emerald-200 dark:border-emerald-800/60 bg-white dark:bg-slate-900">
+          <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-emerald-500/10 blur-2xl" />
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-9 w-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <Banknote className="h-4 w-4 text-emerald-600" />
               </div>
             </div>
-            <p className="text-xs font-bold uppercase tracking-widest text-rose-600/80 dark:text-rose-400/80 mb-1">Absent</p>
-            <p className="text-3xl font-black tracking-tight text-rose-600 dark:text-rose-500">{absentAgg.toLocaleString("en-IN")}</p>
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Gross Wages</p>
+            <p className="text-xl sm:text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-500">₹{Math.round(grossEarned).toLocaleString("en-IN")}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-rose-200 bg-rose-50/30 dark:border-rose-900/40 dark:bg-rose-950/20">
+          <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-rose-500/10 blur-2xl" />
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-9 w-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <Wallet className="h-4 w-4 text-rose-600" />
+              </div>
+            </div>
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-rose-600/80 dark:text-rose-400/80 mb-1">Total Paid</p>
+            <p className="text-xl sm:text-2xl font-black tracking-tight text-rose-600 dark:text-rose-500">₹{Math.round(totalAdvance).toLocaleString("en-IN")}</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-indigo-200 bg-indigo-50/30 dark:border-indigo-900/40 dark:bg-indigo-950/20 col-span-2">
+          <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-indigo-500/10 blur-2xl" />
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-9 w-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <CheckCircle2 className="h-4 w-4 text-indigo-600" />
+              </div>
+            </div>
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-indigo-600/80 dark:text-indigo-400/80 mb-1">Net Balance</p>
+            <p className="text-xl sm:text-2xl font-black tracking-tight text-indigo-600 dark:text-indigo-500">₹{Math.round(netPayable).toLocaleString("en-IN")}</p>
           </CardContent>
         </Card>
       </div>
@@ -264,7 +317,7 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
                 <TH className="font-semibold text-slate-600 dark:text-slate-300">Date</TH>
                 <TH className="font-semibold text-slate-600 dark:text-slate-300">Site &amp; Building</TH>
                 <TH className="font-semibold text-slate-600 dark:text-slate-300">Worker</TH>
-                <TH className="font-semibold text-slate-600 dark:text-slate-300">Status</TH>
+                <TH className="font-semibold text-slate-600 dark:text-slate-300">Status &amp; Payment</TH>
                 <TH className="font-semibold text-slate-600 dark:text-slate-300">OT Hrs</TH>
                 <TH className="font-semibold text-slate-600 dark:text-slate-300">Remarks</TH>
               </TR>
@@ -273,6 +326,12 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
               {attendance.map((a: any) => {
                 const colors = ['bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400', 'bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400', 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400', 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'];
                 const colorClass = colors[a.labour.name.charCodeAt(0) % colors.length];
+                
+                // Find payments on this specific date for this labour
+                const aDateStr = format(new Date(a.date), 'yyyy-MM-dd');
+                const dayPayments = pagePayments.filter((p: any) => p.labourId === a.labourId && format(new Date(p.date), 'yyyy-MM-dd') === aDateStr);
+                const dayPaid = dayPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
+
                 return (
                   <TR key={a.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                     <TD className="align-top whitespace-nowrap">
@@ -298,9 +357,16 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
                       </div>
                     </TD>
                     <TD className="align-top">
-                      <Badge className={`${a.hajari > 0 ? "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 border-emerald-500/20" : "bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 border-rose-500/20"} shadow-none font-bold`}>
-                        {a.hajari > 0 ? `${a.hajari} Hajari` : "Absent"}
-                      </Badge>
+                      <div className="flex flex-col gap-1.5 items-start">
+                        <Badge className={`${a.hajari > 0 ? "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 border-emerald-500/20" : "bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 border-rose-500/20"} shadow-none font-bold`}>
+                          {a.hajari > 0 ? `${a.hajari} Hajari` : "Absent"}
+                        </Badge>
+                        {dayPaid > 0 && (
+                          <div className="text-[10px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-md border border-rose-100 dark:border-rose-900/50 flex items-center gap-1">
+                            <Wallet className="h-3 w-3" /> ₹{dayPaid.toLocaleString("en-IN")} Paid
+                          </div>
+                        )}
+                      </div>
                     </TD>
                     <TD className="align-top text-slate-500 dark:text-slate-400 font-bold">
                       {a.overtimeHrs > 0 ? `${a.overtimeHrs}h` : '—'}
@@ -316,8 +382,8 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
                   <TD colSpan={6} className="py-16 text-center">
                     <div className="inline-flex flex-col items-center justify-center">
                       <CalendarDays className="h-10 w-10 text-slate-300 mb-4" />
-                      <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">No attendance logs</h3>
-                      <p className="text-slate-500 font-medium mt-1">No attendance records found for these filters.</p>
+                      <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">No logs found</h3>
+                      <p className="text-slate-500 font-medium mt-1">No attendance or payment records found for these filters.</p>
                     </div>
                   </TD>
                 </TR>

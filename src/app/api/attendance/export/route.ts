@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const startDateStr = searchParams.get("startDate");
     const endDateStr = searchParams.get("endDate");
     const format = searchParams.get("format");
+    const q = searchParams.get("q") || "";
 
     if ((!siteId && !labourId) || !startDateStr || !endDateStr || !format) {
       return new NextResponse("Missing required parameters", { status: 400 });
@@ -48,6 +49,13 @@ export async function GET(request: NextRequest) {
     if (labourId) whereClause.labourId = labourId;
     if (siteId && !labourId) whereClause.siteId = siteId;
 
+    if (q) {
+      whereClause.OR = [
+        { labour: { name: { contains: q, mode: "insensitive" } } },
+        { site: { projectName: { contains: q, mode: "insensitive" } } },
+      ];
+    }
+
     const attendances = await prisma.attendance.findMany({
       where: whereClause,
       orderBy: [
@@ -61,8 +69,88 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Collect all relevant labour IDs
+    const labourIdSet = new Set<string>();
+    attendances.forEach(a => labourIdSet.add(a.labourId));
+    if (labourId) {
+      labourIdSet.add(labourId);
+    } else if (siteId && !q) {
+      // Include all active labours of this site
+      const siteLabours = await prisma.labour.findMany({
+        where: { siteId, active: true },
+        select: { id: true }
+      });
+      siteLabours.forEach(l => labourIdSet.add(l.id));
+    }
+    const allLabourIds = Array.from(labourIdSet);
+
+    // Fetch payments in this period for these labours
+    const payments = await prisma.labourPayment.findMany({
+      where: {
+        labourId: { in: allLabourIds },
+        date: { gte: startDate, lte: endDate },
+      },
+      orderBy: { date: "asc" },
+    });
+
+    // Fetch details for any labours who had payments or belong to the site but had no attendance in the period
+    const missingLabourIds = allLabourIds.filter(id => !attendances.some(a => a.labourId === id));
+    let additionalLabours: any[] = [];
+    if (missingLabourIds.length > 0) {
+      additionalLabours = await prisma.labour.findMany({
+        where: { id: { in: missingLabourIds } },
+        include: { labourCategory: true },
+      });
+    }
+
+    // Fetch prior attendance and payments before startDate to calculate opening/previous balances
+    const [prevAttendances, prevPayments] = await Promise.all([
+      prisma.attendance.findMany({
+        where: {
+          labourId: { in: allLabourIds },
+          date: { lt: startDate },
+          hajari: { gt: 0 }
+        },
+        select: {
+          labourId: true,
+          hajari: true,
+          hajariRate: true,
+          labour: { select: { dailyWage: true } }
+        }
+      }),
+      prisma.labourPayment.findMany({
+        where: {
+          labourId: { in: allLabourIds },
+          date: { lt: startDate }
+        },
+        select: {
+          labourId: true,
+          amount: true
+        }
+      })
+    ]);
+
+    const openingBalances: Record<string, number> = {};
+    for (const pa of prevAttendances) {
+      const rate = pa.hajariRate || pa.labour?.dailyWage || 0;
+      openingBalances[pa.labourId] = (openingBalances[pa.labourId] || 0) + (pa.hajari * rate);
+    }
+    for (const pp of prevPayments) {
+      openingBalances[pp.labourId] = (openingBalances[pp.labourId] || 0) - pp.amount;
+    }
+
+    const exportData = {
+      attendances,
+      payments,
+      additionalLabours,
+      openingBalances,
+      siteName,
+      startDateStr,
+      endDateStr,
+    };
+
     if (format === "excel") {
-      const buffer = await generateAttendanceExcel(attendances, siteName, startDateStr, endDateStr);
+      const buffer = await generateAttendanceExcel(exportData);
       return new NextResponse(buffer as any, {
         headers: {
           "Content-Disposition": `attachment; filename="Attendance_${siteName.replace(/\s+/g, "_")}_${startDateStr}_to_${endDateStr}.xlsx"`,
@@ -70,7 +158,7 @@ export async function GET(request: NextRequest) {
         },
       });
     } else if (format === "pdf") {
-      const buffer = await generateAttendancePdf(attendances, siteName, startDateStr, endDateStr);
+      const buffer = await generateAttendancePdf(exportData);
       return new NextResponse(buffer as any, {
         headers: {
           "Content-Disposition": `attachment; filename="Attendance_${siteName.replace(/\s+/g, "_")}_${startDateStr}_to_${endDateStr}.pdf"`,
