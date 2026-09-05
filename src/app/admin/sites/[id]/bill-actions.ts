@@ -339,10 +339,12 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
     for (const item of b.workItems) {
       if (isQtyMode) {
         const rate = item.rate || b.contractRate || 0;
-        const maxArea = rate > 0 ? (item.partAmount / rate) : (item.buWork || 0);
+        const partAmt = item.partAmount ?? 0;
+        const prevAmt = item.previousAmt ?? 0;
+        const maxArea = rate > 0 ? (partAmt / rate) : (item.buWork || 0);
         const prevQ = (item.previousQty || 0) > 0 
-          ? item.previousQty 
-          : (rate > 0 && item.previousAmt > 0 ? Math.round(item.previousAmt / rate) : 0);
+          ? (item.previousQty || 0)
+          : (rate > 0 && prevAmt > 0 ? Math.round(prevAmt / rate) : 0);
         const cumQ = prevQ + (item.currentQty || 0);
         if (maxArea > 0 && cumQ > maxArea + 0.01) {
           return { error: `OVER-BILLING ERROR: Item "${item.name}" cumulative quantity (${cumQ.toFixed(2)} Sft) exceeds part area (${maxArea.toFixed(2)} Sft)!` };
