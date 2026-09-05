@@ -287,37 +287,7 @@ export function RABillViewer({ site }: { site: any }) {
                   }
                 }
 
-                // Frontend validation 4: Check for sequential stage execution (Item 2 cannot be billed if Item 1 has 0% progress)
-                for (const b of site.buildings || []) {
-                  const items = b.workItems || [];
-                  for (let i = 0; i < items.length; i++) {
-                    const curPct = items[i].currentPct ?? 0;
-                    const curQty = items[i].currentQty ?? 0;
-                    const prevPct = items[i].previousPct ?? 0;
-                    const prevQty = items[i].previousQty ?? 0;
-                    const cumPct = prevPct + curPct;
-                    const cumQty = prevQty + curQty;
-
-                    if (curPct > 0 || curQty > 0 || cumPct > 0 || cumQty > 0) {
-                      for (let j = 0; j < i; j++) {
-                        const priorPrev = items[j].previousPct ?? 0;
-                        const priorCur = items[j].currentPct ?? 0;
-                        const priorCum = priorPrev + priorCur;
-
-                        const priorPrevQty = items[j].previousQty ?? 0;
-                        const priorCurQty = items[j].currentQty ?? 0;
-                        const priorCumQty = priorPrevQty + priorCurQty;
-
-                        if (priorCum <= 0 && priorCumQty <= 0) {
-                          setFormError(
-                            `Sequence Error in "${b.name}"! Item #${i + 1} ("${items[i].name}") has progress (${curPct > 0 ? curPct + "%" : cumPct > 0 ? cumPct + "%" : curQty > 0 ? curQty + " Sft" : cumQty + " Sft"}), but earlier stage Item #${j + 1} ("${items[j].name}") has 0 completion! Work items must be executed in order.`
-                          );
-                          return;
-                        }
-                      }
-                    }
-                  }
-                }
+                // Frontend validation 4: Sequence check removed to allow for dynamic insertion of extra items.
 
                 setIsSubmitting(true);
                 try {
