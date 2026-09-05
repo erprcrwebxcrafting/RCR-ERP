@@ -19,6 +19,7 @@ export function TowerWorkManager({ site }: { site: any }) {
   const [isAddingBuilding, setIsAddingBuilding] = useState(false);
   const [isEditingHeader, setIsEditingHeader] = useState(false);
   const [isAddingItem, setIsAddingItem] = useState(false);
+  const [insertAfterOrder, setInsertAfterOrder] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
@@ -425,7 +426,10 @@ export function TowerWorkManager({ site }: { site: any }) {
               </div>
               <Button 
                 size="sm" 
-                onClick={() => setIsAddingItem(!isAddingItem)} 
+                onClick={() => {
+                  setIsAddingItem(!isAddingItem);
+                  setInsertAfterOrder(null);
+                }} 
                 disabled={!isAddingAllowed}
                 title={!isAddingAllowed ? "Total contract value reached or not set. Please increase BUA Area/Rate to add more items." : ""}
                 className="gap-1 shrink-0 w-full sm:w-auto"
@@ -480,6 +484,9 @@ export function TowerWorkManager({ site }: { site: any }) {
                     )}
                   </div>
                   <div className="flex justify-end gap-2 mt-2">
+                    {insertAfterOrder !== null && (
+                      <input type="hidden" name="insertAfterOrder" value={insertAfterOrder} />
+                    )}
                     <Button type="button" variant="ghost" onClick={() => setIsAddingItem(false)}>Cancel</Button>
                     <Button type="submit">Save Stage Item</Button>
                   </div>
@@ -526,6 +533,9 @@ export function TowerWorkManager({ site }: { site: any }) {
                         const currA = state.currentAmt || 0;
                         const cumA = state.cumulativeAmt || 0;
                         const name = state.name || "";
+                        
+                        const isBilledPrev = (item.previousPct || 0) > 0 || (item.previousQty || 0) > 0 || (item.previousAmt || 0) > 0;
+                        const isQtyMode = selectedBuilding.calculationMethod === "QUANTITY";
 
                         return (
                           <TR key={item.id}>
@@ -538,53 +548,64 @@ export function TowerWorkManager({ site }: { site: any }) {
                               />
                             </TD>
                             <TD className="text-right">
-                              {selectedBuilding.calculationMethod === "QUANTITY" ? (
+                              {isQtyMode ? (
                                 <Input
                                   type="text"
                                   inputMode="decimal"
                                   value={selectedBuilding.contractRate ? (partAmt / selectedBuilding.contractRate).toFixed(2) : 0}
-                                  disabled
-                                  className="w-28 h-8 font-mono text-xs text-right font-semibold bg-muted/50 cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  disabled={isBilledPrev}
+                                  onFocus={(e) => !isBilledPrev && e.target.select()}
+                                  onChange={(e) => {
+                                    if (isBilledPrev) return;
+                                    let val = e.target.value.replace(/^0+(?=\d)/, '');
+                                    if (val === '') val = '0';
+                                    const area = parseFloat(val);
+                                    if (!isNaN(area)) {
+                                      const newAmount = area * (selectedBuilding.contractRate || 0);
+                                      handleFieldChange(item.id, "partAmount", newAmount);
+                                    }
+                                  }}
+                                  className={`w-28 h-8 font-mono text-xs text-right font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isBilledPrev ? 'bg-muted/50 cursor-not-allowed opacity-80' : ''}`}
                                 />
                               ) : (
                                 <Input
                                   type="text"
                                   inputMode="decimal"
                                   value={partAmt}
-                                  onFocus={(e) => e.target.select()}
+                                  disabled={isBilledPrev}
+                                  onFocus={(e) => !isBilledPrev && e.target.select()}
                                   onChange={(e) => {
+                                    if (isBilledPrev) return;
                                     let val = e.target.value.replace(/^0+(?=\d)/, '');
                                     if (val === '') val = '0';
                                     handleFieldChange(item.id, "partAmount", parseFloat(val));
                                   }}
-                                  className="w-28 h-8 font-mono text-xs text-right font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  className={`w-28 h-8 font-mono text-xs text-right font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isBilledPrev ? 'bg-muted/50 cursor-not-allowed opacity-80' : ''}`}
                                 />
                               )}
                             </TD>
                             <TD className="text-center">
                               {(() => {
-                                const isBilledPrev = (item.previousPct || 0) > 0 || (item.previousQty || 0) > 0 || (item.previousAmt || 0) > 0;
-                                const isQty = selectedBuilding.calculationMethod === "QUANTITY";
                                 return (
                                   <div className="flex flex-col items-center justify-center gap-0.5">
                                     <div className="flex items-center justify-center gap-1">
                                       <Input
                                         type="text"
                                         inputMode="numeric"
-                                        value={isQty ? (state.previousQty || 0) : prevPct}
+                                        value={isQtyMode ? (state.previousQty || 0) : prevPct}
                                         disabled={isBilledPrev}
                                         onFocus={(e) => e.target.select()}
                                         onChange={(e) => {
                                           let val = e.target.value.replace(/^0+(?=\d)/, '');
                                           if (val === '') val = '0';
-                                          handleFieldChange(item.id, isQty ? "previousQty" : "previousPct", parseFloat(val));
+                                          handleFieldChange(item.id, isQtyMode ? "previousQty" : "previousPct", parseFloat(val));
                                         }}
                                         className="w-16 h-8 font-mono text-xs text-center disabled:bg-muted/70 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                       />
-                                      <span className="text-xs text-muted-foreground">{isQty ? 'Sft' : '%'}</span>
+                                      <span className="text-xs text-muted-foreground">{isQtyMode ? 'Sft' : '%'}</span>
                                     </div>
                                     {isBilledPrev && (
-                                      <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-0.5">
+                                      <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-0.5" title="Already billed in a generated RA Bill">
                                         🔒 Billed
                                       </span>
                                     )}
@@ -645,7 +666,22 @@ export function TowerWorkManager({ site }: { site: any }) {
                                 className="w-28 h-8 font-mono text-xs text-right font-bold bg-muted/50 cursor-not-allowed"
                               />
                             </TD>
-                            <TD className="text-right">
+                            <TD className="text-right flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Insert row below this one"
+                                onClick={() => {
+                                  setInsertAfterOrder(item.order ?? idx);
+                                  setIsAddingItem(true);
+                                  // Scroll slightly to make form visible
+                                  window.scrollTo({ top: Math.max(0, window.scrollY - 100), behavior: "smooth" });
+                                }}
+                                disabled={!isAddingAllowed}
+                                className="h-8 w-8 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
