@@ -265,7 +265,7 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
   const periodLabel = (formData.get("periodLabel") as string || new Date().toLocaleString("en-US", { month: "short", year: "numeric" })).trim();
 
   // Fetch all towers & supply entries for this site
-  const site = await prisma.site.findUnique({
+  let site = await prisma.site.findUnique({
     where: { id: siteId },
     include: {
       buildings: {
@@ -281,6 +281,42 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
   });
 
   if (!site) return { error: "Site not found" };
+
+  // Auto-sanitize any corrupted work items in DB where previousPct > 100 (from previous undo bug)
+  const corruptedItems = await prisma.workItem.findMany({
+    where: { siteId, previousPct: { gt: 100 } },
+  });
+  if (corruptedItems.length > 0) {
+    for (const cItem of corruptedItems) {
+      const rate = cItem.rate || 0;
+      const prevAmt = cItem.previousAmt || 0;
+      const calculatedQty = (cItem.previousQty || 0) > 0 ? cItem.previousQty : (rate > 0 && prevAmt > 0 ? Math.round(prevAmt / rate) : 0);
+      await prisma.workItem.update({
+        where: { id: cItem.id },
+        data: {
+          previousPct: 0,
+          currentPct: 0,
+          previousQty: calculatedQty,
+        },
+      });
+    }
+    // Re-fetch site data with clean items
+    const refreshedSite = await prisma.site.findUnique({
+      where: { id: siteId },
+      include: {
+        buildings: {
+          include: { workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] } },
+          orderBy: { createdAt: "asc" },
+        },
+        supplyLabourEntries: { orderBy: { date: "asc" } },
+        bills: {
+          select: { id: true, billNo: true, billDate: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+    if (refreshedSite) site = refreshedSite;
+  }
 
   const nextCount = (site.bills || []).length + 1;
   const billNo = (formData.get("billNo") as string || formatInvoiceNo(nextCount, billDate)).trim();
@@ -333,14 +369,30 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
     return { error: "EMPTY BILL ERROR: No current work progress or valid extra labour challans selected for this bill! Please enter work done (%) or check extra labour entries before creating bill." };
   }
 
-  // 4. VALIDATION: Check for over-billing (> 100% cumulative percentage)
+  // 4. VALIDATION: Check for over-billing (> 100% cumulative percentage or max quantity)
   for (const b of site.buildings) {
+    const isQtyMode = b.calculationMethod === "QUANTITY";
     for (const item of b.workItems) {
-      const currentPct = item.currentPct ?? 0;
-      const previousPct = item.previousPct ?? 0;
-      const cumPct = previousPct + currentPct;
-      if (cumPct > 100.01) {
-        return { error: `OVER-BILLING ERROR: Item "${item.name}" cumulative percentage (${cumPct.toFixed(1)}%) exceeds 100%!` };
+      if (isQtyMode) {
+        const rate = item.rate || b.contractRate || 0;
+        const partAmt = item.partAmount ?? 0;
+        const prevAmt = item.previousAmt ?? 0;
+        const maxArea = rate > 0 ? (partAmt / rate) : (item.buWork || 0);
+        const prevQ = (item.previousQty || 0) > 0 
+          ? (item.previousQty || 0)
+          : (rate > 0 && prevAmt > 0 ? Math.round(prevAmt / rate) : 0);
+        const cumQ = prevQ + (item.currentQty || 0);
+        if (maxArea > 0 && cumQ > maxArea + 0.01) {
+          return { error: `OVER-BILLING ERROR: Item "${item.name}" cumulative quantity (${cumQ.toFixed(2)} Sft) exceeds part area (${maxArea.toFixed(2)} Sft)!` };
+        }
+      } else {
+        const currentPct = item.currentPct ?? 0;
+        let previousPct = item.previousPct ?? 0;
+        if (previousPct > 100) previousPct = 0; // Ignore corrupted percentage values from prior Undo bug
+        const cumPct = previousPct + currentPct;
+        if (cumPct > 100.01) {
+          return { error: `OVER-BILLING ERROR: Item "${item.name}" cumulative percentage (${cumPct.toFixed(1)}%) exceeds 100%!` };
+        }
       }
     }
   }
@@ -395,37 +447,46 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
   let order = 0;
 
   for (const b of site.buildings) {
+    const isQtyMode = b.calculationMethod === "QUANTITY";
+    const bRate = b.contractRate || 0;
+
     for (const item of b.workItems) {
-      const currentPct = item.currentPct ?? 0;
-      const previousPct = item.previousPct ?? 0;
+      const itemRate = item.rate || bRate;
+      
+      const currentPct = isQtyMode ? 0 : (item.currentPct ?? 0);
+      const previousPct = isQtyMode ? 0 : (item.previousPct ?? 0);
       const currentAmt = item.currentAmt ?? 0;
       const previousAmt = item.previousAmt ?? 0;
       const cumulativeAmt = item.cumulativeAmt ?? 0;
 
+      const previousQtyVal = (isQtyMode && (!item.previousQty || item.previousQty === 0) && previousAmt > 0 && itemRate > 0)
+        ? Math.round(previousAmt / itemRate)
+        : (item.previousQty || 0);
+
       const previousAmount = (previousAmt > 0)
         ? previousAmt
-        : (previousPct > 0 && item.partAmount ? (item.partAmount * previousPct / 100) : (item.previousQty * item.rate));
+        : (previousPct > 0 && item.partAmount ? (item.partAmount * previousPct / 100) : (previousQtyVal * itemRate));
         
       const currentAmount = (currentAmt > 0)
         ? currentAmt
-        : (currentPct > 0 && item.partAmount ? (item.partAmount * currentPct / 100) : (item.currentQty * item.rate));
+        : (currentPct > 0 && item.partAmount ? (item.partAmount * currentPct / 100) : (item.currentQty * itemRate));
         
       const cumulativeAmount = (cumulativeAmt > 0)
         ? cumulativeAmt
         : (previousAmount + currentAmount);
 
-      const prevQ = previousPct > 0 ? previousPct : item.previousQty;
-      const currQ = currentPct > 0 ? currentPct : item.currentQty;
-      const cumQ = (previousPct > 0 || currentPct > 0) ? (previousPct + currentPct) : (item.previousQty + item.currentQty);
+      const prevQ = isQtyMode ? previousQtyVal : (previousPct > 0 ? previousPct : previousQtyVal);
+      const currQ = isQtyMode ? item.currentQty : (currentPct > 0 ? currentPct : item.currentQty);
+      const cumQ = isQtyMode ? (previousQtyVal + item.currentQty) : ((previousPct > 0 || currentPct > 0) ? (previousPct + currentPct) : (previousQtyVal + item.currentQty));
 
       billLinesData.push({
         runningBillId: runningBill.id,
         buildingId: b.id,
         workItemId: item.id,
         description: `${b.name} - ${item.name}`,
-        unit: item.unit || "%",
+        unit: isQtyMode ? "Sft" : (item.unit || "%"),
         woQty: item.buWork,
-        rate: item.rate,
+        rate: itemRate,
         previousQty: prevQ,
         currentQty: currQ,
         cumulativeQty: cumQ,
@@ -435,24 +496,22 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
         order: order++,
       });
 
-      // Transition current to previous for the next bill
-      if (item.currentQty > 0 || currentPct > 0 || currentAmt > 0) {
-        workItemUpdates.push(
-          prisma.workItem.update({
-            where: { id: item.id },
-            data: {
-              previousQty: item.previousQty + item.currentQty,
-              currentQty: 0,
-              previousPct: previousPct + currentPct,
-              currentPct: 0,
-              previousAmt: previousAmount + currentAmount,
-              currentAmt: 0,
-              cumulativePct: previousPct + currentPct,
-              cumulativeAmt: previousAmount + currentAmount,
-            },
-          })
-        );
-      }
+      // Transition current to previous for the next bill, and clean up any corrupted previousPct in QUANTITY mode
+      workItemUpdates.push(
+        prisma.workItem.update({
+          where: { id: item.id },
+          data: {
+            previousQty: previousQtyVal + item.currentQty,
+            currentQty: 0,
+            previousPct: isQtyMode ? 0 : (previousPct + currentPct),
+            currentPct: 0,
+            previousAmt: previousAmount + currentAmount,
+            currentAmt: 0,
+            cumulativePct: isQtyMode ? 0 : (previousPct + currentPct),
+            cumulativeAmt: previousAmount + currentAmount,
+          },
+        })
+      );
     }
   }
 
