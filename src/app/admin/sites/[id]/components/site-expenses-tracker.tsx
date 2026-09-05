@@ -17,8 +17,19 @@ export function SiteExpensesTracker({ site }: { site: any }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  // Date Filter State
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const [startDateStr, setStartDateStr] = useState(firstDay.toISOString().split('T')[0]);
+  const [endDateStr, setEndDateStr] = useState(lastDay.toISOString().split('T')[0]);
+  
+  const startDate = new Date(startDateStr);
+  const endDate = new Date(endDateStr);
+  endDate.setHours(23, 59, 59, 999);
+
   // 1. Revenue Calculations (RA Bills)
-  const bills = site.bills || [];
+  const bills = (site.bills || []).filter((b: any) => new Date(b.createdAt) >= startDate && new Date(b.createdAt) <= endDate);
   let totalRevenue = 0;
   const billSummaries = bills.map((b: any) => {
     const gross = (b.lines || []).reduce((s: number, l: any) => s + (l.currentAmount || 0), 0);
@@ -46,7 +57,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
   });
 
   // 2. Manual Expenses
-  const manualExpenses = site.expenses || [];
+  const manualExpenses = (site.expenses || []).filter((e: any) => new Date(e.date) >= startDate && new Date(e.date) <= endDate);
   const manualExpensesTotal = manualExpenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
 
   // 3. Labour Payments
@@ -58,13 +69,18 @@ export function SiteExpensesTracker({ site }: { site: any }) {
       let workerTotal = 0;
       let paymentCount = 0;
       let lastPaymentDate: any = null;
+      const paymentDetails: string[] = [];
       
       (labour.payments || []).forEach((payment: any) => {
-        labourPaymentsTotal += payment.amount;
-        workerTotal += payment.amount;
-        paymentCount++;
-        if (!lastPaymentDate || new Date(payment.date) > new Date(lastPaymentDate)) {
-          lastPaymentDate = payment.date;
+        const pDate = new Date(payment.date);
+        if (pDate >= startDate && pDate <= endDate) {
+          labourPaymentsTotal += payment.amount;
+          workerTotal += payment.amount;
+          paymentCount++;
+          paymentDetails.push(`${formatDate(payment.date).split(' ')[0]} (₹${payment.amount})`);
+          if (!lastPaymentDate || pDate > new Date(lastPaymentDate)) {
+            lastPaymentDate = payment.date;
+          }
         }
       });
       
@@ -75,7 +91,8 @@ export function SiteExpensesTracker({ site }: { site: any }) {
           categoryName: cat.name,
           amount: workerTotal,
           paymentCount,
-          lastPaymentDate
+          lastPaymentDate,
+          paymentDetailsStr: paymentDetails.join(" | ")
         });
       }
     });
@@ -85,7 +102,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
   allLabourPayments.sort((a, b) => b.amount - a.amount);
 
   // 4. Supply Labour Costs
-  const supplyEntries = site.supplyLabourEntries || [];
+  const supplyEntries = (site.supplyLabourEntries || []).filter((e: any) => new Date(e.date) >= startDate && new Date(e.date) <= endDate);
   const supplyLabourTotal = supplyEntries.reduce((sum: number, entry: any) => sum + (entry.totalAmount || 0), 0);
 
   // Totals
@@ -190,13 +207,13 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               [
                 { text: 'Labour Name', style: 'tableHeader', fillColor: '#6366f1' }, 
                 { text: 'Category', style: 'tableHeader', fillColor: '#6366f1' }, 
-                { text: 'Payments', style: 'tableHeaderRight', fillColor: '#6366f1' },
+                { text: 'Payments Details', style: 'tableHeader', fillColor: '#6366f1' },
                 { text: 'Total Amount', style: 'tableHeaderRight', fillColor: '#6366f1' }
               ],
               ...allLabourPayments.map((p: any) => [
                 { text: p.labourName, style: 'tableCell' },
                 { text: p.categoryName, style: 'tableCell' },
-                { text: `${p.paymentCount} Times`, style: 'tableCellRight' },
+                { text: p.paymentDetailsStr, style: 'tableCell' },
                 { text: formatINR(p.amount), style: 'tableCellRight' }
               ]),
               [
@@ -322,9 +339,9 @@ export function SiteExpensesTracker({ site }: { site: any }) {
 
     // 3. LABOUR PAYMENTS
     addSectionTitle("INTERNAL LABOUR PAYMENTS (SUMMARY)");
-    addHeaderRow(["Labour Name", "Category", "Payments", "Total Amount"]);
+    addHeaderRow(["Labour Name", "Category", "Payment Details", "Total Amount"]);
     if (allLabourPayments.length === 0) sheet.addRow(["No Labour Payments found", "", "", ""]);
-    allLabourPayments.forEach((p: any) => sheet.addRow([p.labourName, p.categoryName, `${p.paymentCount} Times`, p.amount]));
+    allLabourPayments.forEach((p: any) => sheet.addRow([p.labourName, p.categoryName, p.paymentDetailsStr, p.amount]));
     sheet.addRow(["TOTAL LABOUR PAYMENTS", "", "", labourPaymentsTotal]).font = { bold: true };
     sheet.addRow([]);
     sheet.addRow([]);
@@ -356,13 +373,36 @@ export function SiteExpensesTracker({ site }: { site: any }) {
   return (
     <div className="space-y-6">
       {/* Action Bar */}
-      <div className="flex flex-wrap items-center justify-end print:hidden gap-2">
-        <Button onClick={handleExportExcel} variant="outline" className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 w-full sm:w-auto">
-          <Download className="h-4 w-4" /> Download Excel
-        </Button>
-        <Button onClick={handlePrintPDF} variant="outline" className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50 w-full sm:w-auto">
-          <Printer className="h-4 w-4" /> Print Full Ledger
-        </Button>
+      <div className="flex flex-col sm:flex-row flex-wrap items-center justify-between print:hidden gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-500">From:</span>
+            <Input 
+              type="date" 
+              value={startDateStr} 
+              onChange={(e) => setStartDateStr(e.target.value)} 
+              className="w-[140px] h-9"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-500">To:</span>
+            <Input 
+              type="date" 
+              value={endDateStr} 
+              onChange={(e) => setEndDateStr(e.target.value)} 
+              className="w-[140px] h-9"
+            />
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button onClick={handleExportExcel} variant="outline" className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 w-full sm:w-auto">
+            <Download className="h-4 w-4" /> Download Excel
+          </Button>
+          <Button onClick={handlePrintPDF} variant="outline" className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50 w-full sm:w-auto">
+            <Printer className="h-4 w-4" /> Print Full Ledger
+          </Button>
+        </div>
       </div>
 
       {/* Wrapping the content for PDF generation */}
@@ -465,7 +505,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                   <TR>
                     <TH className="whitespace-nowrap">Labour Name</TH>
                     <TH className="whitespace-nowrap">Category</TH>
-                    <TH className="whitespace-nowrap">Payments</TH>
+                    <TH className="whitespace-nowrap">Payment Details</TH>
                     <TH className="text-right whitespace-nowrap">Total Paid</TH>
                   </TR>
                 </THead>
@@ -477,8 +517,8 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                       <TR key={p.labourId}>
                         <TD className="font-medium whitespace-nowrap">{p.labourName}</TD>
                         <TD className="text-muted-foreground whitespace-nowrap">{p.categoryName}</TD>
-                        <TD className="text-muted-foreground whitespace-nowrap">
-                          {p.paymentCount} <span className="text-[10px]">({p.lastPaymentDate ? formatDate(p.lastPaymentDate) : '-'})</span>
+                        <TD className="text-muted-foreground whitespace-nowrap text-xs max-w-xs truncate" title={p.paymentDetailsStr}>
+                          {p.paymentDetailsStr}
                         </TD>
                         <TD className="text-right font-bold text-rose-600 whitespace-nowrap">{formatINR(p.amount)}</TD>
                       </TR>
