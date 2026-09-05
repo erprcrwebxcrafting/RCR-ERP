@@ -282,6 +282,42 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
 
   if (!site) return { error: "Site not found" };
 
+  // Auto-sanitize any corrupted work items in DB where previousPct > 100 (from previous undo bug)
+  const corruptedItems = await prisma.workItem.findMany({
+    where: { siteId, previousPct: { gt: 100 } },
+  });
+  if (corruptedItems.length > 0) {
+    for (const cItem of corruptedItems) {
+      const rate = cItem.rate || 0;
+      const prevAmt = cItem.previousAmt || 0;
+      const calculatedQty = (cItem.previousQty || 0) > 0 ? cItem.previousQty : (rate > 0 && prevAmt > 0 ? Math.round(prevAmt / rate) : 0);
+      await prisma.workItem.update({
+        where: { id: cItem.id },
+        data: {
+          previousPct: 0,
+          currentPct: 0,
+          previousQty: calculatedQty,
+        },
+      });
+    }
+    // Re-fetch site data with clean items
+    const refreshedSite = await prisma.site.findUnique({
+      where: { id: siteId },
+      include: {
+        buildings: {
+          include: { workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] } },
+          orderBy: { createdAt: "asc" },
+        },
+        supplyLabourEntries: { orderBy: { date: "asc" } },
+        bills: {
+          select: { id: true, billNo: true, billDate: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+    if (refreshedSite) site = refreshedSite;
+  }
+
   const nextCount = (site.bills || []).length + 1;
   const billNo = (formData.get("billNo") as string || formatInvoiceNo(nextCount, billDate)).trim();
   const refNo = (formData.get("refNo") as string || formatRefNo(nextCount)).trim();
@@ -351,7 +387,8 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
         }
       } else {
         const currentPct = item.currentPct ?? 0;
-        const previousPct = item.previousPct ?? 0;
+        let previousPct = item.previousPct ?? 0;
+        if (previousPct > 100) previousPct = 0; // Ignore corrupted percentage values from prior Undo bug
         const cumPct = previousPct + currentPct;
         if (cumPct > 100.01) {
           return { error: `OVER-BILLING ERROR: Item "${item.name}" cumulative percentage (${cumPct.toFixed(1)}%) exceeds 100%!` };
