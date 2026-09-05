@@ -495,30 +495,47 @@ export async function generateAttendanceExcel(
   legendCell.font = { size: 8.5, italic: true, color: { argb: "FF64748B" } };
   legendCell.alignment = { horizontal: "left", vertical: "middle" };
 
-  // Auto-fit Column Widths with minimum constraints
+  // Auto-fit Column Widths based on content
   sheet.columns.forEach((column, colIdx) => {
+    let maxLength = 0;
     const colNum = colIdx + 1;
-    if (colNum === 1) {
-      column.width = 24; // Labour Name
-    } else if (colNum === 2) {
-      column.width = 16; // Category
-    } else if (colNum === 3) {
-      column.width = 10; // Rate
-    } else if (colNum > 3 && colNum <= 3 + dates.length) {
-      column.width = 8; // Date columns
-    } else if (colNum === totalCols - 4) {
-      column.width = 13; // Total Hajari
-    } else if (colNum === totalCols - 3) {
-      column.width = 11; // Total OT
-    } else if (colNum === totalCols - 2) {
-      column.width = 15; // Total Earned
-    } else if (colNum === totalCols - 1) {
-      column.width = 15; // Advance Paid
-    } else if (colNum === totalCols) {
-      column.width = 16; // Net Balance
-    } else {
-      column.width = 10;
+
+    // Minimum width constraints
+    let minWidth = 8;
+    if (colNum === 1) minWidth = 18; // Labour Name
+    else if (colNum === 2) minWidth = 14; // Category
+    else if (colNum === 3) minWidth = 10; // Rate
+    else if (colNum === totalCols - 4) minWidth = 12; // Total Hajari
+    else if (colNum === totalCols - 3) minWidth = 10; // Total OT
+    else if (colNum === totalCols - 2) minWidth = 14; // Total Earned
+    else if (colNum === totalCols - 1) minWidth = 14; // Advance Paid
+    else if (colNum === totalCols) minWidth = 15; // Net Balance
+
+    // Calculate maximum content length in this column
+    if (column.eachCell) {
+      column.eachCell({ includeEmpty: true }, (cell: any) => {
+        const rowNum = Number(cell.row);
+        // Ignore long merged title rows and legend row
+        if (rowNum < 8 || rowNum >= legendRowIdx) return;
+        
+        let textLength = 0;
+        if (cell.value && typeof cell.value === 'object' && 'richText' in cell.value) {
+          // If rich text with newlines (like our Hajari + Payment cells), find the longest line
+          const fullText = (cell.value as any).richText.map((rt: any) => rt.text).join("");
+          const lines = fullText.split("\n");
+          textLength = Math.max(...lines.map((l: string) => l.trim().length));
+        } else if (cell.value) {
+          textLength = cell.value.toString().trim().length;
+        }
+        
+        if (textLength > maxLength) {
+          maxLength = textLength;
+        }
+      });
     }
+
+    // Set width to max content length + padding, constrained between minWidth and 40
+    column.width = Math.min(40, Math.max(minWidth, maxLength + 2.5));
   });
 
   const buffer = await workbook.xlsx.writeBuffer();
