@@ -648,7 +648,7 @@ function TowerPages({ data, logoStr, signStr }: any) {
             const cumA = item.cumulativeAmt ?? (prevA + currA);
 
             let prevQ = item.previousQty || 0;
-            if (isQtyMode && prevQ === 0 && prevA > 0 && itemRate > 0) {
+            if (isQtyMode && prevA > 0 && itemRate > 0) {
               prevQ = Math.round(prevA / itemRate);
             }
 
@@ -1037,7 +1037,7 @@ export async function generateBillPdfs(bill: any): Promise<{ filename: string; b
             const cumA = l?.cumulativeAmount ?? (prevA + currA);
 
             let prevQ = l?.previousQty ?? 0;
-            if (isQtyMode && prevQ === 0 && prevA > 0 && rate > 0) {
+            if (isQtyMode && prevA > 0 && rate > 0) {
               prevQ = Math.round(prevA / rate);
             }
 
@@ -1084,7 +1084,7 @@ export async function generateBillPdfs(bill: any): Promise<{ filename: string; b
             const cumA = l.cumulativeAmount || (prevA + currA);
 
             let prevQ = l.previousQty || 0;
-            if (isQtyMode && prevQ === 0 && prevA > 0 && rate > 0) {
+            if (isQtyMode && prevA > 0 && rate > 0) {
               prevQ = Math.round(prevA / rate);
             }
 

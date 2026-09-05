@@ -620,7 +620,7 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                       const cumA = item.cumulativeAmt || (prevA + currA);
 
                       let prevQ = item.previousQty || 0;
-                      if (isQty && prevQ === 0 && prevA > 0 && itemRate > 0) {
+                      if (isQty && prevA > 0 && itemRate > 0) {
                         prevQ = Math.round(prevA / itemRate);
                       }
 
