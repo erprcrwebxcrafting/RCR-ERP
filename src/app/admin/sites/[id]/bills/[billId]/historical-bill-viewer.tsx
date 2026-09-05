@@ -86,14 +86,14 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
       const billTime = new Date(bill.createdAt).getTime();
       const now = Date.now();
       const diff = now - billTime;
-      const maxTime = 30 * 60 * 1000;
+      const maxTime = 48 * 60 * 60 * 1000; // Increased to 48 hours
       
       if (diff < maxTime) {
         setCanUndo(true);
         const rem = maxTime - diff;
-        const m = Math.floor(rem / 60000);
-        const s = Math.floor((rem % 60000) / 1000);
-        setTimeLeft(`${m}m ${s}s`);
+        const h = Math.floor(rem / 3600000);
+        const m = Math.floor((rem % 3600000) / 60000);
+        setTimeLeft(`${h}h ${m}m`);
       } else {
         setCanUndo(false);
       }
