@@ -321,10 +321,14 @@ export function RABillViewer({ site }: { site: any }) {
 
                 setIsSubmitting(true);
                 try {
-                  await generateRunningBillAction(site.id, formData);
-                  setIsGenerating(false);
-                  setSuccessMessage("RA Bill generated successfully! You can view the complete snapshot in the Bill Viewer sidebar.");
-                  setTimeout(() => setSuccessMessage(null), 5000);
+                  const result = await generateRunningBillAction(site.id, formData);
+                  if (result?.error) {
+                    setFormError(result.error);
+                  } else {
+                    setIsGenerating(false);
+                    setSuccessMessage("RA Bill generated successfully! You can view the complete snapshot in the Bill Viewer sidebar.");
+                    setTimeout(() => setSuccessMessage(null), 5000);
+                  }
                 } catch (err: any) {
                   setFormError(err.message || "Failed to generate RA Bill. Please check input details.");
                 } finally {
