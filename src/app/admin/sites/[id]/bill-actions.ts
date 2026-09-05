@@ -258,7 +258,8 @@ export async function updateSupplyLabourEntriesAction(
 
 import { formatInvoiceNo, formatRefNo, formatDate } from "@/lib/utils";
 
-export async function generateRunningBillAction(siteId: string, formData: FormData) {
+export async function generateRunningBillAction(siteId: string, formData: FormData): Promise<{ error?: string }> {
+  try {
   const billDateStr = formData.get("billDate") as string;
   const billDate = billDateStr ? new Date(billDateStr) : new Date();
   const periodLabel = (formData.get("periodLabel") as string || new Date().toLocaleString("en-US", { month: "short", year: "numeric" })).trim();
@@ -279,7 +280,7 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
     },
   });
 
-  if (!site) return;
+  if (!site) return { error: "Site not found" };
 
   const nextCount = (site.bills || []).length + 1;
   const billNo = (formData.get("billNo") as string || formatInvoiceNo(nextCount, billDate)).trim();
@@ -288,7 +289,7 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
   // 1. VALIDATION: Check duplicate billNo for this site
   const existingBill = site.bills.find((b: any) => b.billNo.trim().toLowerCase() === billNo.toLowerCase());
   if (existingBill) {
-    throw new Error(`DUPLICATE BILL ERROR: Bill No. "${billNo}" already exists for this site! Please use a unique bill number.`);
+    return { error: `DUPLICATE BILL ERROR: Bill No. "${billNo}" already exists for this site! Please use a unique bill number.` };
   }
 
   const periodStartStr = formData.get("periodStart") as string;
@@ -299,7 +300,7 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
 
   // 2. VALIDATION: Date range Start <= End
   if (periodStart && periodEnd && periodStart > periodEnd) {
-    throw new Error("DATE RANGE ERROR: Bill Period Start Date cannot be after End Date.");
+    return { error: "DATE RANGE ERROR: Bill Period Start Date cannot be after End Date." };
   }
 
   // 3. VALIDATION: Chronological Order Check (New bill cannot be earlier than previous bills)
@@ -311,9 +312,7 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
   if (latestExistingBill) {
     const lastDate = new Date(latestExistingBill.billDate || latestExistingBill.createdAt);
     if (new Date(billDate).setHours(0, 0, 0, 0) < new Date(lastDate).setHours(0, 0, 0, 0)) {
-      throw new Error(
-        `CHRONOLOGY ERROR: New bill date (${formatDate(billDate)}) cannot be earlier than the previous bill (${latestExistingBill.billNo}) date (${formatDate(lastDate)})! RA Bills must be created in chronological order.`
-      );
+      return { error: `CHRONOLOGY ERROR: New bill date (${formatDate(billDate)}) cannot be earlier than the previous bill (${latestExistingBill.billNo}) date (${formatDate(lastDate)})! RA Bills must be created in chronological order.` };
     }
   }
 
@@ -331,7 +330,7 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
   );
 
   if (!hasTowerWork && unbilledSupply.length === 0) {
-    throw new Error("EMPTY BILL ERROR: No current work progress or valid extra labour challans selected for this bill! Please enter work done (%) or check extra labour entries before creating bill.");
+    return { error: "EMPTY BILL ERROR: No current work progress or valid extra labour challans selected for this bill! Please enter work done (%) or check extra labour entries before creating bill." };
   }
 
   // 4. VALIDATION: Check for over-billing (> 100% cumulative percentage)
@@ -341,7 +340,7 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
       const previousPct = item.previousPct ?? 0;
       const cumPct = previousPct + currentPct;
       if (cumPct > 100.01) {
-        throw new Error(`OVER-BILLING ERROR: Item "${item.name}" cumulative percentage (${cumPct.toFixed(1)}%) exceeds 100%!`);
+        return { error: `OVER-BILLING ERROR: Item "${item.name}" cumulative percentage (${cumPct.toFixed(1)}%) exceeds 100%!` };
       }
     }
   }
@@ -368,9 +367,7 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
           const priorCumQty = priorPrevQty + priorCurQty;
 
           if (priorCum <= 0 && priorCumQty <= 0) {
-            throw new Error(
-              `WORK STAGE SEQUENCE ERROR in "${b.name}": Item #${i + 1} ("${items[i].name}") has progress (${curPct > 0 ? curPct + "%" : cumPct > 0 ? cumPct + "%" : curQty > 0 ? curQty + " Sft" : cumQty + " Sft"}), but prior stage Item #${j + 1} ("${items[j].name}") has 0 completion! Work items must be executed in sequence without skipping earlier stages.`
-            );
+            return { error: `WORK STAGE SEQUENCE ERROR in "${b.name}": Item #${i + 1} ("${items[i].name}") has progress (${curPct > 0 ? curPct + "%" : cumPct > 0 ? cumPct + "%" : curQty > 0 ? curQty + " Sft" : cumQty + " Sft"}), but prior stage Item #${j + 1} ("${items[j].name}") has 0 completion! Work items must be executed in sequence without skipping earlier stages.` };
           }
         }
       }
@@ -497,6 +494,11 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
 
   await prisma.$transaction(transactionOps);
   revalidatePath(`/admin/sites/${siteId}`);
+  return {};
+  } catch (err: any) {
+    console.error("[generateRunningBillAction] Error:", err);
+    return { error: err.message || "An unexpected error occurred while generating the bill." };
+  }
 }
 
 export async function recordClientPaymentAction(siteId: string, formData: FormData) {
@@ -550,7 +552,8 @@ export async function updateSiteTaxSettingsAction(siteId: string, formData: Form
   revalidatePath(`/admin/sites/${siteId}`);
 }
 
-export async function undoRecentBillAction(siteId: string, billId: string) {
+export async function undoRecentBillAction(siteId: string, billId: string): Promise<{ error?: string }> {
+  try {
   const site = await prisma.site.findUnique({
     where: { id: siteId },
     include: {
@@ -561,16 +564,16 @@ export async function undoRecentBillAction(siteId: string, billId: string) {
     },
   });
 
-  if (!site) throw new Error("Site not found");
+  if (!site) return { error: "Site not found" };
 
   const latestBill = site.bills[0];
   if (!latestBill || latestBill.id !== billId) {
-    throw new Error("UNDO ERROR: You can only undo the most recent bill generated for this site. Older bills cannot be undone.");
+    return { error: "UNDO ERROR: You can only undo the most recent bill generated for this site. Older bills cannot be undone." };
   }
 
   const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
   if (latestBill.createdAt < fortyEightHoursAgo) {
-    throw new Error("TIME LIMIT EXPIRED: Bills can only be undone within 48 hours of generation.");
+    return { error: "TIME LIMIT EXPIRED: Bills can only be undone within 48 hours of generation." };
   }
 
   const fullBill = await prisma.runningBill.findUnique({
@@ -581,7 +584,7 @@ export async function undoRecentBillAction(siteId: string, billId: string) {
     },
   });
 
-  if (!fullBill) throw new Error("Bill not found");
+  if (!fullBill) return { error: "Bill not found" };
 
   const transactionOps: any[] = [];
 
@@ -629,4 +632,9 @@ export async function undoRecentBillAction(siteId: string, billId: string) {
 
   await prisma.$transaction(transactionOps);
   revalidatePath(`/admin/sites/${siteId}`);
+  return {};
+  } catch (err: any) {
+    console.error("[undoRecentBillAction] Error:", err);
+    return { error: err.message || "An unexpected error occurred while undoing the bill." };
+  }
 }

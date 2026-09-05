@@ -110,9 +110,14 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
     setIsUndoing(true);
     const toastId = toast.loading("Undoing bill...");
     try {
-      await undoRecentBillAction(site.id, bill.id);
-      toast.success("Bill successfully undone! You can now edit the progress.", { id: toastId });
-      router.push(`/admin/sites/${site.id}`);
+      const result = await undoRecentBillAction(site.id, bill.id);
+      if (result?.error) {
+        toast.error(result.error, { id: toastId });
+        setIsUndoing(false);
+      } else {
+        toast.success("Bill successfully undone! You can now edit the progress.", { id: toastId });
+        router.push(`/admin/sites/${site.id}`);
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to undo bill.", { id: toastId });
       setIsUndoing(false);
