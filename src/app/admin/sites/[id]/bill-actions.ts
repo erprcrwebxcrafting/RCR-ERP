@@ -588,26 +588,77 @@ export async function undoRecentBillAction(siteId: string, billId: string): Prom
 
   const transactionOps: any[] = [];
 
-  const workItemUpdates = fullBill.lines.filter(l => !l.isSupplyLabour && l.workItemId);
-  for (const line of workItemUpdates) {
+  const workItemLines = fullBill.lines.filter(l => !l.isSupplyLabour && l.workItemId);
+  
+  // Fetch actual work items to correctly reverse the accumulation
+  const workItemIds = workItemLines.map(l => l.workItemId).filter(Boolean) as string[];
+  const workItems = await prisma.workItem.findMany({
+    where: { id: { in: workItemIds } },
+  });
+  const workItemMap = new Map(workItems.map(wi => [wi.id, wi]));
+
+  for (const line of workItemLines) {
     if (!line.workItemId) continue;
-    
-    const prevPct = line.unit === "%" ? line.previousQty : 0;
-    const currPct = line.unit === "%" ? line.currentQty : 0;
-    const prevQty = line.unit !== "%" ? line.previousQty : 0;
-    const currQty = line.unit !== "%" ? line.currentQty : 0;
-    
+    const wi = workItemMap.get(line.workItemId);
+    if (!wi) continue;
+
+    // Bill generation does this to the work item:
+    //   previousQty = old.previousQty + old.currentQty  →  so old.previousQty = wi.previousQty - old.currentQty
+    //   currentQty = 0
+    //   previousPct = old.previousPct + old.currentPct
+    //   currentPct = 0
+    //   previousAmt = old.previousAmt + old.currentAmt
+    //   currentAmt = 0
+    //
+    // Bill line stores (line 417-418):
+    //   previousQty(line) = old.previousPct > 0 ? old.previousPct : old.previousQty
+    //   currentQty(line) = old.currentPct > 0 ? old.currentPct : old.currentQty
+    //
+    // After bill gen, wi.previousPct = old.previousPct + old.currentPct, wi.currentPct = 0
+    // So: old.currentPct = wi.previousPct - line.previousQty  (if pct was used)
+    //     old.previousPct = line.previousQty (if pct was used)
+    //
+    // We determine if pct was used by checking: does line.previousQty + line.currentQty == wi.previousPct?
+    // If yes, then the line stored pct values. If no, it stored qty values.
+
+    const linePrev = line.previousQty ?? 0;
+    const lineCurr = line.currentQty ?? 0;
+    const lineCum = linePrev + lineCurr;
+
+    // Check if the bill line values match the accumulated pct
+    const isPctBased = Math.abs(lineCum - (wi.previousPct ?? 0)) < 0.01 && lineCum > 0;
+
+    let restorePreviousPct = 0;
+    let restoreCurrentPct = 0;
+    let restorePreviousQty = 0;
+    let restoreCurrentQty = 0;
+
+    if (isPctBased) {
+      // Bill line stored pct values
+      restorePreviousPct = linePrev;
+      restoreCurrentPct = lineCurr;
+      // Reverse qty accumulation: wi.previousQty = old.previousQty + old.currentQty, old.currentQty was 0 for pct items
+      restorePreviousQty = wi.previousQty ?? 0;
+      restoreCurrentQty = 0;
+    } else {
+      // Bill line stored qty values
+      restorePreviousPct = wi.previousPct ?? 0;
+      restoreCurrentPct = 0;
+      restorePreviousQty = linePrev;
+      restoreCurrentQty = lineCurr;
+    }
+
     transactionOps.push(
       prisma.workItem.update({
         where: { id: line.workItemId },
         data: {
-          previousQty: prevQty,
-          currentQty: currQty,
-          previousPct: prevPct,
-          currentPct: currPct,
+          previousQty: restorePreviousQty,
+          currentQty: restoreCurrentQty,
+          previousPct: restorePreviousPct,
+          currentPct: restoreCurrentPct,
           previousAmt: line.previousAmount,
           currentAmt: line.currentAmount,
-          cumulativePct: prevPct + currPct,
+          cumulativePct: restorePreviousPct + restoreCurrentPct,
           cumulativeAmt: line.previousAmount + line.currentAmount,
         },
       })
