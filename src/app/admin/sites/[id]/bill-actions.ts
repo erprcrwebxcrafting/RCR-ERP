@@ -265,7 +265,7 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
   const periodLabel = (formData.get("periodLabel") as string || new Date().toLocaleString("en-US", { month: "short", year: "numeric" })).trim();
 
   // Fetch all towers & supply entries for this site
-  const site = await prisma.site.findUnique({
+  let site = await prisma.site.findUnique({
     where: { id: siteId },
     include: {
       buildings: {
