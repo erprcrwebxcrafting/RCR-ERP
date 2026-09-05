@@ -30,7 +30,7 @@ export function TowerWorkManager({ site }: { site: any }) {
       const bRate = b.contractRate || 0;
       b.workItems?.forEach((item: any) => {
         const itemRate = item.rate || bRate;
-        const prevQ = (isQtyMode && (!item.previousQty || item.previousQty === 0) && (item.previousAmt || 0) > 0 && itemRate > 0)
+        const prevQ = (isQtyMode && (item.previousAmt || 0) > 0 && itemRate > 0)
           ? Math.round(item.previousAmt / itemRate)
           : (item.previousQty || 0);
 
@@ -63,7 +63,7 @@ export function TowerWorkManager({ site }: { site: any }) {
       const bRate = b.contractRate || 0;
       b.workItems?.forEach((item: any) => {
         const itemRate = item.rate || bRate;
-        const prevQ = (isQtyMode && (!item.previousQty || item.previousQty === 0) && (item.previousAmt || 0) > 0 && itemRate > 0)
+        const prevQ = (isQtyMode && (item.previousAmt || 0) > 0 && itemRate > 0)
           ? Math.round(item.previousAmt / itemRate)
           : (item.previousQty || 0);
 

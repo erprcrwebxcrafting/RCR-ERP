@@ -466,7 +466,7 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
       const previousAmt = item.previousAmt ?? 0;
       const cumulativeAmt = item.cumulativeAmt ?? 0;
 
-      const previousQtyVal = (isQtyMode && (!item.previousQty || item.previousQty === 0) && previousAmt > 0 && itemRate > 0)
+      const previousQtyVal = (isQtyMode && previousAmt > 0 && itemRate > 0)
         ? Math.round(previousAmt / itemRate)
         : (item.previousQty || 0);
 
@@ -478,13 +478,17 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
         ? currentAmt
         : (currentPct > 0 && item.partAmount ? (item.partAmount * currentPct / 100) : (item.currentQty * itemRate));
         
+      const currentQtyVal = (isQtyMode && currentAmount > 0 && itemRate > 0 && (!item.currentQty || item.currentQty === 0))
+        ? Math.round(currentAmount / itemRate)
+        : (item.currentQty || 0);
+
       const cumulativeAmount = (cumulativeAmt > 0)
         ? cumulativeAmt
         : (previousAmount + currentAmount);
 
       const prevQ = isQtyMode ? previousQtyVal : (previousPct > 0 ? previousPct : previousQtyVal);
-      const currQ = isQtyMode ? item.currentQty : (currentPct > 0 ? currentPct : item.currentQty);
-      const cumQ = isQtyMode ? (previousQtyVal + item.currentQty) : ((previousPct > 0 || currentPct > 0) ? (previousPct + currentPct) : (previousQtyVal + item.currentQty));
+      const currQ = isQtyMode ? currentQtyVal : (currentPct > 0 ? currentPct : currentQtyVal);
+      const cumQ = isQtyMode ? (previousQtyVal + currentQtyVal) : ((previousPct > 0 || currentPct > 0) ? (previousPct + currentPct) : (previousQtyVal + currentQtyVal));
 
       billLinesData.push({
         runningBillId: runningBill.id,
@@ -508,7 +512,7 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
         prisma.workItem.update({
           where: { id: item.id },
           data: {
-            previousQty: previousQtyVal + item.currentQty,
+            previousQty: isQtyMode ? cumQ : (previousQtyVal + item.currentQty),
             currentQty: 0,
             previousPct: isQtyMode ? 0 : (previousPct + currentPct),
             currentPct: 0,

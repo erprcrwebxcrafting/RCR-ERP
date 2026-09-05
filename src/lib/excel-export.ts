@@ -372,7 +372,7 @@ export async function generateRABillExcelWorkbook(data: {
       const cumA = item.cumulativeAmt ?? (prevA + currA);
 
       let prevQ = item.previousPct ?? item.previousQty ?? 0;
-      if (isQty && prevQ === 0 && prevA > 0 && itemRate > 0) {
+      if (isQty && prevA > 0 && itemRate > 0) {
         prevQ = Math.round(prevA / itemRate);
       }
 
