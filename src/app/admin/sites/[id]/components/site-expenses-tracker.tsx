@@ -52,19 +52,37 @@ export function SiteExpensesTracker({ site }: { site: any }) {
   // 3. Labour Payments
   let labourPaymentsTotal = 0;
   const allLabourPayments: any[] = [];
+  
   (site.labourCategories || []).forEach((cat: any) => {
     (cat.labours || []).forEach((labour: any) => {
+      let workerTotal = 0;
+      let paymentCount = 0;
+      let lastPaymentDate: any = null;
+      
       (labour.payments || []).forEach((payment: any) => {
         labourPaymentsTotal += payment.amount;
-        allLabourPayments.push({
-          ...payment,
-          labourName: labour.name,
-          categoryName: cat.name
-        });
+        workerTotal += payment.amount;
+        paymentCount++;
+        if (!lastPaymentDate || new Date(payment.date) > new Date(lastPaymentDate)) {
+          lastPaymentDate = payment.date;
+        }
       });
+      
+      if (workerTotal > 0) {
+        allLabourPayments.push({
+          labourId: labour.id,
+          labourName: labour.name,
+          categoryName: cat.name,
+          amount: workerTotal,
+          paymentCount,
+          lastPaymentDate
+        });
+      }
     });
   });
-  allLabourPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  
+  // Sort by highest amount paid
+  allLabourPayments.sort((a, b) => b.amount - a.amount);
 
   // 4. Supply Labour Costs
   const supplyEntries = site.supplyLabourEntries || [];
@@ -163,22 +181,22 @@ export function SiteExpensesTracker({ site }: { site: any }) {
 
       // Add Labour Payments
       if (allLabourPayments.length > 0) {
-        docDefinition.content.push({ text: 'Internal Labour Payments', style: 'subheader' });
+        docDefinition.content.push({ text: 'Internal Labour Payments (Summary)', style: 'subheader' });
         docDefinition.content.push({
           table: {
             headerRows: 1,
-            widths: ['auto', '*', '*', 'auto'],
+            widths: ['*', '*', 'auto', 'auto'],
             body: [
               [
-                { text: 'Date', style: 'tableHeader', fillColor: '#6366f1' }, 
                 { text: 'Labour Name', style: 'tableHeader', fillColor: '#6366f1' }, 
                 { text: 'Category', style: 'tableHeader', fillColor: '#6366f1' }, 
-                { text: 'Amount Paid', style: 'tableHeaderRight', fillColor: '#6366f1' }
+                { text: 'Payments', style: 'tableHeaderRight', fillColor: '#6366f1' },
+                { text: 'Total Amount', style: 'tableHeaderRight', fillColor: '#6366f1' }
               ],
               ...allLabourPayments.map((p: any) => [
-                { text: formatDate(p.date), style: 'tableCell' },
                 { text: p.labourName, style: 'tableCell' },
                 { text: p.categoryName, style: 'tableCell' },
+                { text: `${p.paymentCount} Times`, style: 'tableCellRight' },
                 { text: formatINR(p.amount), style: 'tableCellRight' }
               ]),
               [
@@ -303,10 +321,10 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     sheet.addRow([]);
 
     // 3. LABOUR PAYMENTS
-    addSectionTitle("LABOUR PAYMENTS");
-    addHeaderRow(["Date", "Labour Name", "Category", "Amount Paid"]);
+    addSectionTitle("INTERNAL LABOUR PAYMENTS (SUMMARY)");
+    addHeaderRow(["Labour Name", "Category", "Payments", "Total Amount"]);
     if (allLabourPayments.length === 0) sheet.addRow(["No Labour Payments found", "", "", ""]);
-    allLabourPayments.forEach((p: any) => sheet.addRow([formatDate(p.date), p.labourName, p.categoryName, p.amount]));
+    allLabourPayments.forEach((p: any) => sheet.addRow([p.labourName, p.categoryName, `${p.paymentCount} Times`, p.amount]));
     sheet.addRow(["TOTAL LABOUR PAYMENTS", "", "", labourPaymentsTotal]).font = { bold: true };
     sheet.addRow([]);
     sheet.addRow([]);
@@ -445,19 +463,23 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               <Table>
                 <THead>
                   <TR>
-                    <TH className="whitespace-nowrap">Date</TH>
                     <TH className="whitespace-nowrap">Labour Name</TH>
-                    <TH className="text-right whitespace-nowrap">Amount Paid</TH>
+                    <TH className="whitespace-nowrap">Category</TH>
+                    <TH className="whitespace-nowrap">Payments</TH>
+                    <TH className="text-right whitespace-nowrap">Total Paid</TH>
                   </TR>
                 </THead>
                 <TBody>
                   {allLabourPayments.length === 0 ? (
-                    <TR><TD colSpan={3} className="text-center text-muted-foreground py-4">No payments recorded.</TD></TR>
+                    <TR><TD colSpan={4} className="text-center text-muted-foreground py-4">No payments recorded.</TD></TR>
                   ) : (
                     allLabourPayments.map((p: any) => (
-                      <TR key={p.id}>
-                        <TD className="text-muted-foreground whitespace-nowrap">{formatDate(p.date)}</TD>
+                      <TR key={p.labourId}>
                         <TD className="font-medium whitespace-nowrap">{p.labourName}</TD>
+                        <TD className="text-muted-foreground whitespace-nowrap">{p.categoryName}</TD>
+                        <TD className="text-muted-foreground whitespace-nowrap">
+                          {p.paymentCount} <span className="text-[10px]">({p.lastPaymentDate ? formatDate(p.lastPaymentDate) : '-'})</span>
+                        </TD>
                         <TD className="text-right font-bold text-rose-600 whitespace-nowrap">{formatINR(p.amount)}</TD>
                       </TR>
                     ))
