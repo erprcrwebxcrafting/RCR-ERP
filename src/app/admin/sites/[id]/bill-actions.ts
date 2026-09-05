@@ -550,3 +550,83 @@ export async function updateSiteTaxSettingsAction(siteId: string, formData: Form
   revalidatePath(`/admin/sites/${siteId}`);
 }
 
+export async function undoRecentBillAction(siteId: string, billId: string) {
+  const site = await prisma.site.findUnique({
+    where: { id: siteId },
+    include: {
+      bills: {
+        orderBy: { createdAt: "desc" },
+        select: { id: true, createdAt: true, billNo: true },
+      },
+    },
+  });
+
+  if (!site) throw new Error("Site not found");
+
+  const latestBill = site.bills[0];
+  if (!latestBill || latestBill.id !== billId) {
+    throw new Error("UNDO ERROR: You can only undo the most recent bill generated for this site. Older bills cannot be undone.");
+  }
+
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+  if (latestBill.createdAt < thirtyMinutesAgo) {
+    throw new Error("TIME LIMIT EXPIRED: Bills can only be undone within 30 minutes of generation.");
+  }
+
+  const fullBill = await prisma.runningBill.findUnique({
+    where: { id: billId },
+    include: {
+      lines: true,
+      supplyLabourEntries: true,
+    },
+  });
+
+  if (!fullBill) throw new Error("Bill not found");
+
+  const transactionOps: any[] = [];
+
+  const workItemUpdates = fullBill.lines.filter(l => !l.isSupplyLabour && l.workItemId);
+  for (const line of workItemUpdates) {
+    if (!line.workItemId) continue;
+    
+    const prevPct = line.unit === "%" ? line.previousQty : 0;
+    const currPct = line.unit === "%" ? line.currentQty : 0;
+    const prevQty = line.unit !== "%" ? line.previousQty : 0;
+    const currQty = line.unit !== "%" ? line.currentQty : 0;
+    
+    transactionOps.push(
+      prisma.workItem.update({
+        where: { id: line.workItemId },
+        data: {
+          previousQty: prevQty,
+          currentQty: currQty,
+          previousPct: prevPct,
+          currentPct: currPct,
+          previousAmt: line.previousAmount,
+          currentAmt: line.currentAmount,
+          cumulativePct: prevPct + currPct,
+          cumulativeAmt: line.previousAmount + line.currentAmount,
+        },
+      })
+    );
+  }
+
+  if (fullBill.supplyLabourEntries && fullBill.supplyLabourEntries.length > 0) {
+    const supplyIds = fullBill.supplyLabourEntries.map(se => se.id);
+    transactionOps.push(
+      prisma.supplyLabourEntry.updateMany({
+        where: { id: { in: supplyIds } },
+        data: { runningBillId: null },
+      })
+    );
+  }
+
+  transactionOps.push(
+    prisma.runningBill.delete({
+      where: { id: billId },
+    })
+  );
+
+  await prisma.$transaction(transactionOps);
+  revalidatePath(`/admin/sites/${siteId}`);
+}
