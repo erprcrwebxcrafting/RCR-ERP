@@ -161,7 +161,7 @@ export async function GET(
       };
     });
 
-    const effectiveSupplyEntries = supplyLabourEntries || [];
+    const effectiveSupplyEntries = site.supplyLabourEntries || [];
 
     const pdfBuffer = await generateBillPdfPackage({
       site,
