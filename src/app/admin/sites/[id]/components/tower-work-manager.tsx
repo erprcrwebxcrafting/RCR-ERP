@@ -26,15 +26,22 @@ export function TowerWorkManager({ site }: { site: any }) {
   useEffect(() => {
     const newState: any = {};
     site.buildings.forEach((b: any) => {
+      const isQtyMode = b.calculationMethod === "QUANTITY";
+      const bRate = b.contractRate || 0;
       b.workItems?.forEach((item: any) => {
+        const itemRate = item.rate || bRate;
+        const prevQ = (isQtyMode && (!item.previousQty || item.previousQty === 0) && (item.previousAmt || 0) > 0 && itemRate > 0)
+          ? Math.round(item.previousAmt / itemRate)
+          : (item.previousQty || 0);
+
         newState[item.id] = {
           name: item.name || "",
-          previousQty: item.previousQty || 0,
+          previousQty: prevQ,
           currentQty: item.currentQty || 0,
           previousPct: item.previousPct || 0,
           currentPct: item.currentPct || 0,
           cumulativePct: item.cumulativePct || 0,
-          cumulativeQty: (item.previousQty || 0) + (item.currentQty || 0),
+          cumulativeQty: prevQ + (item.currentQty || 0),
           partAmount: item.partAmount || 0,
           previousAmt: item.previousAmt || 0,
           currentAmt: item.currentAmt || 0,
@@ -52,15 +59,22 @@ export function TowerWorkManager({ site }: { site: any }) {
   const [progressState, setProgressState] = useState<Record<string, { name: string; previousQty: number; currentQty: number; previousPct: number; currentPct: number; cumulativePct: number; cumulativeQty: number; partAmount: number; previousAmt: number; currentAmt: number; cumulativeAmt: number }>>(() => {
     const initialState: Record<string, { name: string; previousQty: number; currentQty: number; previousPct: number; currentPct: number; cumulativePct: number; cumulativeQty: number; partAmount: number; previousAmt: number; currentAmt: number; cumulativeAmt: number }> = {};
     site.buildings.forEach((b: any) => {
+      const isQtyMode = b.calculationMethod === "QUANTITY";
+      const bRate = b.contractRate || 0;
       b.workItems?.forEach((item: any) => {
+        const itemRate = item.rate || bRate;
+        const prevQ = (isQtyMode && (!item.previousQty || item.previousQty === 0) && (item.previousAmt || 0) > 0 && itemRate > 0)
+          ? Math.round(item.previousAmt / itemRate)
+          : (item.previousQty || 0);
+
         initialState[item.id] = {
           name: item.name || "",
-          previousQty: item.previousQty || 0,
+          previousQty: prevQ,
           currentQty: item.currentQty || 0,
           previousPct: item.previousPct || 0,
           currentPct: item.currentPct || 0,
           cumulativePct: item.cumulativePct || 0,
-          cumulativeQty: (item.previousQty || 0) + (item.currentQty || 0),
+          cumulativeQty: prevQ + (item.currentQty || 0),
           partAmount: item.partAmount || 0,
           previousAmt: item.previousAmt || 0,
           currentAmt: item.currentAmt || 0,

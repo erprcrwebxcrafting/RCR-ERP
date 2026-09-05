@@ -673,13 +673,17 @@ export function RABillViewer({ site }: { site: any }) {
                   </THead>
                   <TBody>
                     {items.map((item: any, i: number) => {
-                      const prevQ = item.previousPct > 0 ? item.previousPct : item.previousQty ?? 0;
+                      const isQty = b.calculationMethod === "QUANTITY";
+                      const itemRate = item.rate || b.contractRate || 0;
+                      let prevQ = item.previousPct > 0 ? item.previousPct : item.previousQty ?? 0;
+                      if (isQty && prevQ === 0 && (item.previousAmt || 0) > 0 && itemRate > 0) {
+                        prevQ = Math.round(item.previousAmt / itemRate);
+                      }
                       const currQ = item.currentPct > 0 ? item.currentPct : item.currentQty ?? 0;
                       const cumQ = item.cumulativePct > 0 ? item.cumulativePct : item.cumulativeQty ?? (prevQ + currQ);
                       const prevA = (item.previousAmt !== undefined && item.previousAmt !== null) ? item.previousAmt : (item.previousPct > 0 ? (item.partAmount * item.previousPct / 100) : item.previousQty * item.rate);
                       const currA = (item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : (item.currentPct > 0 ? (item.partAmount * item.currentPct / 100) : item.currentQty * item.rate);
                       const cumA = item.cumulativeAmt ?? (prevA + currA);
-                      const isQty = b.calculationMethod === "QUANTITY";
                       return (
                         <TR key={item.id}>
                           <TD>{i + 1}</TD>
