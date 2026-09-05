@@ -9,14 +9,28 @@ export async function addTowerWorkItemAction(siteId: string, buildingId: string,
   const rate = parseFloat((formData.get("rate") as string) || "0");
   const buWork = parseFloat((formData.get("buWork") as string) || "0");
   const partAmount = parseFloat((formData.get("partAmount") as string) || "0");
+  const insertAfterOrderStr = formData.get("insertAfterOrder") as string;
+  const insertAfterOrder = insertAfterOrderStr ? parseInt(insertAfterOrderStr, 10) : null;
+
   if (!name) return;
 
-  const lastItem = await prisma.workItem.findFirst({
-    where: { buildingId },
-    orderBy: { order: "desc" },
-    select: { order: true },
-  });
-  const nextOrder = (lastItem?.order ?? -1) + 1;
+  let nextOrder = 0;
+
+  if (insertAfterOrder !== null && !isNaN(insertAfterOrder)) {
+    // Shift all subsequent items down by 1
+    await prisma.workItem.updateMany({
+      where: { buildingId, order: { gt: insertAfterOrder } },
+      data: { order: { increment: 1 } },
+    });
+    nextOrder = insertAfterOrder + 1;
+  } else {
+    const lastItem = await prisma.workItem.findFirst({
+      where: { buildingId },
+      orderBy: { order: "desc" },
+      select: { order: true },
+    });
+    nextOrder = (lastItem?.order ?? -1) + 1;
+  }
 
   await prisma.workItem.create({
     data: { siteId, buildingId, name, unit, rate, buWork, partAmount, order: nextOrder },
