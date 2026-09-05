@@ -161,9 +161,7 @@ export async function GET(
       };
     });
 
-    const effectiveSupplyEntries = (supplyLabourEntries && supplyLabourEntries.length > 0)
-      ? supplyLabourEntries
-      : (site.supplyLabourEntries || []);
+    const effectiveSupplyEntries = supplyLabourEntries || [];
 
     const pdfBuffer = await generateBillPdfPackage({
       site,

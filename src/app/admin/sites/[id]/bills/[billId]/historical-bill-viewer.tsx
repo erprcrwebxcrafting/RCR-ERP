@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -65,11 +65,59 @@ function BillHeaderBanner({ site, bill, sheetTitle }: { site: any; bill: any; sh
   );
 }
 
+import { useRouter } from "next/navigation";
+import { undoRecentBillAction } from "../../bill-actions";
+import { RotateCcw } from "lucide-react";
+
 export function HistoricalBillViewer({ bill }: { bill: any }) {
   const { site, lines = [], supplyLabourEntries = [] } = bill;
   const [activeSheetTab, setActiveSheetTab] = useState<"sheet1" | "sheet2" | "towers" | "supply" | "balance">("sheet1");
   const [selectedTowerId, setSelectedTowerId] = useState<string>(site.buildings[0]?.id || "");
   const [loading, setLoading] = useState(false);
+  
+  const router = useRouter();
+  const [timeLeft, setTimeLeft] = useState("");
+  const [canUndo, setCanUndo] = useState(false);
+  const [isUndoing, setIsUndoing] = useState(false);
+
+  useEffect(() => {
+    const checkTime = () => {
+      if (!bill?.createdAt) return;
+      const billTime = new Date(bill.createdAt).getTime();
+      const now = Date.now();
+      const diff = now - billTime;
+      const maxTime = 30 * 60 * 1000;
+      
+      if (diff < maxTime) {
+        setCanUndo(true);
+        const rem = maxTime - diff;
+        const m = Math.floor(rem / 60000);
+        const s = Math.floor((rem % 60000) / 1000);
+        setTimeLeft(`${m}m ${s}s`);
+      } else {
+        setCanUndo(false);
+      }
+    };
+    
+    checkTime();
+    const interval = setInterval(checkTime, 1000);
+    return () => clearInterval(interval);
+  }, [bill]);
+
+  const handleUndo = async () => {
+    if (!confirm("Are you sure you want to UNDO this bill? It will be deleted and all progress will be reverted to draft mode so you can edit it. This cannot be reversed.")) return;
+    
+    setIsUndoing(true);
+    const toastId = toast.loading("Undoing bill...");
+    try {
+      await undoRecentBillAction(site.id, bill.id);
+      toast.success("Bill successfully undone! You can now edit the progress.", { id: toastId });
+      router.push(`/admin/sites/${site.id}`);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to undo bill.", { id: toastId });
+      setIsUndoing(false);
+    }
+  };
 
   const handleSend = async (type: "EMAIL" | "WHATSAPP") => {
     const toastId = toast.loading(type === "EMAIL" ? "Sending bill via email..." : "Preparing WhatsApp...");
@@ -262,6 +310,18 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {canUndo && (
+            <Button
+              variant="destructive"
+              onClick={handleUndo}
+              disabled={isUndoing}
+              className="gap-2 font-bold"
+            >
+              <RotateCcw className="h-4 w-4" />
+              {isUndoing ? "Undoing..." : `Undo & Edit (${timeLeft})`}
+            </Button>
+          )}
+
           <Button onClick={handleDownloadExcel} variant="outline" className="gap-2 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10">
             <FileSpreadsheet className="h-4 w-4" /> Download Complete Excel (.xlsx)
           </Button>

@@ -151,9 +151,7 @@ export async function GET(
           bLines,
         };
       });
-      supplyEntries = (latestBill.supplyLabourEntries && latestBill.supplyLabourEntries.length > 0)
-        ? latestBill.supplyLabourEntries
-        : (site.supplyLabourEntries && site.supplyLabourEntries.length > 0 ? site.supplyLabourEntries : []);
+      supplyEntries = latestBill.supplyLabourEntries || [];
     } else {
       // Live draft mode: show all unbilled or available supply entries
       supplyEntries = site.supplyLabourEntries || [];
