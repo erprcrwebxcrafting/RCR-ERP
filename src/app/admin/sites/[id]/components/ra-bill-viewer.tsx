@@ -362,7 +362,10 @@ export function RABillViewer({ site }: { site: any }) {
               <div className="grid gap-4 md:grid-cols-3 pt-2 border-t border-emerald-500/20">
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground block mb-1">Bill Period Start Date</label>
-                  <Input name="periodStart" type="date" defaultValue={new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10)} />
+                  <Input name="periodStart" type="date" defaultValue={(() => {
+                    const now = new Date();
+                    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+                  })()} />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground block mb-1">Bill Period End Date</label>
@@ -370,7 +373,7 @@ export function RABillViewer({ site }: { site: any }) {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground block mb-1">Period Label</label>
-                  <Input name="periodLabel" defaultValue={new Date().toLocaleString("en-US", { month: "long", year: "numeric" })} />
+                  <Input name="periodLabel" defaultValue={new Date().toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" })} />
                 </div>
               </div>
 

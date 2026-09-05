@@ -53,13 +53,18 @@ export function parseIndianString(val: string): number {
 
 export function formatDate(d: Date | string) {
   const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return date.toLocaleDateString("en-GB", { 
+    day: "2-digit", 
+    month: "2-digit", 
+    year: "numeric",
+    timeZone: "UTC"
+  });
 }
 
 export function getFinancialYear(d: Date = new Date()): string {
   const date = typeof d === "string" ? new Date(d) : d;
-  const month = date.getMonth(); // 0 = Jan, 3 = April
-  const year = date.getFullYear();
+  const month = date.getUTCMonth(); // 0 = Jan, 3 = April
+  const year = date.getUTCFullYear();
   const startYear = month >= 3 ? year : year - 1;
   const endYearShort = (startYear + 1).toString().slice(2);
   return `${startYear}-${endYearShort}`;
