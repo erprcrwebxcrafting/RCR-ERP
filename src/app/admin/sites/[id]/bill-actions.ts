@@ -282,9 +282,15 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
 
   if (!site) return { error: "Site not found" };
 
-  // Auto-sanitize any corrupted work items in DB where previousPct > 100 (from previous undo bug)
+  // Auto-sanitize any corrupted work items in DB where previousPct > 100 or currentPct > 100 (from previous undo bug)
   const corruptedItems = await prisma.workItem.findMany({
-    where: { siteId, previousPct: { gt: 100 } },
+    where: {
+      siteId,
+      OR: [
+        { previousPct: { gt: 100 } },
+        { currentPct: { gt: 100 } },
+      ],
+    },
   });
   if (corruptedItems.length > 0) {
     for (const cItem of corruptedItems) {
@@ -371,7 +377,7 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
 
   // 4. VALIDATION: Check for over-billing (> 100% cumulative percentage or max quantity)
   for (const b of site.buildings) {
-    const isQtyMode = b.calculationMethod === "QUANTITY";
+    const isQtyMode = b.calculationMethod === "QUANTITY" || (b.workItems || []).some((i: any) => i.unit === "Sft" || i.unit === "sqft" || i.unit === "SQFT");
     for (const item of b.workItems) {
       if (isQtyMode) {
         const rate = item.rate || b.contractRate || 0;
@@ -386,9 +392,10 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
           return { error: `OVER-BILLING ERROR: Item "${item.name}" cumulative quantity (${cumQ.toFixed(2)} Sft) exceeds part area (${maxArea.toFixed(2)} Sft)!` };
         }
       } else {
-        const currentPct = item.currentPct ?? 0;
+        let currentPct = item.currentPct ?? 0;
         let previousPct = item.previousPct ?? 0;
         if (previousPct > 100) previousPct = 0; // Ignore corrupted percentage values from prior Undo bug
+        if (currentPct > 100) currentPct = 0; // Ignore corrupted percentage values from prior Undo bug
         const cumPct = previousPct + currentPct;
         if (cumPct > 100.01) {
           return { error: `OVER-BILLING ERROR: Item "${item.name}" cumulative percentage (${cumPct.toFixed(1)}%) exceeds 100%!` };
