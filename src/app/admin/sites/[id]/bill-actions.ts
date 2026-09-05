@@ -637,9 +637,9 @@ export async function undoRecentBillAction(siteId: string, billId: string): Prom
     return { error: "UNDO ERROR: You can only undo the most recent bill generated for this site. Older bills cannot be undone." };
   }
 
-  const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
-  if (latestBill.createdAt < fortyEightHoursAgo) {
-    return { error: "TIME LIMIT EXPIRED: Bills can only be undone within 48 hours of generation." };
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+  if (latestBill.createdAt < thirtyMinutesAgo) {
+    return { error: "TIME LIMIT EXPIRED: Bills can only be undone within 30 minutes of generation." };
   }
 
   const fullBill = await prisma.runningBill.findUnique({
