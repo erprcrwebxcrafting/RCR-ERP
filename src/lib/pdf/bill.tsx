@@ -712,6 +712,12 @@ function TowerPages({ data, logoStr, signStr }: any) {
 function SupplyPage({ data, logoStr, signStr }: any) {
   const { site, runningBill, supplyEntries } = data;
 
+  const currentSupplyEntries = (supplyEntries || []).filter((e: any) => 
+    e.runningBillId === runningBill?.id || 
+    (!runningBill && !e.runningBillId) || 
+    (!e.runningBillId && (!runningBill || (supplyEntries.filter((x: any) => x.runningBillId === runningBill?.id).length === 0)))
+  );
+
   let totFitterHrs = 0;
   let totForemanHrs = 0;
   let totHelperHrs = 0;
@@ -739,7 +745,7 @@ function SupplyPage({ data, logoStr, signStr }: any) {
         </View>
 
 
-        {(supplyEntries || []).map((se: any, idx: number) => {
+        {currentSupplyEntries.map((se: any, idx: number) => {
           const fHrs = (se.fitterQty || 0) * (se.fitterHours || 8);
           const fmHrs = (se.fitterForemanQty || 0) * (se.fitterForemanHours || 8);
           const hHrs = (se.helperQty || 0) * (se.helperHours || 8);
