@@ -60,6 +60,17 @@ export function SiteExpensesTracker({ site }: { site: any }) {
   const manualExpenses = (site.expenses || []).filter((e: any) => new Date(e.date) >= startDate && new Date(e.date) <= endDate);
   const manualExpensesTotal = manualExpenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
 
+  // Generate Date Columns for the grid
+  const dateColumns: string[] = [];
+  let d = new Date(startDate);
+  d.setHours(0, 0, 0, 0);
+  const endD = new Date(endDate);
+  endD.setHours(0, 0, 0, 0);
+  while (d <= endD) {
+    dateColumns.push(d.toISOString().split('T')[0]);
+    d.setDate(d.getDate() + 1);
+  }
+
   // 3. Labour Payments
   let labourPaymentsTotal = 0;
   const allLabourPayments: any[] = [];
@@ -70,6 +81,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
       let paymentCount = 0;
       let lastPaymentDate: any = null;
       const paymentDetails: string[] = [];
+      const paymentsByDate: Record<string, number> = {};
       
       (labour.payments || []).forEach((payment: any) => {
         const pDate = new Date(payment.date);
@@ -77,6 +89,10 @@ export function SiteExpensesTracker({ site }: { site: any }) {
           labourPaymentsTotal += payment.amount;
           workerTotal += payment.amount;
           paymentCount++;
+          
+          const dateStr = payment.date.split('T')[0];
+          paymentsByDate[dateStr] = (paymentsByDate[dateStr] || 0) + payment.amount;
+          
           paymentDetails.push(`${formatDate(payment.date).split(' ')[0]} (₹${payment.amount})`);
           if (!lastPaymentDate || pDate > new Date(lastPaymentDate)) {
             lastPaymentDate = payment.date;
@@ -92,7 +108,8 @@ export function SiteExpensesTracker({ site }: { site: any }) {
           amount: workerTotal,
           paymentCount,
           lastPaymentDate,
-          paymentDetailsStr: paymentDetails.join(" | ")
+          paymentDetailsArr: paymentDetails,
+          paymentsByDate
         });
       }
     });
@@ -213,7 +230,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               ...allLabourPayments.map((p: any) => [
                 { text: p.labourName, style: 'tableCell' },
                 { text: p.categoryName, style: 'tableCell' },
-                { text: p.paymentDetailsStr, style: 'tableCell' },
+                { text: p.paymentDetailsArr.join('\n'), style: 'tableCell' },
                 { text: formatINR(p.amount), style: 'tableCellRight' }
               ]),
               [
@@ -339,10 +356,15 @@ export function SiteExpensesTracker({ site }: { site: any }) {
 
     // 3. LABOUR PAYMENTS
     addSectionTitle("INTERNAL LABOUR PAYMENTS (SUMMARY)");
-    addHeaderRow(["Labour Name", "Category", "Payment Details", "Total Amount"]);
-    if (allLabourPayments.length === 0) sheet.addRow(["No Labour Payments found", "", "", ""]);
-    allLabourPayments.forEach((p: any) => sheet.addRow([p.labourName, p.categoryName, p.paymentDetailsStr, p.amount]));
-    sheet.addRow(["TOTAL LABOUR PAYMENTS", "", "", labourPaymentsTotal]).font = { bold: true };
+    addHeaderRow(["Labour Name", "Category", ...dateColumns.map(d => new Date(d).getDate().toString()), "Total Amount"]);
+    if (allLabourPayments.length === 0) sheet.addRow(["No Labour Payments found", "", ...dateColumns.map(() => ""), ""]);
+    allLabourPayments.forEach((p: any) => {
+      const row = [p.labourName, p.categoryName];
+      dateColumns.forEach(d => row.push(p.paymentsByDate[d] || ""));
+      row.push(p.amount);
+      sheet.addRow(row);
+    });
+    sheet.addRow(["TOTAL LABOUR PAYMENTS", "", ...dateColumns.map(() => ""), labourPaymentsTotal]).font = { bold: true };
     sheet.addRow([]);
     sheet.addRow([]);
 
@@ -500,32 +522,40 @@ export function SiteExpensesTracker({ site }: { site: any }) {
           </CardHeader>
           <CardContent>
             <div className="max-h-[300px] overflow-auto print:max-h-none print:overflow-visible">
-              <Table>
-                <THead>
-                  <TR>
-                    <TH className="whitespace-nowrap">Labour Name</TH>
-                    <TH className="whitespace-nowrap">Category</TH>
-                    <TH className="whitespace-nowrap">Payment Details</TH>
-                    <TH className="text-right whitespace-nowrap">Total Paid</TH>
-                  </TR>
-                </THead>
-                <TBody>
-                  {allLabourPayments.length === 0 ? (
-                    <TR><TD colSpan={4} className="text-center text-muted-foreground py-4">No payments recorded.</TD></TR>
-                  ) : (
-                    allLabourPayments.map((p: any) => (
-                      <TR key={p.labourId}>
-                        <TD className="font-medium whitespace-nowrap">{p.labourName}</TD>
-                        <TD className="text-muted-foreground whitespace-nowrap">{p.categoryName}</TD>
-                        <TD className="text-muted-foreground whitespace-nowrap text-xs max-w-xs truncate" title={p.paymentDetailsStr}>
-                          {p.paymentDetailsStr}
-                        </TD>
-                        <TD className="text-right font-bold text-rose-600 whitespace-nowrap">{formatINR(p.amount)}</TD>
-                      </TR>
-                    ))
-                  )}
-                </TBody>
-              </Table>
+              <div className="max-w-full overflow-x-auto print:overflow-visible pb-4">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH className="whitespace-nowrap sticky left-0 z-10 bg-white dark:bg-slate-950 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Labour Name</TH>
+                      <TH className="whitespace-nowrap sticky left-[150px] z-10 bg-white dark:bg-slate-950 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Category</TH>
+                      {dateColumns.map(d => (
+                        <TH key={d} className="whitespace-nowrap text-center text-xs min-w-[32px] px-1">
+                          {new Date(d).getDate()}
+                        </TH>
+                      ))}
+                      <TH className="text-right whitespace-nowrap sticky right-0 z-10 bg-white dark:bg-slate-950 border-l border-slate-200 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">Total Paid</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {allLabourPayments.length === 0 ? (
+                      <TR><TD colSpan={dateColumns.length + 3} className="text-center text-muted-foreground py-4">No payments recorded.</TD></TR>
+                    ) : (
+                      allLabourPayments.map((p: any) => (
+                        <TR key={p.labourId}>
+                          <TD className="font-medium whitespace-nowrap sticky left-0 z-10 bg-white dark:bg-slate-950 border-r border-slate-200">{p.labourName}</TD>
+                          <TD className="text-muted-foreground whitespace-nowrap sticky left-[150px] z-10 bg-white dark:bg-slate-950 border-r border-slate-200">{p.categoryName}</TD>
+                          {dateColumns.map(d => (
+                            <TD key={d} className="text-center text-xs whitespace-nowrap px-1 border-x border-slate-100 dark:border-slate-800">
+                              {p.paymentsByDate[d] ? <span className="font-bold text-rose-600">₹{p.paymentsByDate[d]}</span> : <span className="text-slate-300 dark:text-slate-700">-</span>}
+                            </TD>
+                          ))}
+                          <TD className="text-right font-bold text-rose-600 whitespace-nowrap sticky right-0 z-10 bg-white dark:bg-slate-950 border-l border-slate-200">{formatINR(p.amount)}</TD>
+                        </TR>
+                      ))
+                    )}
+                  </TBody>
+                </Table>
+              </div>
             </div>
             {labourPaymentsTotal > 0 && (
               <div className="mt-4 pt-3 border-t text-right font-bold text-lg text-rose-600">
