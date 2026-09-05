@@ -68,7 +68,6 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
     ];
   }
 
-  // Define payment where clause mirroring attendance search
   const paymentWhereClause: any = {
     date: { gte: startDate, lte: endDate },
   };
@@ -80,8 +79,14 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
     };
   }
 
+  let supervisorUserIds: string[] = [];
+  if (siteId) {
+    const siteSupervisors = await prisma.siteSupervisor.findMany({ where: { siteId } });
+    supervisorUserIds = siteSupervisors.map(ss => ss.supervisorId);
+  }
+
   // ✅ Run KPI aggregates + paginated data in parallel — no full scan in JS
-  const [total, presentAgg, absentAgg, hajariAgg, attendanceForEarned, paymentAgg, attendance] = await Promise.all([
+  const [total, presentAgg, absentAgg, hajariAgg, attendanceForEarned, paymentAgg, attendance, supCountAgg, supEarnedAgg, supPayAgg] = await Promise.all([
     // Total count for pagination
     prisma.attendance.count({ where: whereClause }),
 
@@ -132,6 +137,22 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
         building: { select: { name: true } },
       },
     }),
+
+    // Supervisor Aggregates
+    supervisorUserIds.length > 0 ? prisma.supervisorAttendance.aggregate({
+      where: { supervisorId: { in: supervisorUserIds }, date: { gte: startDate, lte: endDate }, status: { not: "ABSENT" } },
+      _count: { id: true }
+    }) : { _count: { id: 0 } },
+    
+    supervisorUserIds.length > 0 ? prisma.supervisorAttendance.aggregate({
+      where: { supervisorId: { in: supervisorUserIds }, date: { gte: startDate, lte: endDate } },
+      _sum: { earnedAmount: true }
+    }) : { _sum: { earnedAmount: 0 } },
+    
+    supervisorUserIds.length > 0 ? prisma.supervisorPayment.aggregate({
+      where: { supervisorId: { in: supervisorUserIds }, date: { gte: startDate, lte: endDate } },
+      _sum: { amount: true }
+    }) : { _sum: { amount: 0 } }
   ]);
 
   // Fetch payments for the paginated labours on their respective dates
@@ -144,15 +165,16 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
   });
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
-  const totalHajari = hajariAgg._sum.hajari ?? 0;
+  // Add supervisor counts to total hajaris
+  const totalHajari = (hajariAgg._sum.hajari ?? 0) + (supCountAgg._count.id || 0);
 
   // Calculate gross earned
-  let grossEarned = 0;
+  let grossEarned = supEarnedAgg._sum.earnedAmount || 0;
   for (const a of attendanceForEarned) {
     const rate = a.hajariRate || a.labour?.dailyWage || 0;
     grossEarned += a.hajari * rate;
   }
-  const totalAdvance = paymentAgg._sum.amount || 0;
+  const totalAdvance = (paymentAgg._sum.amount || 0) + (supPayAgg._sum.amount || 0);
   const netPayable = grossEarned - totalAdvance;
 
   const exportUrlParams = new URLSearchParams({ siteId, startDate: startDateStr, endDate: endDateStr });
