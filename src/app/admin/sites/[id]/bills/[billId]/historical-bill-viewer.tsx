@@ -612,13 +612,24 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                   </THead>
                   <TBody>
                     {items.map((item: any, i: number) => {
-                      const prevQ = item.previousQty || 0;
-                      const currQ = item.currentQty || 0;
-                      const cumQ = item.cumulativeQty || (prevQ + currQ);
+                      const isQty = b.calculationMethod === "QUANTITY" || item.unit === "Sft";
+                      const itemRate = item.rate || b.contractRate || contractRate || 0;
+
                       const prevA = item.previousAmt || 0;
                       const currA = item.currentAmt || 0;
                       const cumA = item.cumulativeAmt || (prevA + currA);
-                      const isQty = b.calculationMethod === "QUANTITY";
+
+                      let prevQ = item.previousQty || 0;
+                      if (isQty && prevQ === 0 && prevA > 0 && itemRate > 0) {
+                        prevQ = Math.round(prevA / itemRate);
+                      }
+
+                      let currQ = item.currentQty || 0;
+                      if (isQty && currQ === 0 && currA > 0 && itemRate > 0) {
+                        currQ = Math.round(currA / itemRate);
+                      }
+
+                      const cumQ = isQty ? (prevQ + currQ) : (item.cumulativeQty || (prevQ + currQ));
 
                       return (
                         <TR key={item.id}>
