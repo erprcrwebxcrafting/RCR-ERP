@@ -640,13 +640,24 @@ function TowerPages({ data, logoStr, signStr }: any) {
           </View>
           
           {items.map((item: any, i: number) => {
-            const prevQ = item.previousQty || 0;
-            const currQ = item.currentQty || 0;
-            const cumQ = item.cumulativeQty || (prevQ + currQ);
+            const isQtyMode = isQty;
+            const itemRate = item.rate || tower.contractRate || 0;
 
             const prevA = (item.previousAmt !== undefined && item.previousAmt !== null) ? item.previousAmt : 0;
             const currA = (item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : 0;
             const cumA = item.cumulativeAmt ?? (prevA + currA);
+
+            let prevQ = item.previousQty || 0;
+            if (isQtyMode && prevQ === 0 && prevA > 0 && itemRate > 0) {
+              prevQ = Math.round(prevA / itemRate);
+            }
+
+            let currQ = item.currentQty || 0;
+            if (isQtyMode && currQ === 0 && currA > 0 && itemRate > 0) {
+              currQ = Math.round(currA / itemRate);
+            }
+
+            const cumQ = isQtyMode ? (prevQ + currQ) : (item.cumulativeQty || (prevQ + currQ));
 
             tPrevTotal += prevA;
             tCurrTotal += currA;
@@ -1018,16 +1029,27 @@ export async function generateBillPdfs(bill: any): Promise<{ filename: string; b
       workItems: (b.workItems && b.workItems.length > 0)
         ? b.workItems.map((item: any) => {
             const l = bLines.find((x: any) => (x.workItemId && x.workItemId === item.id) || (x.description && x.description.includes(item.name)));
-            const prevQ = l?.previousQty ?? 0;
-            const currQ = l?.currentQty ?? 0;
-            const cumQ = l?.cumulativeQty ?? (prevQ + currQ);
+            const isQtyMode = b.calculationMethod === "QUANTITY" || item.unit === "Sft";
+            const rate = l?.rate || item.rate || b.contractRate || 0;
+
             const prevA = l?.previousAmount ?? 0;
             const currA = l?.currentAmount ?? 0;
             const cumA = l?.cumulativeAmount ?? (prevA + currA);
 
+            let prevQ = l?.previousQty ?? 0;
+            if (isQtyMode && prevQ === 0 && prevA > 0 && rate > 0) {
+              prevQ = Math.round(prevA / rate);
+            }
+
+            let currQ = l?.currentQty ?? 0;
+            if (isQtyMode && currQ === 0 && currA > 0 && rate > 0) {
+              currQ = Math.round(currA / rate);
+            }
+
+            const cumQ = isQtyMode ? (prevQ + currQ) : (l?.cumulativeQty ?? (prevQ + currQ));
+
             let partAmt = item.partAmount || l?.workItem?.partAmount || 0;
             const unit = item.unit || l?.unit || "%";
-            const rate = l?.rate || item.rate || 0;
             if (!partAmt) {
               if (unit === "%") {
                 partAmt = 100 * rate;
@@ -1054,7 +1076,25 @@ export async function generateBillPdfs(bill: any): Promise<{ filename: string; b
         : bLines.map((l: any) => {
             let partAmt = l.workItem?.partAmount || 0;
             const unit = l.workItem?.unit || l.unit || "%";
-            const rate = l.rate || 0;
+            const isQtyMode = b.calculationMethod === "QUANTITY" || unit === "Sft";
+            const rate = l.rate || b.contractRate || 0;
+
+            const prevA = l.previousAmount || 0;
+            const currA = l.currentAmount || 0;
+            const cumA = l.cumulativeAmount || (prevA + currA);
+
+            let prevQ = l.previousQty || 0;
+            if (isQtyMode && prevQ === 0 && prevA > 0 && rate > 0) {
+              prevQ = Math.round(prevA / rate);
+            }
+
+            let currQ = l.currentQty || 0;
+            if (isQtyMode && currQ === 0 && currA > 0 && rate > 0) {
+              currQ = Math.round(currA / rate);
+            }
+
+            const cumQ = isQtyMode ? (prevQ + currQ) : (l.cumulativeQty || (prevQ + currQ));
+
             if (!partAmt) {
               if (unit === "%") {
                 partAmt = 100 * rate;
@@ -1068,12 +1108,12 @@ export async function generateBillPdfs(bill: any): Promise<{ filename: string; b
               id: l.workItemId || l.id,
               name: l.workItem?.name || l.description?.replace(`${b.name} - `, "") || l.description || "Work Item",
               unit,
-              previousAmt: l.previousAmount || 0,
-              currentAmt: l.currentAmount || 0,
-              cumulativeAmt: l.cumulativeAmount || ((l.previousAmount || 0) + (l.currentAmount || 0)),
-              previousQty: l.previousQty || 0,
-              currentQty: l.currentQty || 0,
-              cumulativeQty: l.cumulativeQty || ((l.previousQty || 0) + (l.currentQty || 0)),
+              previousAmt: prevA,
+              currentAmt: currA,
+              cumulativeAmt: cumA,
+              previousQty: prevQ,
+              currentQty: currQ,
+              cumulativeQty: cumQ,
               rate,
               partAmount: partAmt,
             };
