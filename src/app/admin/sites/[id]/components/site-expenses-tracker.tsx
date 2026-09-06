@@ -315,79 +315,98 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     workbook.creator = "RCR ERP";
     workbook.created = new Date();
 
+    // --- SHEET 1: GENERAL LEDGER ---
     const sheet = workbook.addWorksheet("Ledger Report");
-    
-    // Set general column widths
-    sheet.getColumn("A").width = 20; // Date / Metric
-    sheet.getColumn("B").width = 30; // Detail / Name
-    sheet.getColumn("C").width = 35; // Purpose / Category
-    sheet.getColumn("D").width = 25; // Amount
+    sheet.getColumn("A").width = 20; 
+    sheet.getColumn("B").width = 30; 
+    sheet.getColumn("C").width = 35; 
+    sheet.getColumn("D").width = 25; 
 
-    const addSectionTitle = (title: string) => {
-      const row = sheet.addRow([title]);
+    const addSectionTitle = (ws: any, title: string, cols = "D") => {
+      const row = ws.addRow([title]);
       row.font = { bold: true, size: 14, color: { argb: "FF1E293B" } };
-      sheet.mergeCells(`A${row.number}:D${row.number}`);
+      ws.mergeCells(`A${row.number}:${cols}${row.number}`);
     };
 
-    const addHeaderRow = (headers: string[]) => {
-      const row = sheet.addRow(headers);
+    const addHeaderRow = (ws: any, headers: string[]) => {
+      const row = ws.addRow(headers);
       row.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
       row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4F46E5" } };
     };
 
     // 1. SUMMARY
-    addSectionTitle("FINANCIAL SUMMARY");
-    addHeaderRow(["Metric", "", "", "Amount (Rs)"]);
+    addSectionTitle(sheet, "FINANCIAL SUMMARY");
+    addHeaderRow(sheet, ["Metric", "", "", "Amount (Rs)"]);
     sheet.addRow(["Total Revenue (RA Bills Net)", "", "", totalRevenue]);
     sheet.addRow(["Total Deductions & Expenses", "", "", totalExpenses]);
     const netRow = sheet.addRow(["Net Savings / Profit", "", "", netProfit]);
     netRow.font = { bold: true, color: { argb: netProfit >= 0 ? "FF059669" : "FFE11D48" } };
-    sheet.addRow([]);
-    sheet.addRow([]);
+    sheet.addRow([]); sheet.addRow([]);
 
     // 2. RA BILLS
-    addSectionTitle("RA BILLS GENERATED");
-    addHeaderRow(["Date", "Bill No", "Gross Amount", "Net Amount"]);
+    addSectionTitle(sheet, "RA BILLS GENERATED");
+    addHeaderRow(sheet, ["Date", "Bill No", "Gross Amount", "Net Amount"]);
     if (billSummaries.length === 0) sheet.addRow(["No RA Bills found", "", "", ""]);
     billSummaries.forEach((b: any) => sheet.addRow([formatDate(b.date), b.billNo, b.grossAmount, b.netAmount]));
     sheet.addRow(["TOTAL REVENUE", "", "", totalRevenue]).font = { bold: true };
-    sheet.addRow([]);
-    sheet.addRow([]);
+    sheet.addRow([]); sheet.addRow([]);
 
-    // 3. LABOUR PAYMENTS
-    addSectionTitle("INTERNAL LABOUR PAYMENTS (SUMMARY)");
-    addHeaderRow(["Labour Name", "Category", ...dateColumns.map(d => new Date(d).getDate().toString()), "Total Amount"]);
-    if (allLabourPayments.length === 0) sheet.addRow(["No Labour Payments found", "", ...dateColumns.map(() => ""), ""]);
-    allLabourPayments.forEach((p: any) => {
-      const row = [p.labourName, p.categoryName];
-      dateColumns.forEach(d => row.push(p.paymentsByDate[d] || ""));
-      row.push(p.amount);
-      sheet.addRow(row);
-    });
-    sheet.addRow(["TOTAL LABOUR PAYMENTS", "", ...dateColumns.map(() => ""), labourPaymentsTotal]).font = { bold: true };
-    sheet.addRow([]);
-    sheet.addRow([]);
-
-    // 4. SUPPLY LABOURS
-    addSectionTitle("EXTRA SUPPLY LABOURS");
-    addHeaderRow(["Date", "Description", "", "Total Cost"]);
+    // 3. SUPPLY LABOURS
+    addSectionTitle(sheet, "EXTRA SUPPLY LABOURS");
+    addHeaderRow(sheet, ["Date", "Description", "", "Total Cost"]);
     if (supplyEntries.length === 0) sheet.addRow(["No Supply Labours found", "", "", ""]);
     supplyEntries.forEach((s: any) => sheet.addRow([formatDate(s.date), s.description, "", s.totalAmount]));
     sheet.addRow(["TOTAL SUPPLY LABOUR", "", "", supplyLabourTotal]).font = { bold: true };
-    sheet.addRow([]);
-    sheet.addRow([]);
+    sheet.addRow([]); sheet.addRow([]);
 
-    // 5. MANUAL EXPENSES
-    addSectionTitle("MANUAL & PETTY EXPENSES");
-    addHeaderRow(["Date", "Paid To", "Purpose / Reason", "Amount"]);
+    // 4. MANUAL EXPENSES
+    addSectionTitle(sheet, "MANUAL & PETTY EXPENSES");
+    addHeaderRow(sheet, ["Date", "Paid To", "Purpose / Reason", "Amount"]);
     if (manualExpenses.length === 0) sheet.addRow(["No Manual Expenses found", "", "", ""]);
     manualExpenses.forEach((e: any) => sheet.addRow([formatDate(e.date), e.paidTo, e.description, e.amount]));
     sheet.addRow(["TOTAL MANUAL EXPENSES", "", "", manualExpensesTotal]).font = { bold: true };
 
-    // Format Amount column (D) and Gross Amount (C in RA Bills)
     sheet.getColumn("D").numFmt = '"₹"#,##0.00';
+    sheet.getColumn("C").numFmt = '"₹"#,##0.00'; // For Gross Amount in Bills
+
+    // --- SHEET 2: LABOUR PAYMENTS ---
+    const labourSheet = workbook.addWorksheet("Labour Payments");
+    labourSheet.getColumn("A").width = 25; // Labour Name
+    labourSheet.getColumn("B").width = 18; // Category
     
-    // Download the file
+    // Calculate the last column letter for formatting (A, B, C... up to total columns)
+    const totalCols = 2 + dateColumns.length + 1; // Name, Cat, [Dates], Total
+    
+    addSectionTitle(labourSheet, "INTERNAL LABOUR PAYMENTS (DAILY BREAKDOWN)");
+    const dateHeaders = dateColumns.map(d => new Date(d).getDate().toString());
+    addHeaderRow(labourSheet, ["Labour Name", "Category", ...dateHeaders, "Total Amount"]);
+    
+    if (allLabourPayments.length === 0) {
+      labourSheet.addRow(["No Labour Payments found"]);
+    } else {
+      allLabourPayments.forEach((p: any) => {
+        const row = [p.labourName, p.categoryName];
+        dateColumns.forEach(d => row.push(p.paymentsByDate[d] || ""));
+        row.push(p.amount);
+        labourSheet.addRow(row);
+      });
+      
+      const totalRowData = ["TOTAL LABOUR PAYMENTS", ""];
+      dateColumns.forEach(() => totalRowData.push(""));
+      totalRowData.push(labourPaymentsTotal.toString());
+      const tRow = labourSheet.addRow(totalRowData);
+      tRow.font = { bold: true };
+    }
+
+    // Format Date columns and Total column in Sheet 2
+    for (let i = 3; i <= totalCols; i++) {
+      labourSheet.getColumn(i).width = 10;
+      labourSheet.getColumn(i).alignment = { horizontal: 'center' };
+    }
+    labourSheet.getColumn(totalCols).width = 18;
+    labourSheet.getColumn(totalCols).numFmt = '"₹"#,##0.00';
+    labourSheet.getColumn(totalCols).font = { bold: true };
+
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `${site.projectName}_Ledger_Report.xlsx`);
   };
@@ -521,41 +540,39 @@ export function SiteExpensesTracker({ site }: { site: any }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="max-h-[300px] overflow-auto print:max-h-none print:overflow-visible">
-              <div className="max-w-full overflow-x-auto print:overflow-visible pb-4">
-                <Table>
-                  <THead>
-                    <TR>
-                      <TH className="whitespace-nowrap sticky left-0 z-10 bg-white dark:bg-slate-950 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Labour Name</TH>
-                      <TH className="whitespace-nowrap sticky left-[150px] z-10 bg-white dark:bg-slate-950 border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Category</TH>
-                      {dateColumns.map(d => (
-                        <TH key={d} className="whitespace-nowrap text-center text-xs min-w-[32px] px-1">
-                          {new Date(d).getDate()}
-                        </TH>
-                      ))}
-                      <TH className="text-right whitespace-nowrap sticky right-0 z-10 bg-white dark:bg-slate-950 border-l border-slate-200 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">Total Paid</TH>
-                    </TR>
-                  </THead>
-                  <TBody>
-                    {allLabourPayments.length === 0 ? (
-                      <TR><TD colSpan={dateColumns.length + 3} className="text-center text-muted-foreground py-4">No payments recorded.</TD></TR>
-                    ) : (
-                      allLabourPayments.map((p: any) => (
-                        <TR key={p.labourId}>
-                          <TD className="font-medium whitespace-nowrap sticky left-0 z-10 bg-white dark:bg-slate-950 border-r border-slate-200">{p.labourName}</TD>
-                          <TD className="text-muted-foreground whitespace-nowrap sticky left-[150px] z-10 bg-white dark:bg-slate-950 border-r border-slate-200">{p.categoryName}</TD>
-                          {dateColumns.map(d => (
-                            <TD key={d} className="text-center text-xs whitespace-nowrap px-1 border-x border-slate-100 dark:border-slate-800">
-                              {p.paymentsByDate[d] ? <span className="font-bold text-rose-600">₹{p.paymentsByDate[d]}</span> : <span className="text-slate-300 dark:text-slate-700">-</span>}
-                            </TD>
-                          ))}
-                          <TD className="text-right font-bold text-rose-600 whitespace-nowrap sticky right-0 z-10 bg-white dark:bg-slate-950 border-l border-slate-200">{formatINR(p.amount)}</TD>
-                        </TR>
-                      ))
-                    )}
-                  </TBody>
-                </Table>
-              </div>
+            <div className="max-h-[400px] max-w-full overflow-auto print:max-h-none print:overflow-visible pb-2 relative">
+              <Table>
+                <THead>
+                  <TR>
+                    <TH className="whitespace-nowrap sticky top-0 left-0 z-30 bg-white dark:bg-slate-950 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[140px]">Labour Name</TH>
+                    <TH className="whitespace-nowrap sticky top-0 left-[140px] z-30 bg-white dark:bg-slate-950 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[120px]">Category</TH>
+                    {dateColumns.map(d => (
+                      <TH key={d} className="whitespace-nowrap text-center text-xs min-w-[32px] px-1 sticky top-0 z-20 bg-white dark:bg-slate-950 border-b">
+                        {new Date(d).getDate()}
+                      </TH>
+                    ))}
+                    <TH className="text-right whitespace-nowrap sticky top-0 right-0 z-30 bg-white dark:bg-slate-950 border-b border-l border-slate-200 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[100px]">Total Paid</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {allLabourPayments.length === 0 ? (
+                    <TR><TD colSpan={dateColumns.length + 3} className="text-center text-muted-foreground py-4">No payments recorded.</TD></TR>
+                  ) : (
+                    allLabourPayments.map((p: any) => (
+                      <TR key={p.labourId}>
+                        <TD className="font-medium whitespace-nowrap sticky left-0 z-10 bg-white dark:bg-slate-950 border-r border-slate-200 min-w-[140px]">{p.labourName}</TD>
+                        <TD className="text-muted-foreground whitespace-nowrap sticky left-[140px] z-10 bg-white dark:bg-slate-950 border-r border-slate-200 min-w-[120px]">{p.categoryName}</TD>
+                        {dateColumns.map(d => (
+                          <TD key={d} className="text-center text-xs whitespace-nowrap px-1 border-x border-slate-100 dark:border-slate-800">
+                            {p.paymentsByDate[d] ? <span className="font-bold text-rose-600">₹{p.paymentsByDate[d]}</span> : <span className="text-slate-300 dark:text-slate-700">-</span>}
+                          </TD>
+                        ))}
+                        <TD className="text-right font-bold text-rose-600 whitespace-nowrap sticky right-0 z-10 bg-white dark:bg-slate-950 border-l border-slate-200 min-w-[100px]">{formatINR(p.amount)}</TD>
+                      </TR>
+                    ))
+                  )}
+                </TBody>
+              </Table>
             </div>
             {labourPaymentsTotal > 0 && (
               <div className="mt-4 pt-3 border-t text-right font-bold text-lg text-rose-600">
