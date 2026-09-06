@@ -124,7 +124,7 @@ export async function generateAttendancePdf(
 
     worker.totalHajari += a.hajari || 0;
     worker.totalOT += a.overtimeHrs || 0;
-    worker.totalEarned += (a.hajari > 0 ? a.hajari * rate : 0);
+    worker.totalEarned += (a.earnedAmount !== undefined ? a.earnedAmount : (a.hajari > 0 ? a.hajari * rate : 0));
   });
 
   // Add additional labours who had no attendance in this period
