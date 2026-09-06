@@ -536,11 +536,9 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               </Table>
             </div>
             
-            {totalRevenue > 0 && (
-              <div className="mt-3 pt-2 text-right font-bold text-lg text-emerald-600">
-                Total: {formatINR(totalRevenue)}
-              </div>
-            )}
+            <div className="mt-3 pt-2 text-right font-bold text-lg text-emerald-600">
+              Total: {formatINR(totalRevenue)}
+            </div>
           </CardContent>
         </Card>
 
@@ -585,11 +583,9 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               <div className="text-xs text-muted-foreground">
                 Download Excel/PDF for daily breakdown
               </div>
-              {labourPaymentsTotal > 0 && (
-                <div className="text-right font-bold text-lg text-rose-600">
-                  Total: {formatINR(labourPaymentsTotal)}
-                </div>
-              )}
+              <div className="text-right font-bold text-lg text-rose-600">
+                Total: {formatINR(labourPaymentsTotal)}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -628,11 +624,9 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               </Table>
             </div>
             
-            {supplyLabourTotal > 0 && (
-              <div className="mt-3 pt-2 text-right font-bold text-lg text-rose-600">
-                Total: {formatINR(supplyLabourTotal)}
-              </div>
-            )}
+            <div className="mt-3 pt-2 text-right font-bold text-lg text-rose-600">
+              Total: {formatINR(supplyLabourTotal)}
+            </div>
           </CardContent>
         </Card>
 
@@ -726,11 +720,9 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               </Table>
             </div>
             
-            {manualExpensesTotal > 0 && (
-              <div className="mt-3 pt-2 text-right font-bold text-lg text-rose-600">
-                Total: {formatINR(manualExpensesTotal)}
-              </div>
-            )}
+            <div className="mt-3 pt-2 text-right font-bold text-lg text-rose-600">
+              Total: {formatINR(manualExpensesTotal)}
+            </div>
           </CardContent>
         </Card>
 
