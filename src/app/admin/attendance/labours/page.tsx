@@ -9,51 +9,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import { AttendanceFilterForm } from "./attendance-filter-form";
+import { unstable_cache } from "next/cache";
 
 const PAGE_SIZE = 10;
 
-export default async function AdminAttendancePage({ searchParams }: { searchParams: Promise<{ q?: string; siteId?: string; startDate?: string; endDate?: string; page?: string }> }) {
-  const resolvedParams = await searchParams;
-  const q = resolvedParams.q || "";
-  const siteId = resolvedParams.siteId || "";
-  const page = Math.max(1, parseInt(resolvedParams.page || "1", 10));
-
-  const today = new Date();
-  const todayStr = format(today, 'yyyy-MM-dd');
-  
-  // Default to the 1st of the current month so the table isn't empty by default
-  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  const firstOfMonthStr = format(firstOfMonth, 'yyyy-MM-dd');
-
-  const startDateStr = resolvedParams.startDate || firstOfMonthStr;
-  const endDateStr = resolvedParams.endDate || todayStr;
-
-  const { startDate: fyStart, endDate: fyEnd } = await getFinancialYearDates();
-
-  const startDate = new Date(startDateStr);
+async function fetchAttendanceData(
+  clampedStartDateStr: string,
+  clampedEndDateStr: string,
+  siteId: string,
+  q: string,
+  page: number
+) {
+  const startDate = new Date(clampedStartDateStr);
   startDate.setHours(0, 0, 0, 0);
-  const endDate = new Date(endDateStr);
+  const endDate = new Date(clampedEndDateStr);
   endDate.setHours(23, 59, 59, 999);
-
-  // If user hasn't explicitly filtered by date, default to today within FY
-  let wasClamped = false;
-  if (startDate < fyStart) {
-    startDate.setTime(fyStart.getTime());
-    wasClamped = true;
-  }
-  if (endDate > fyEnd) {
-    endDate.setTime(fyEnd.getTime());
-    wasClamped = true;
-  }
-
-  const clampedStartDateStr = format(startDate, 'yyyy-MM-dd');
-  const clampedEndDateStr = format(endDate, 'yyyy-MM-dd');
-
-  const sites = await prisma.site.findMany({
-    where: { active: true },
-    orderBy: { projectName: "asc" },
-    select: { id: true, projectName: true },
-  });
 
   const whereClause: any = {
     date: { gte: startDate, lte: endDate },
@@ -85,36 +55,22 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
     supervisorUserIds = siteSupervisors.map(ss => ss.supervisorId);
   }
 
-  // ✅ Run KPI aggregates + paginated data in parallel — no full scan in JS
   const [total, presentAgg, absentAgg, hajariAgg, attendanceForEarned, paymentAgg, attendance, supCountAgg, supEarnedAgg, supPayAgg] = await Promise.all([
-    // Total count for pagination
     prisma.attendance.count({ where: whereClause }),
-
-    // Present count (hajari > 0) via DB
     prisma.attendance.count({ where: { ...whereClause, hajari: { gt: 0 } } }),
-
-    // Absent count via DB
     prisma.attendance.count({ where: { ...whereClause, hajari: 0 } }),
-
-    // Sum of all hajaris via DB
     prisma.attendance.aggregate({
       where: { ...whereClause, hajari: { gt: 0 } },
       _sum: { hajari: true },
     }),
-
-    // Earned wages (requires fetching to multiply by daily wage)
     prisma.attendance.findMany({
       where: { ...whereClause, hajari: { gt: 0 } },
       select: { hajari: true, hajariRate: true, labour: { select: { dailyWage: true } } }
     }),
-
-    // Total Payments
     prisma.labourPayment.aggregate({
       where: paymentWhereClause,
       _sum: { amount: true }
     }),
-
-    // ✅ Paginated — only PAGE_SIZE rows at a time!
     prisma.attendance.findMany({
       where: whereClause,
       orderBy: { date: "desc" },
@@ -137,25 +93,20 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
         building: { select: { name: true } },
       },
     }),
-
-    // Supervisor Aggregates
     supervisorUserIds.length > 0 ? prisma.supervisorAttendance.aggregate({
       where: { supervisorId: { in: supervisorUserIds }, date: { gte: startDate, lte: endDate }, status: { not: "ABSENT" } },
       _count: { id: true }
     }) : { _count: { id: 0 } },
-    
     supervisorUserIds.length > 0 ? prisma.supervisorAttendance.aggregate({
       where: { supervisorId: { in: supervisorUserIds }, date: { gte: startDate, lte: endDate } },
       _sum: { earnedAmount: true }
     }) : { _sum: { earnedAmount: 0 } },
-    
     supervisorUserIds.length > 0 ? prisma.supervisorPayment.aggregate({
       where: { supervisorId: { in: supervisorUserIds }, date: { gte: startDate, lte: endDate } },
       _sum: { amount: true }
     }) : { _sum: { amount: 0 } }
   ]);
 
-  // Fetch payments for the paginated labours on their respective dates
   const pageLabourIds = Array.from(new Set(attendance.map((a: any) => a.labourId)));
   const pagePayments = await prisma.labourPayment.findMany({
     where: {
@@ -165,10 +116,8 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
   });
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
-  // Add supervisor counts to total hajaris
   const totalHajari = (hajariAgg._sum.hajari ?? 0) + (supCountAgg._count.id || 0);
 
-  // Calculate gross earned
   let grossEarned = supEarnedAgg._sum.earnedAmount || 0;
   for (const a of attendanceForEarned) {
     const rate = a.hajariRate || a.labour?.dailyWage || 0;
@@ -176,6 +125,61 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
   }
   const totalAdvance = (paymentAgg._sum.amount || 0) + (supPayAgg._sum.amount || 0);
   const netPayable = grossEarned - totalAdvance;
+
+  return {
+    total,
+    attendance,
+    pagePayments,
+    totalPages,
+    totalHajari,
+    grossEarned,
+    totalAdvance,
+    netPayable
+  };
+}
+
+const getCachedAttendanceData = (start: string, end: string, siteId: string, q: string, page: number) => {
+  return unstable_cache(
+    () => fetchAttendanceData(start, end, siteId, q, page),
+    ['admin-attendance-labours-v1', start, end, siteId, q, page.toString()],
+    { revalidate: false, tags: ['reports-data'] }
+  )();
+};
+
+export default async function AdminAttendancePage({ searchParams }: { searchParams: Promise<{ q?: string; siteId?: string; startDate?: string; endDate?: string; page?: string }> }) {
+  const resolvedParams = await searchParams;
+  const q = resolvedParams.q || "";
+  const siteId = resolvedParams.siteId || "";
+  const page = Math.max(1, parseInt(resolvedParams.page || "1", 10));
+
+  const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
+  
+  // Default to the 1st of the current month so the table isn't empty by default
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const firstOfMonthStr = format(firstOfMonth, 'yyyy-MM-dd');
+
+  const startDateStr = resolvedParams.startDate || firstOfMonthStr;
+  const endDateStr = resolvedParams.endDate || todayStr;
+
+  const { startDate: fyStart, endDate: fyEnd } = await getFinancialYearDates();
+
+  const sites = await prisma.site.findMany({
+    where: { active: true },
+    orderBy: { projectName: "asc" },
+    select: { id: true, projectName: true },
+  });
+
+  const {
+    total,
+    attendance,
+    pagePayments,
+    totalPages,
+    totalHajari,
+    grossEarned,
+    totalAdvance,
+    netPayable
+  } = await getCachedAttendanceData(clampedStartDateStr, clampedEndDateStr, siteId, q, page);
 
   const exportUrlParams = new URLSearchParams({ siteId, startDate: startDateStr, endDate: endDateStr });
   if (q) exportUrlParams.set("q", q);
