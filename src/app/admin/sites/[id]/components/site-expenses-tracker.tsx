@@ -43,8 +43,8 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     const tdsAmt = gross * (tdsPct / 100);
     const gstAmt = gross * ((cgstPct + sgstPct) / 100);
 
-    const finalBillAmount = netAmt + gstAmt; // Actual receivable value
-    totalRevenue += netAmt; // Or you could use finalBillAmount, but typically Net Amt is revenue
+    const invoiceAmount = gross + gstAmt; // Actual invoice value
+    totalRevenue += invoiceAmount;
 
     return {
       id: b.id,
@@ -52,6 +52,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
       date: b.createdAt,
       grossAmount: gross,
       netAmount: netAmt,
+      invoiceAmount: invoiceAmount,
       totalTax: gstAmt + tdsAmt,
     };
   });
@@ -169,7 +170,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                   { text: 'Amount (Rs)', style: 'tableHeaderRight' }
                 ],
                 [
-                  { text: 'Total Revenue (RA Bills Net)', style: 'tableCell' }, 
+                  { text: 'Total Revenue (RA Bills + GST)', style: 'tableCell' }, 
                   { text: formatINR(totalRevenue), style: 'tableCellRight' }
                 ],
                 [
@@ -199,13 +200,13 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                 { text: 'Date', style: 'tableHeader', fillColor: '#10b981' }, 
                 { text: 'Bill No.', style: 'tableHeader', fillColor: '#10b981' }, 
                 { text: 'Gross Amount', style: 'tableHeaderRight', fillColor: '#10b981' }, 
-                { text: 'Net Amount', style: 'tableHeaderRight', fillColor: '#10b981' }
+                { text: 'Invoice Amt', style: 'tableHeaderRight', fillColor: '#10b981' }
               ],
               ...billSummaries.map((b: any) => [
                 { text: formatDate(b.date), style: 'tableCell' },
                 { text: b.billNo, style: 'tableCell' },
                 { text: formatINR(b.grossAmount), style: 'tableCellRight' },
-                { text: formatINR(b.netAmount), style: 'tableCellRight' }
+                { text: formatINR(b.invoiceAmount), style: 'tableCellRight' }
               ]),
               [
                 { text: 'TOTAL REVENUE', style: 'totalRow', colSpan: 3 }, {}, {},
@@ -341,7 +342,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     // 1. SUMMARY
     addSectionTitle(sheet, `FINANCIAL SUMMARY (${dateRangeStr})`);
     addHeaderRow(sheet, ["Metric", "", "", "Amount (Rs)"]);
-    sheet.addRow(["Total Revenue (RA Bills Net)", "", "", totalRevenue]);
+    sheet.addRow(["Total Revenue (RA Bills + GST)", "", "", totalRevenue]);
     sheet.addRow(["Total Deductions & Expenses", "", "", totalExpenses]);
     const netRow = sheet.addRow(["Net Savings / Profit", "", "", netProfit]);
     netRow.font = { bold: true, color: { argb: netProfit >= 0 ? "FF059669" : "FFE11D48" } };
@@ -349,9 +350,9 @@ export function SiteExpensesTracker({ site }: { site: any }) {
 
     // 2. RA BILLS
     addSectionTitle(sheet, "RA BILLS GENERATED");
-    addHeaderRow(sheet, ["Date", "Bill No", "Gross Amount", "Net Amount"]);
+    addHeaderRow(sheet, ["Date", "Bill No", "Gross Amount", "Invoice Amt"]);
     if (billSummaries.length === 0) sheet.addRow(["No RA Bills found", "", "", ""]);
-    billSummaries.forEach((b: any) => sheet.addRow([formatDate(b.date), b.billNo, b.grossAmount, b.netAmount]));
+    billSummaries.forEach((b: any) => sheet.addRow([formatDate(b.date), b.billNo, b.grossAmount, b.invoiceAmount]));
     sheet.addRow(["TOTAL REVENUE", "", "", totalRevenue]).font = { bold: true };
     sheet.addRow([]); sheet.addRow([]);
 
@@ -464,7 +465,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
         <div className="grid gap-4 md:grid-cols-3 mb-6">
         <Card className="bg-emerald-500/10 border-emerald-500/30 print:border print:bg-transparent">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Total Revenue (Net Bills)</CardTitle>
+            <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Total Revenue (Invoice + GST)</CardTitle>
             <TrendingUp className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
@@ -517,7 +518,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                   <TR>
                     <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Bill No.</TH>
                     <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Date</TH>
-                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Net Amount</TH>
+                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Invoice Amt</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -528,7 +529,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                       <TR key={b.id}>
                         <TD className="font-medium whitespace-nowrap">{b.billNo}</TD>
                         <TD className="text-muted-foreground whitespace-nowrap">{formatDate(b.date)}</TD>
-                        <TD className="text-right font-bold text-emerald-600 whitespace-nowrap">{formatINR(b.netAmount)}</TD>
+                        <TD className="text-right font-bold text-emerald-600 whitespace-nowrap">{formatINR(b.invoiceAmount)}</TD>
                       </TR>
                     ))
                   )}
