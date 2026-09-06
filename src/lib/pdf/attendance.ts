@@ -17,6 +17,7 @@ export interface AttendanceExportData {
   siteName: string;
   startDateStr: string;
   endDateStr: string;
+  monthlyLedger?: Record<string, Record<string, { earned: number, paid: number }>>;
 }
 
 function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
@@ -51,6 +52,7 @@ export async function generateAttendancePdf(
   let siteName = "Site";
   let startDateStr = "";
   let endDateStr = "";
+  let monthlyLedger: Record<string, Record<string, { earned: number, paid: number }>> = {};
 
   if (Array.isArray(dataOrAttendances)) {
     attendances = dataOrAttendances;
@@ -67,6 +69,7 @@ export async function generateAttendancePdf(
     siteName = dataOrAttendances.siteName || "Site";
     startDateStr = dataOrAttendances.startDateStr || "";
     endDateStr = dataOrAttendances.endDateStr || "";
+    monthlyLedger = dataOrAttendances.monthlyLedger || {};
   }
 
   const pdfDoc = await PDFDocument.create();
@@ -731,6 +734,125 @@ export async function generateAttendancePdf(
       color: darkGray
     }
   );
+
+  // --- ADD MONTHLY LEDGER SUMMARY PAGE ---
+  const allMonthsSet = new Set<string>();
+  for (const w of sortedWorkers) {
+    if (monthlyLedger[w.id]) {
+      Object.keys(monthlyLedger[w.id]).forEach(mk => allMonthsSet.add(mk));
+    }
+  }
+  const allMonths = Array.from(allMonthsSet).sort();
+
+  if (allMonths.length > 0) {
+    page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+    y = PAGE_H - MARGIN;
+    
+    page.drawText(`Labour Monthly Ledger Summary — ${siteName}`, { x: MARGIN, y: y - 2, size: 16, font: bold, color: navy });
+    page.drawText(`Generated: ${format(new Date(), "dd-MMM-yyyy hh:mm a")}`, { x: MARGIN, y: y - 18, size: 10, font: font, color: darkGray });
+    y -= 40;
+
+    const ledgNameW = 90;
+    const ledgMonthW = Math.min(80, (usableWidth - ledgNameW - 140) / allMonths.length);
+    const ledgTotalW = 46;
+    
+    let lCols: any[] = [{ name: "Labour Name", w: ledgNameW, align: "left" }];
+    allMonths.forEach(mStr => {
+      const [yy, mm] = mStr.split("-");
+      const d = new Date(parseInt(yy), parseInt(mm) - 1, 1);
+      lCols.push({ name: format(d, "MMM yyyy"), w: ledgMonthW, align: "center" });
+    });
+    lCols.push({ name: "Tot Earn", w: ledgTotalW, align: "right" });
+    lCols.push({ name: "Tot Paid", w: ledgTotalW, align: "right" });
+    lCols.push({ name: "Net Bal", w: ledgTotalW, align: "right" });
+
+    const lColX = [MARGIN];
+    for (let i = 0; i < lCols.length; i++) {
+      lColX.push(lColX[i] + lCols[i].w);
+    }
+    const ledgRightX = lColX[lColX.length - 1];
+
+    const drawLedgRowLine = (yPos: number, thickness = 0.5) => {
+      page.drawLine({ start: { x: MARGIN, y: yPos }, end: { x: ledgRightX, y: yPos }, thickness, color: borderColor });
+    };
+
+    const drawLedgHeaders = (currY: number) => {
+      page.drawRectangle({ x: MARGIN, y: currY - 20, width: ledgRightX - MARGIN, height: 20, color: rgb(0.12, 0.35, 0.72) });
+      lCols.forEach((c, i) => {
+        const tW = bold.widthOfTextAtSize(c.name, 7.5);
+        let tX = lColX[i] + 3;
+        if (c.align === "center") tX = lColX[i] + (c.w - tW) / 2;
+        if (c.align === "right") tX = lColX[i + 1] - tW - 3;
+        page.drawText(c.name, { x: tX, y: currY - 14, size: 7.5, font: bold, color: rgb(1,1,1) });
+      });
+      return currY - 20;
+    };
+    
+    let ledgTopY = y;
+    y = drawLedgHeaders(y);
+
+    sortedWorkers.forEach((worker, i) => {
+      if (y < 40) {
+        lColX.forEach(x => page.drawLine({ start: { x, y: ledgTopY }, end: { x, y }, thickness: 0.4, color: borderColor }));
+        page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+        y = PAGE_H - MARGIN;
+        ledgTopY = y;
+        y = drawLedgHeaders(y);
+      }
+
+      const lRowH = 18;
+      if (i % 2 === 1) {
+        page.drawRectangle({ x: MARGIN, y: y - lRowH, width: ledgRightX - MARGIN, height: lRowH, color: zebraColor });
+      }
+
+      // Name
+      const nLines = wrapText(worker.name, bold, 7, ledgNameW - 6);
+      page.drawText(nLines[0], { x: lColX[0] + 3, y: y - 11, size: 7, font: bold, color: navy });
+
+      const ledger = monthlyLedger[worker.id] || {};
+      
+      allMonths.forEach((mStr, mi) => {
+        const e = ledger[mStr]?.earned || 0;
+        const p = ledger[mStr]?.paid || 0;
+        const cX = lColX[mi + 1];
+        const cW = lCols[mi + 1].w;
+        
+        if (e > 0 || p > 0) {
+           const et = e > 0 ? `E: ${e}` : "";
+           const pt = p > 0 ? `P: ${p}` : "";
+           
+           if (et) {
+             const ew = bold.widthOfTextAtSize(et, 6);
+             page.drawText(et, { x: cX + (cW/2) - ew - 2, y: y - 11, size: 6, font: bold, color: primary });
+           }
+           if (pt) {
+             page.drawText(pt, { x: cX + (cW/2) + 2, y: y - 11, size: 6, font: bold, color: red });
+           }
+        } else {
+           const dw = font.widthOfTextAtSize("—", 7);
+           page.drawText("—", { x: cX + (cW - dw)/2, y: y - 11, size: 7, font: font, color: mutedGray });
+        }
+      });
+
+      // Totals
+      const te = `${Math.round(worker.allTimeEarned)}`;
+      const tp = `${Math.round(worker.allTimePaid)}`;
+      const nb = `${Math.round(worker.netBalance)}`;
+      
+      const teW = bold.widthOfTextAtSize(te, 7.5);
+      const tpW = bold.widthOfTextAtSize(tp, 7.5);
+      const nbW = bold.widthOfTextAtSize(nb, 8);
+
+      page.drawText(te, { x: lColX[lCols.length - 3 + 1] - teW - 3, y: y - 11, size: 7.5, font: bold, color: navy });
+      page.drawText(tp, { x: lColX[lCols.length - 2 + 1] - tpW - 3, y: y - 11, size: 7.5, font: bold, color: worker.allTimePaid > 0 ? red : darkGray });
+      page.drawText(nb, { x: lColX[lCols.length - 1 + 1] - nbW - 3, y: y - 11, size: 8, font: bold, color: worker.netBalance > 0 ? green : (worker.netBalance < 0 ? red : darkGray) });
+
+      y -= lRowH;
+      drawLedgRowLine(y, 0.4);
+    });
+    
+    lColX.forEach(x => page.drawLine({ start: { x, y: ledgTopY }, end: { x, y }, thickness: 0.4, color: borderColor }));
+  }
 
   return pdfDoc.save();
 }
