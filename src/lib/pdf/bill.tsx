@@ -916,10 +916,10 @@ function LedgerPage({ data, logoStr, signStr }: any) {
           const balWithGst = runBal + runCumGst;
 
           return (
-            <View style={styles.towerTr} key={idx} wrap={false}>
+            <View style={[styles.towerTr, item.type === "BILL" ? { backgroundColor: "#eff6ff" } : {}]} key={idx} wrap={false}>
               <Text style={[styles.towerTd, { width: "3%" }]}>{idx + 1}</Text>
               <Text style={[styles.towerTd, { width: "8%" }]}>{item.date.toLocaleDateString("en-IN")}</Text>
-              <Text style={[styles.towerTd, { width: "18%", fontFamily: "Helvetica-Bold" }]}>{item.refName.slice(0, 30)}</Text>
+              <Text style={[styles.towerTd, { width: "18%", fontFamily: item.type === "BILL" ? "Helvetica-Bold" : "Helvetica", color: item.type === "BILL" ? "#0f172a" : "#475569" }]}>{item.refName.slice(0, 30)}</Text>
               <Text style={[styles.towerTd, { width: "8%", textAlign: "right", color: "#475569" }]}>{item.type === "BILL" ? formatINR(item.grossAmount) : "-"}</Text>
               <Text style={[styles.towerTd, { width: "6%", textAlign: "right", backgroundColor: "#fff7ed", color: "#c2410c" }]}>{item.type === "BILL" ? formatINR(item.retentionAmt) : "-"}</Text>
               <Text style={[styles.towerTd, { width: "8%", textAlign: "right", backgroundColor: "#eef2ff", color: "#3730a3", fontFamily: "Helvetica-Bold" }]}>{item.type === "BILL" ? formatINR(item.netBilledAmt) : "-"}</Text>
