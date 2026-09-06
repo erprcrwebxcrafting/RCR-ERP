@@ -258,7 +258,22 @@ export function TowerWorkManager({ site }: { site: any }) {
                 <CheckCircle2 className="h-4 w-4" /> {saveMessage}
               </span>
             )}
-            <Button onClick={handleSaveProgress} disabled={isSaving} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+            <Button 
+              onClick={handleSaveProgress} 
+              disabled={isSaving} 
+              className={`gap-2 ${
+                (selectedBuilding?.workItems || []).some((item: any) => {
+                  const state = progressState[item.id];
+                  if (!state) return false;
+                  const isQtyMode = selectedBuilding.calculationMethod === "QUANTITY";
+                  const itemRate = item.rate || selectedBuilding.contractRate || 0;
+                  const prevQ = (isQtyMode && (item.previousAmt || 0) > 0 && itemRate > 0) ? Math.round(item.previousAmt / itemRate) : (item.previousQty || 0);
+                  return state.name !== (item.name || "") || state.partAmount !== (item.partAmount || 0) || (state.currentQty || 0) !== (item.currentQty || 0) || (state.previousQty || 0) !== prevQ || (state.currentPct || 0) !== (item.currentPct || 0) || (state.previousPct || 0) !== (item.previousPct || 0);
+                }) 
+                  ? "bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20" 
+                  : "bg-emerald-600 hover:bg-emerald-700"
+              }`}
+            >
               {isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -536,9 +551,21 @@ export function TowerWorkManager({ site }: { site: any }) {
                         
                         const isBilledPrev = (item.previousPct || 0) > 0 || (item.previousQty || 0) > 0 || (item.previousAmt || 0) > 0;
                         const isQtyMode = selectedBuilding.calculationMethod === "QUANTITY";
+                        const itemRate = item.rate || selectedBuilding.contractRate || 0;
+                        const prevQ = (isQtyMode && (item.previousAmt || 0) > 0 && itemRate > 0)
+                          ? Math.round(item.previousAmt / itemRate)
+                          : (item.previousQty || 0);
+
+                        const isEdited = 
+                          name !== (item.name || "") ||
+                          partAmt !== (item.partAmount || 0) ||
+                          (state.currentQty || 0) !== (item.currentQty || 0) ||
+                          (state.previousQty || 0) !== prevQ ||
+                          (state.currentPct || 0) !== (item.currentPct || 0) ||
+                          (state.previousPct || 0) !== (item.previousPct || 0);
 
                         return (
-                          <TR key={item.id}>
+                          <TR key={item.id} className={isEdited ? "bg-blue-50/30 dark:bg-blue-900/10" : ""}>
                             <TD className="font-mono text-xs">{idx + 1}</TD>
                             <TD>
                               <Input
@@ -676,6 +703,17 @@ export function TowerWorkManager({ site }: { site: any }) {
                               />
                             </TD>
                             <TD className="text-right flex items-center justify-end gap-1">
+                              {isEdited && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  title="Unsaved Changes - Click to Save"
+                                  onClick={handleSaveProgress}
+                                  className="h-8 w-8 text-blue-600 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-700 animate-pulse ring-1 ring-blue-500/50"
+                                >
+                                  <Save className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="icon"
