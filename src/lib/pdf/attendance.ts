@@ -43,6 +43,7 @@ export async function generateAttendancePdf(
   legacyEndDate?: string
 ): Promise<Uint8Array> {
   let attendances: any[] = [];
+  let payments: any[] = [];
   let postPayments: any[] = [];
   let additionalLabours: any[] = [];
   let openingEarned: Record<string, number> = {};

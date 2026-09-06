@@ -584,6 +584,63 @@ export async function recordClientPaymentAction(siteId: string, formData: FormDa
   revalidatePath(`/admin/sites/${siteId}`);
 }
 
+export async function editClientPaymentAction(siteId: string, paymentId: string, formData: FormData) {
+  const amountStr = (formData.get("amount") as string)?.replace(/,/g, "") || "0";
+  const amount = parseFloat(amountStr);
+  const mode = (formData.get("mode") as string) || "CASH";
+  const accountCredited = formData.get("accountCredited") as string;
+  const reference = formData.get("reference") as string;
+  const remarks = formData.get("remarks") as string;
+  const dateStr = formData.get("date") as string;
+
+  if (isNaN(amount) || amount <= 0) {
+    throw new Error("Payment amount must be greater than 0.");
+  }
+
+  if (!dateStr) {
+    throw new Error("Payment date is required.");
+  }
+
+  const date = new Date(dateStr);
+
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId }
+  });
+
+  if (!payment) throw new Error("Payment not found");
+
+  const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000);
+  if (payment.createdAt < thirtyMinsAgo) {
+    throw new Error("TIME LIMIT EXPIRED: Payments can only be edited within 30 minutes of creation.");
+  }
+
+  await prisma.payment.update({
+    where: { id: paymentId },
+    data: { amount, mode, accountCredited, reference, remarks, date },
+  });
+
+  revalidatePath(`/admin/sites/${siteId}`);
+}
+
+export async function deleteClientPaymentAction(siteId: string, paymentId: string) {
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId }
+  });
+
+  if (!payment) throw new Error("Payment not found");
+
+  const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000);
+  if (payment.createdAt < thirtyMinsAgo) {
+    throw new Error("TIME LIMIT EXPIRED: Payments can only be deleted within 30 minutes of creation.");
+  }
+
+  await prisma.payment.delete({
+    where: { id: paymentId }
+  });
+
+  revalidatePath(`/admin/sites/${siteId}`);
+}
+
 export async function updateSiteTaxSettingsAction(siteId: string, formData: FormData) {
   const parsePct = (val: FormDataEntryValue | null, def: number) => {
     if (val === null || (val as string).trim() === "") return def;

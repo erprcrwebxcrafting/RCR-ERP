@@ -8,13 +8,16 @@ import { IndianNumberInput } from "@/components/ui/indian-number-input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatINR, formatDate } from "@/lib/utils";
-import { recordClientPaymentAction, updateSiteTaxSettingsAction } from "../bill-actions";
-import { CircleDollarSign, Plus, ArrowDownLeft, Banknote, ShieldAlert, Settings2, Percent } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { editClientPaymentAction, deleteClientPaymentAction, recordClientPaymentAction, updateSiteTaxSettingsAction } from "../bill-actions";
+import { CircleDollarSign, Plus, ArrowDownLeft, Banknote, ShieldAlert, Settings2, Percent, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { validatePositiveNumber } from "@/lib/validations";
 
 export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any, hidePaymentForm?: boolean }) {
   const [isRecording, setIsRecording] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isEditingSettings, setIsEditingSettings] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -368,9 +371,16 @@ export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any,
 
                       const isBill = row.type === "BILL";
                       const srNo = itemRows.indexOf(row) + 1;
+                      
+                      const isRecentPayment = !isBill && row.rawObj?.createdAt 
+                        ? new Date(row.rawObj.createdAt).getTime() > Date.now() - 30 * 60 * 1000
+                        : false;
+
                       return (
-                        <TR key={row.id} className={isBill ? "bg-amber-500/5" : ""}>
-                          <TD className="font-mono text-center font-bold text-foreground">{srNo}</TD>
+                        <TR key={row.id} className={isBill ? "bg-amber-500/5 group" : "group"}>
+                          <TD className="font-mono text-center font-bold text-foreground">
+                            {srNo}
+                          </TD>
                         <TD className="font-mono whitespace-nowrap">{formatDate(row.date)}</TD>
                         <TD className="font-semibold text-muted-foreground">
                           {isBill ? (
@@ -384,8 +394,43 @@ export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any,
                         <TD className="font-mono text-right text-orange-500">{isBill && row.retentionAmt > 0 ? `-${formatINR(row.retentionAmt)}` : ""}</TD>
                         <TD className="font-mono text-right font-medium">{isBill ? formatINR(row.netBilledAmt) : ""}</TD>
                         
-                        <TD className="text-left text-[11px] text-muted-foreground">
+                        <TD className="text-left text-[11px] text-muted-foreground relative">
                           {!isBill ? [row.rawObj?.mode, row.utr].filter(Boolean).join(" | ") : ""}
+                          
+                          {/* Edit / Delete actions for recent payments */}
+                          {isRecentPayment && (
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-background/80 p-1 rounded-md shadow-sm">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                onClick={() => setEditingPayment(row.rawObj)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                onClick={() => {
+                                  if (confirm("Are you sure you want to delete this payment record? This action cannot be undone.")) {
+                                    startTransition(async () => {
+                                      try {
+                                        await deleteClientPaymentAction(site.id, row.id);
+                                        toast.success("Payment deleted successfully");
+                                      } catch (err: any) {
+                                        toast.error("Delete failed", { description: err?.message });
+                                      }
+                                    });
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          )}
                         </TD>
 
                         <TD className="font-mono text-right font-bold text-emerald-600">{!isBill ? formatINR(row.paymentRecd) : ""}</TD>
@@ -415,6 +460,90 @@ export function SiteBalanceSheet({ site, hidePaymentForm = false }: { site: any,
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Payment Modal */}
+      <Dialog open={!!editingPayment} onOpenChange={(open) => !open && setEditingPayment(null)}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Edit Client Payment</DialogTitle>
+          </DialogHeader>
+          
+          {editingPayment && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const amountStr = (formData.get("amount") as string)?.replace(/,/g, "").trim();
+                const dateStr = (formData.get("date") as string)?.trim();
+
+                const amtCheck = validatePositiveNumber(amountStr, "Amount Received");
+                if (!amtCheck.valid) {
+                  toast.error(amtCheck.error);
+                  return;
+                }
+
+                if (!dateStr) {
+                  toast.error("Please enter a valid payment date.");
+                  return;
+                }
+
+                startTransition(async () => {
+                  try {
+                    await editClientPaymentAction(site.id, editingPayment.id, formData);
+                    toast.success("Client payment updated successfully!");
+                    setEditingPayment(null);
+                  } catch (err: any) {
+                    toast.error("Failed to update payment", {
+                      description: err?.message || "Please check inputs and retry.",
+                    });
+                  }
+                });
+              }}
+              className="space-y-4 pt-2"
+            >
+              <div className="grid gap-3 md:grid-cols-4">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Payment Date *</label>
+                  <Input name="date" type="date" defaultValue={editingPayment.date ? new Date(editingPayment.date).toISOString().slice(0, 10) : ""} required />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Amount Received (₹) *</label>
+                  <IndianNumberInput name="amount" defaultValue={editingPayment.amount?.toString()} placeholder="e.g. 1,50,000" required />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Payment Mode</label>
+                  <select name="mode" defaultValue={editingPayment.mode || "NEFT"} className="w-full h-9 rounded-md border bg-background px-3 text-xs">
+                    <option value="NEFT">NEFT / Bank Transfer</option>
+                    <option value="ONLINE">Online / UPI</option>
+                    <option value="CASH">Cash / In-Hand</option>
+                    <option value="CHEQUE">Cheque</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Account Credited</label>
+                  <Input name="accountCredited" defaultValue={editingPayment.accountCredited || ""} placeholder="e.g. SANDIP ONLINE, ICICI 0884" />
+                </div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">UTR / Ref No.</label>
+                  <Input name="reference" defaultValue={editingPayment.reference || ""} placeholder="e.g. UTR-XX9988" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Remarks</label>
+                  <Input name="remarks" defaultValue={editingPayment.remarks || ""} placeholder="BILL NO.01 VIKHROLI PARK SITE" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="ghost" onClick={() => setEditingPayment(null)}>Cancel</Button>
+                <Button type="submit" disabled={isPending} className="bg-emerald-600 hover:bg-emerald-700">
+                  {isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
