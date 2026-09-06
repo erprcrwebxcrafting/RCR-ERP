@@ -164,6 +164,24 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
 
   const { startDate: fyStart, endDate: fyEnd } = await getFinancialYearDates();
 
+  const startDate = new Date(startDateStr);
+  startDate.setHours(0, 0, 0, 0);
+  const endDate = new Date(endDateStr);
+  endDate.setHours(23, 59, 59, 999);
+
+  let wasClamped = false;
+  if (startDate < fyStart) {
+    startDate.setTime(fyStart.getTime());
+    wasClamped = true;
+  }
+  if (endDate > fyEnd) {
+    endDate.setTime(fyEnd.getTime());
+    wasClamped = true;
+  }
+
+  const clampedStartDateStr = format(startDate, 'yyyy-MM-dd');
+  const clampedEndDateStr = format(endDate, 'yyyy-MM-dd');
+
   const sites = await prisma.site.findMany({
     where: { active: true },
     orderBy: { projectName: "asc" },
