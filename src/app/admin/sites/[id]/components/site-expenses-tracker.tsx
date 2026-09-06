@@ -126,6 +126,10 @@ export function SiteExpensesTracker({ site }: { site: any }) {
   const totalExpenses = manualExpensesTotal + labourPaymentsTotal + supplyLabourTotal;
   const netProfit = totalRevenue - totalExpenses;
 
+  const dateRangeStr = startDate.getMonth() === endDate.getMonth()
+    ? startDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+    : `${startDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })} to ${endDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`;
+
   const handlePrintPDF = async () => {
     toast.loading("Generating High-Quality PDF...", { id: "pdf-toast" });
     try {
@@ -321,10 +325,6 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     sheet.getColumn("B").width = 30; 
     sheet.getColumn("C").width = 35; 
     sheet.getColumn("D").width = 25; 
-
-    const dateRangeStr = startDate.getMonth() === endDate.getMonth()
-      ? startDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
-      : `${startDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })} to ${endDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`;
 
     const addSectionTitle = (ws: any, title: string, cols = "D") => {
       const row = ws.addRow([title]);
@@ -539,57 +539,52 @@ export function SiteExpensesTracker({ site }: { site: any }) {
         </Card>
 
         {/* INTERNAL LABOUR PAYMENTS */}
-        <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden">
-          <CardHeader className="pb-3">
+        <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden flex flex-col">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-lg font-bold flex items-center gap-2">
               <Users className="h-5 w-5 text-indigo-500" />
-              Internal Labour Payments
+              <span>Internal Labour Payments</span>
             </CardTitle>
+            <div className="text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-800">
+              {dateRangeStr}
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="max-h-[400px] max-w-full overflow-auto print:max-h-none print:overflow-visible pb-2 relative">
+          <CardContent className="flex flex-col">
+            <div className="max-h-[260px] max-w-full overflow-auto print:max-h-none print:overflow-visible pb-1 relative border rounded-md">
               <Table>
                 <THead>
                   <TR>
-                    <TH className="whitespace-nowrap sticky top-0 left-0 z-30 bg-white dark:bg-slate-950 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[140px]">Labour Name</TH>
-                    <TH className="whitespace-nowrap sticky top-0 left-[140px] z-30 bg-white dark:bg-slate-950 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[120px]">Category</TH>
-                    {dateColumns.map(d => {
-                      const dt = new Date(d);
-                      return (
-                        <TH key={d} className="whitespace-nowrap text-center text-xs min-w-[36px] px-1 sticky top-0 z-20 bg-white dark:bg-slate-950 border-b">
-                          <div className="font-bold text-[13px]">{dt.getDate()}</div>
-                          <div className="text-[9px] text-muted-foreground uppercase">{dt.toLocaleDateString('en-IN', { month: 'short' })}</div>
-                        </TH>
-                      );
-                    })}
-                    <TH className="text-right whitespace-nowrap sticky top-0 right-0 z-30 bg-white dark:bg-slate-950 border-b border-l border-slate-200 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[100px]">Total Paid</TH>
+                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[140px]">Labour Name</TH>
+                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[120px]">Category</TH>
+                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[100px]">Total Paid</TH>
                   </TR>
                 </THead>
                 <TBody>
                   {allLabourPayments.length === 0 ? (
-                    <TR><TD colSpan={dateColumns.length + 3} className="text-center text-muted-foreground py-4">No payments recorded.</TD></TR>
+                    <TR><TD colSpan={3} className="text-center text-muted-foreground py-4">No payments recorded.</TD></TR>
                   ) : (
                     allLabourPayments.map((p: any) => (
                       <TR key={p.labourId}>
-                        <TD className="font-medium whitespace-nowrap sticky left-0 z-10 bg-white dark:bg-slate-950 border-r border-slate-200 min-w-[140px]">{p.labourName}</TD>
-                        <TD className="text-muted-foreground whitespace-nowrap sticky left-[140px] z-10 bg-white dark:bg-slate-950 border-r border-slate-200 min-w-[120px]">{p.categoryName}</TD>
-                        {dateColumns.map(d => (
-                          <TD key={d} className="text-center text-xs whitespace-nowrap px-1 border-x border-slate-100 dark:border-slate-800">
-                            {p.paymentsByDate[d] ? <span className="font-bold text-rose-600">₹{p.paymentsByDate[d]}</span> : <span className="text-slate-300 dark:text-slate-700">-</span>}
-                          </TD>
-                        ))}
-                        <TD className="text-right font-bold text-rose-600 whitespace-nowrap sticky right-0 z-10 bg-white dark:bg-slate-950 border-l border-slate-200 min-w-[100px]">{formatINR(p.amount)}</TD>
+                        <TD className="font-medium whitespace-nowrap">{p.labourName}</TD>
+                        <TD className="text-muted-foreground whitespace-nowrap">{p.categoryName}</TD>
+                        <TD className="text-right font-bold text-rose-600 whitespace-nowrap">{formatINR(p.amount)}</TD>
                       </TR>
                     ))
                   )}
                 </TBody>
               </Table>
             </div>
-            {labourPaymentsTotal > 0 && (
-              <div className="mt-4 pt-3 border-t text-right font-bold text-lg text-rose-600">
-                Total: {formatINR(labourPaymentsTotal)}
+            
+            <div className="mt-3 flex items-center justify-between">
+              <div className="text-xs text-muted-foreground">
+                Download Excel/PDF for daily breakdown
               </div>
-            )}
+              {labourPaymentsTotal > 0 && (
+                <div className="text-right font-bold text-lg text-rose-600">
+                  Total: {formatINR(labourPaymentsTotal)}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
