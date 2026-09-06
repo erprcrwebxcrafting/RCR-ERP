@@ -322,6 +322,10 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     sheet.getColumn("C").width = 35; 
     sheet.getColumn("D").width = 25; 
 
+    const dateRangeStr = startDate.getMonth() === endDate.getMonth()
+      ? startDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+      : `${startDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })} to ${endDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`;
+
     const addSectionTitle = (ws: any, title: string, cols = "D") => {
       const row = ws.addRow([title]);
       row.font = { bold: true, size: 14, color: { argb: "FF1E293B" } };
@@ -335,7 +339,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     };
 
     // 1. SUMMARY
-    addSectionTitle(sheet, "FINANCIAL SUMMARY");
+    addSectionTitle(sheet, `FINANCIAL SUMMARY (${dateRangeStr})`);
     addHeaderRow(sheet, ["Metric", "", "", "Amount (Rs)"]);
     sheet.addRow(["Total Revenue (RA Bills Net)", "", "", totalRevenue]);
     sheet.addRow(["Total Deductions & Expenses", "", "", totalExpenses]);
@@ -377,8 +381,11 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     // Calculate the last column letter for formatting (A, B, C... up to total columns)
     const totalCols = 2 + dateColumns.length + 1; // Name, Cat, [Dates], Total
     
-    addSectionTitle(labourSheet, "INTERNAL LABOUR PAYMENTS (DAILY BREAKDOWN)");
-    const dateHeaders = dateColumns.map(d => new Date(d).getDate().toString());
+    addSectionTitle(labourSheet, `INTERNAL LABOUR PAYMENTS - ${dateRangeStr}`, "E");
+    const dateHeaders = dateColumns.map(d => {
+      const dt = new Date(d);
+      return `${dt.getDate()} ${dt.toLocaleDateString('en-IN', { month: 'short' })}`;
+    });
     addHeaderRow(labourSheet, ["Labour Name", "Category", ...dateHeaders, "Total Amount"]);
     
     if (allLabourPayments.length === 0) {
@@ -546,11 +553,15 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                   <TR>
                     <TH className="whitespace-nowrap sticky top-0 left-0 z-30 bg-white dark:bg-slate-950 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[140px]">Labour Name</TH>
                     <TH className="whitespace-nowrap sticky top-0 left-[140px] z-30 bg-white dark:bg-slate-950 border-b border-r border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[120px]">Category</TH>
-                    {dateColumns.map(d => (
-                      <TH key={d} className="whitespace-nowrap text-center text-xs min-w-[32px] px-1 sticky top-0 z-20 bg-white dark:bg-slate-950 border-b">
-                        {new Date(d).getDate()}
-                      </TH>
-                    ))}
+                    {dateColumns.map(d => {
+                      const dt = new Date(d);
+                      return (
+                        <TH key={d} className="whitespace-nowrap text-center text-xs min-w-[36px] px-1 sticky top-0 z-20 bg-white dark:bg-slate-950 border-b">
+                          <div className="font-bold text-[13px]">{dt.getDate()}</div>
+                          <div className="text-[9px] text-muted-foreground uppercase">{dt.toLocaleDateString('en-IN', { month: 'short' })}</div>
+                        </TH>
+                      );
+                    })}
                     <TH className="text-right whitespace-nowrap sticky top-0 right-0 z-30 bg-white dark:bg-slate-950 border-b border-l border-slate-200 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[100px]">Total Paid</TH>
                   </TR>
                 </THead>
