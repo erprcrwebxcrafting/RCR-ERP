@@ -85,10 +85,10 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
           </Card>
           <Card className="bg-muted/30">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Invoiced</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Invoiced (with GST)</CardTitle>
               <Receipt className="h-4 w-4 text-emerald-500" />
             </CardHeader>
-            <CardContent><div className="text-xl font-bold text-emerald-500">{formatINR(totalGrossBilled)}</div></CardContent>
+            <CardContent><div className="text-xl font-bold text-emerald-500">{formatINR(totalGrossBilled + totalGstAmount)}</div></CardContent>
           </Card>
           <Card className="bg-muted/30">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
