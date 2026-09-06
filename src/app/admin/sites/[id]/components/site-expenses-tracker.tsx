@@ -503,21 +503,21 @@ export function SiteExpensesTracker({ site }: { site: any }) {
       <div className="grid md:grid-cols-2 gap-6 items-start print:block print:space-y-6 max-w-full">
         
         {/* REVENUE SECTION */}
-        <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden">
+        <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden flex flex-col">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-bold flex items-center gap-2">
               <FileCheck className="h-5 w-5 text-emerald-500" />
               RA Bills Revenue
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
+          <CardContent className="flex flex-col">
+            <div className="max-h-[260px] max-w-full overflow-auto print:max-h-none print:overflow-visible pb-1 relative border rounded-md">
               <Table>
                 <THead>
                   <TR>
-                    <TH className="whitespace-nowrap">Bill No.</TH>
-                    <TH className="whitespace-nowrap">Date</TH>
-                    <TH className="text-right whitespace-nowrap">Net Amount</TH>
+                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Bill No.</TH>
+                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Date</TH>
+                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Net Amount</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -535,6 +535,12 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                 </TBody>
               </Table>
             </div>
+            
+            {totalRevenue > 0 && (
+              <div className="mt-3 pt-2 text-right font-bold text-lg text-emerald-600">
+                Total: {formatINR(totalRevenue)}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -589,21 +595,21 @@ export function SiteExpensesTracker({ site }: { site: any }) {
         </Card>
 
         {/* SUPPLY LABOURS */}
-        <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden">
+        <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden flex flex-col">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-bold flex items-center gap-2">
               <HardHat className="h-5 w-5 text-orange-500" />
               Extra Supply Labours
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="max-h-[300px] overflow-auto print:max-h-none print:overflow-visible">
+          <CardContent className="flex flex-col">
+            <div className="max-h-[260px] max-w-full overflow-auto print:max-h-none print:overflow-visible pb-1 relative border rounded-md">
               <Table>
                 <THead>
                   <TR>
-                    <TH className="whitespace-nowrap">Date</TH>
-                    <TH className="whitespace-nowrap">Description</TH>
-                    <TH className="text-right whitespace-nowrap">Total Cost</TH>
+                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Date</TH>
+                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Description</TH>
+                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Total Cost</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -621,8 +627,9 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                 </TBody>
               </Table>
             </div>
+            
             {supplyLabourTotal > 0 && (
-              <div className="mt-4 pt-3 border-t text-right font-bold text-lg text-rose-600">
+              <div className="mt-3 pt-2 text-right font-bold text-lg text-rose-600">
                 Total: {formatINR(supplyLabourTotal)}
               </div>
             )}
@@ -683,14 +690,14 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               </form>
             )}
 
-            <div className="max-h-[300px] overflow-auto print:max-h-none print:overflow-visible">
+            <div className="max-h-[260px] max-w-full overflow-auto print:max-h-none print:overflow-visible pb-1 relative border rounded-md">
               <Table>
                 <THead>
                   <TR>
-                    <TH className="whitespace-nowrap">Date</TH>
-                    <TH className="whitespace-nowrap">Details</TH>
-                    <TH className="text-right whitespace-nowrap">Amount</TH>
-                    <TH className="w-10 print:hidden whitespace-nowrap"></TH>
+                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Date</TH>
+                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Details</TH>
+                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Amount</TH>
+                    <TH className="w-10 print:hidden whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b"></TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -718,8 +725,9 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                 </TBody>
               </Table>
             </div>
+            
             {manualExpensesTotal > 0 && (
-              <div className="mt-4 pt-3 border-t text-right font-bold text-lg text-rose-600">
+              <div className="mt-3 pt-2 text-right font-bold text-lg text-rose-600">
                 Total: {formatINR(manualExpensesTotal)}
               </div>
             )}
