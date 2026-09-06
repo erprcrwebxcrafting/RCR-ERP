@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { generateAttendanceExcel } from "@/lib/excel/attendance";
 import { generateAttendancePdf } from "@/lib/pdf/attendance";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -185,6 +187,7 @@ export async function GET(request: NextRequest) {
             status: sa.status,
             hajari: isPresent ? 1 : (isHalf ? 0.5 : 0),
             hajariRate: sa.dailyRate,
+            earnedAmount: sa.earnedAmount, // explicitly pass earnedAmount for correct calculation
             overtimeHrs: 0,
             remarks: sa.remarks,
             markedById: sa.markedById || "",
