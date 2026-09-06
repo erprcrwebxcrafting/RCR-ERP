@@ -13,6 +13,7 @@ export interface AttendanceExportData {
   siteName: string;
   startDateStr: string;
   endDateStr: string;
+  monthlyLedger?: Record<string, Record<string, { earned: number, paid: number }>>;
 }
 
 export async function generateAttendanceExcel(
@@ -47,6 +48,8 @@ export async function generateAttendanceExcel(
     startDateStr = dataOrAttendances.startDateStr || "";
     endDateStr = dataOrAttendances.endDateStr || "";
   }
+  
+  const monthlyLedger = (dataOrAttendances as any).monthlyLedger || {};
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "RCR ERP System";
@@ -581,6 +584,125 @@ export async function generateAttendanceExcel(
 
     // Set width to max content length + padding, constrained between minWidth and 40
     column.width = Math.min(40, Math.max(minWidth, maxLength + 2.5));
+  });
+
+  // --- ADD MONTHLY LEDGER SUMMARY SHEET ---
+  const ledgerSheet = workbook.addWorksheet("Monthly Ledger Summary");
+  
+  ledgerSheet.mergeCells("A1:M1");
+  const lsTitleCell = ledgerSheet.getCell("A1");
+  lsTitleCell.value = `Labour Monthly Ledger Summary — ${siteName}`;
+  lsTitleCell.font = { size: 16, bold: true, color: { argb: "FF0B2447" } };
+  lsTitleCell.alignment = { horizontal: "center", vertical: "middle" };
+  ledgerSheet.getRow(1).height = 30;
+
+  ledgerSheet.mergeCells("A2:M2");
+  const lsSubCell = ledgerSheet.getCell("A2");
+  lsSubCell.value = `Generated: ${format(new Date(), "dd-MMM-yyyy hh:mm a")}`;
+  lsSubCell.font = { size: 10, italic: true, color: { argb: "FF475569" } };
+  lsSubCell.alignment = { horizontal: "center", vertical: "middle" };
+  ledgerSheet.getRow(2).height = 18;
+  
+  ledgerSheet.addRow([]);
+
+  // Collect all unique month keys across all labourers and sort them
+  const allMonthsSet = new Set<string>();
+  for (const w of sortedWorkers) {
+    if (monthlyLedger[w.id]) {
+      Object.keys(monthlyLedger[w.id]).forEach(mk => allMonthsSet.add(mk));
+    }
+  }
+  const allMonths = Array.from(allMonthsSet).sort();
+
+  // Create Header Rows
+  const headR1 = ["Labour Name", "Category"];
+  const headR2 = ["", ""];
+  
+  allMonths.forEach(mStr => {
+    // mStr is like "2026-03"
+    const [y, m] = mStr.split("-");
+    const d = new Date(parseInt(y), parseInt(m) - 1, 1);
+    headR1.push(format(d, "MMM yyyy"), ""); // span 2 columns
+    headR2.push("Earned", "Paid");
+  });
+  
+  headR1.push("Total Earned", "Total Paid", "Net Balance");
+  headR2.push("", "", "");
+
+  const hRow1 = ledgerSheet.addRow(headR1);
+  const hRow2 = ledgerSheet.addRow(headR2);
+  ledgerSheet.getRow(4).height = 22;
+  ledgerSheet.getRow(5).height = 20;
+
+  // Merge headers
+  ledgerSheet.mergeCells("A4:A5");
+  ledgerSheet.mergeCells("B4:B5");
+  let colIdx = 3;
+  allMonths.forEach(() => {
+    ledgerSheet.mergeCells(4, colIdx, 4, colIdx + 1);
+    colIdx += 2;
+  });
+  ledgerSheet.mergeCells(4, colIdx, 5, colIdx);
+  ledgerSheet.mergeCells(4, colIdx + 1, 5, colIdx + 1);
+  ledgerSheet.mergeCells(4, colIdx + 2, 5, colIdx + 2);
+
+  // Style Headers
+  [hRow1, hRow2].forEach(row => {
+    row.eachCell({ includeEmpty: true }, (cell) => {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E40AF" } };
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.border = { top: { style: "thin", color: { argb: "FFFFFFFF" } }, left: { style: "thin", color: { argb: "FFFFFFFF" } }, bottom: { style: "thin", color: { argb: "FFFFFFFF" } }, right: { style: "thin", color: { argb: "FFFFFFFF" } } };
+    });
+  });
+
+  // Render Rows
+  sortedWorkers.forEach((worker, workerIdx) => {
+    const rVals: any[] = [worker.name, worker.category];
+    const ledger = monthlyLedger[worker.id] || {};
+    
+    allMonths.forEach(mStr => {
+      const e = ledger[mStr]?.earned || 0;
+      const p = ledger[mStr]?.paid || 0;
+      rVals.push(e > 0 ? `₹${e}` : "—");
+      rVals.push(p > 0 ? `₹${p}` : "—");
+    });
+    
+    rVals.push(`₹${Math.round(worker.allTimeEarned).toLocaleString("en-IN")}`);
+    rVals.push(worker.allTimePaid > 0 ? `₹${Math.round(worker.allTimePaid).toLocaleString("en-IN")}` : "₹0");
+    rVals.push(`₹${Math.round(worker.netBalance).toLocaleString("en-IN")}`);
+    
+    const row = ledgerSheet.addRow(rVals);
+    row.height = 22;
+    const isZebra = workerIdx % 2 === 1;
+    row.eachCell((cell, cNum) => {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: isZebra ? "FFF8FAFC" : "FFFFFFFF" } };
+      cell.border = { top: { style: "thin", color: { argb: "FFE2E8F0" } }, left: { style: "thin", color: { argb: "FFE2E8F0" } }, bottom: { style: "thin", color: { argb: "FFE2E8F0" } }, right: { style: "thin", color: { argb: "FFE2E8F0" } } };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+      if (cNum === 1 || cNum === 2) {
+        cell.alignment = { vertical: "middle", horizontal: "left" };
+        cell.font = { bold: cNum === 1, size: 9 };
+      }
+      if (cNum > 2 && cNum <= 2 + (allMonths.length * 2)) {
+        if (cell.value !== "—") {
+          const isEarned = (cNum % 2) !== 0;
+          cell.font = { color: { argb: isEarned ? "FF1E3A8A" : "FFDC2626" }, size: 9 };
+        } else {
+          cell.font = { color: { argb: "FF94A3B8" }, size: 9 };
+        }
+      }
+      if (cNum === headR1.length - 2) cell.font = { bold: true, color: { argb: "FF0B2447" }, size: 9 }; // Total Earned
+      if (cNum === headR1.length - 1) cell.font = { bold: true, color: { argb: worker.allTimePaid > 0 ? "FFDC2626" : "FF64748B" }, size: 9 }; // Total Paid
+      if (cNum === headR1.length) cell.font = { bold: true, color: { argb: worker.netBalance > 0 ? "FF047857" : (worker.netBalance < 0 ? "FFDC2626" : "FF0F172A") }, size: 9 }; // Net Balance
+    });
+  });
+
+  // Auto fit for ledger sheet
+  ledgerSheet.columns.forEach((column, colIdx) => {
+    let minWidth = 12;
+    if (colIdx === 0) minWidth = 18;
+    if (colIdx === 1) minWidth = 14;
+    column.width = minWidth;
   });
 
   const buffer = await workbook.xlsx.writeBuffer();
