@@ -7,58 +7,65 @@ import { SiteProgressEdit } from "./site-progress-edit";
 import Link from "next/link";
 import { ArrowLeft, Building2, MapPin } from "lucide-react";
 
-export const dynamic = 'force-dynamic';
+import { unstable_cache } from "next/cache";
+
+const getCachedSiteData = unstable_cache(
+  async (id: string) => {
+    return Promise.all([
+      prisma.site.findUnique({
+        where: { id },
+        include: {
+          client: true,
+          buildings: { orderBy: [{ order: "asc" }, { createdAt: "asc" }], include: { workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] } } },
+          workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
+          supplyLabourEntries: { orderBy: { date: "asc" } },
+          labourCategories: { orderBy: { order: "asc" }, include: { labours: { include: { payments: { orderBy: { date: "desc" } }, attendances: { select: { hajari: true } }, supervisor: { select: { name: true } } } } } },
+          supervisors: { 
+            select: { 
+              supervisorId: true,
+              supervisor: { select: { id: true, name: true, email: true, phone: true } }
+            } 
+          },
+          bills: { orderBy: { createdAt: "desc" }, include: { lines: { orderBy: { order: "asc" } }, supplyLabourEntries: { orderBy: { date: "asc" } } } },
+          quotations: { orderBy: { createdAt: "desc" } },
+          payments: { orderBy: { date: "desc" } },
+          labourEntries: { orderBy: { createdAt: "desc" } },
+          expenses: { orderBy: { date: "desc" } },
+        },
+      }),
+      prisma.user.findMany({ 
+        where: { role: "SUPERVISOR" }, 
+        select: { id: true, name: true, email: true, phone: true },
+        orderBy: { name: "asc" } 
+      }),
+      prisma.site.findMany({
+        where: { active: true },
+        select: {
+          id: true,
+          projectName: true,
+          labourCategories: { select: { id: true, name: true } },
+          supervisors: { select: { supervisorId: true, supervisor: { select: { name: true } } } }
+        },
+        orderBy: { projectName: "asc" }
+      }),
+    ]);
+  },
+  ['site-detail-cache'],
+  { tags: ['site-detail'] } // Allows clearing via revalidateTag('site-detail')
+);
 
 export default async function SiteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [site, allSupervisors, allSites] = await Promise.all([
-    prisma.site.findUnique({
-      where: { id },
-      include: {
-        client: true,
-        buildings: { orderBy: [{ order: "asc" }, { createdAt: "asc" }], include: { workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] } } },
-        workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
-        supplyLabourEntries: { orderBy: { date: "asc" } },
-        labourCategories: { orderBy: { order: "asc" }, include: { labours: { include: { payments: { orderBy: { date: "desc" } }, attendances: { select: { hajari: true } }, supervisor: { select: { name: true } } } } } },
-        supervisors: { 
-          select: { 
-            supervisorId: true,
-            supervisor: { select: { id: true, name: true, email: true, phone: true } }
-          } 
-        },
-        bills: { orderBy: { createdAt: "desc" }, include: { lines: { orderBy: { order: "asc" } }, supplyLabourEntries: { orderBy: { date: "asc" } } } },
-        quotations: { orderBy: { createdAt: "desc" } },
-        payments: { orderBy: { date: "desc" } },
-        labourEntries: { orderBy: { createdAt: "desc" } },
-        expenses: { orderBy: { date: "desc" } },
-      },
-    }),
-    // ✅ Only safe fields - no passwordHash, aadharNumber etc.
-    prisma.user.findMany({ 
-      where: { role: "SUPERVISOR" }, 
-      select: { id: true, name: true, email: true, phone: true },
-      orderBy: { name: "asc" } 
-    }),
-    prisma.site.findMany({
-      where: { active: true },
-      select: {
-        id: true,
-        projectName: true,
-        labourCategories: { select: { id: true, name: true } },
-        supervisors: { select: { supervisorId: true, supervisor: { select: { name: true } } } }
-      },
-      orderBy: { projectName: "asc" }
-    }),
-  ]);
+  const [site, allSupervisors, allSites] = await getCachedSiteData(id);
 
   if (!site) notFound();
 
   // labourEntries doesn't have a direct relation to Labour name in the schema — resolve it here
-  const labourIds = [...new Set(site.labourEntries.map((e) => e.labourId))];
+  const labourIds = [...new Set(site.labourEntries.map((e: any) => e.labourId))];
   const labours = await prisma.labour.findMany({ where: { id: { in: labourIds } } });
   const labourById = new Map(labours.map((l) => [l.id, l]));
-  const labourEntriesWithNames = site.labourEntries.map((e) => ({ ...e, labour: labourById.get(e.labourId) }));
+  const labourEntriesWithNames = site.labourEntries.map((e: any) => ({ ...e, labour: labourById.get(e.labourId) }));
 
   // Dynamic Auto Progress calculation based on completed stage work values vs total contract value
   let totalAllocatedValue = 0;
