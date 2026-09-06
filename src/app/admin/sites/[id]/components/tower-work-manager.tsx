@@ -550,35 +550,38 @@ export function TowerWorkManager({ site }: { site: any }) {
                             <TD className="text-right">
                               {isQtyMode ? (
                                 <Input
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={selectedBuilding.contractRate ? (partAmt / selectedBuilding.contractRate).toFixed(2) : 0}
+                                  type="number"
+                                  step="any"
+                                  value={selectedBuilding.contractRate ? Math.round((partAmt / selectedBuilding.contractRate) * 10000) / 10000 : 0}
                                   disabled={isBilledPrev}
                                   onFocus={(e) => !isBilledPrev && e.target.select()}
                                   onChange={(e) => {
                                     if (isBilledPrev) return;
-                                    let val = e.target.value.replace(/^0+(?=\d)/, '');
-                                    if (val === '') val = '0';
-                                    const area = parseFloat(val);
+                                    const area = parseFloat(e.target.value);
                                     if (!isNaN(area)) {
                                       const newAmount = area * (selectedBuilding.contractRate || 0);
                                       handleFieldChange(item.id, "partAmount", newAmount);
+                                    } else if (e.target.value === '') {
+                                      handleFieldChange(item.id, "partAmount", 0);
                                     }
                                   }}
                                   className={`w-28 h-8 font-mono text-xs text-right font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isBilledPrev ? 'bg-muted/50 cursor-not-allowed opacity-80' : ''}`}
                                 />
                               ) : (
                                 <Input
-                                  type="text"
-                                  inputMode="decimal"
+                                  type="number"
+                                  step="any"
                                   value={partAmt}
                                   disabled={isBilledPrev}
                                   onFocus={(e) => !isBilledPrev && e.target.select()}
                                   onChange={(e) => {
                                     if (isBilledPrev) return;
-                                    let val = e.target.value.replace(/^0+(?=\d)/, '');
-                                    if (val === '') val = '0';
-                                    handleFieldChange(item.id, "partAmount", parseFloat(val));
+                                    const val = parseFloat(e.target.value);
+                                    if (!isNaN(val)) {
+                                      handleFieldChange(item.id, "partAmount", val);
+                                    } else if (e.target.value === '') {
+                                      handleFieldChange(item.id, "partAmount", 0);
+                                    }
                                   }}
                                   className={`w-28 h-8 font-mono text-xs text-right font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isBilledPrev ? 'bg-muted/50 cursor-not-allowed opacity-80' : ''}`}
                                 />
@@ -590,15 +593,18 @@ export function TowerWorkManager({ site }: { site: any }) {
                                   <div className="flex flex-col items-center justify-center gap-0.5">
                                     <div className="flex items-center justify-center gap-1">
                                       <Input
-                                        type="text"
-                                        inputMode="numeric"
+                                        type="number"
+                                        step="any"
                                         value={isQtyMode ? (state.previousQty || 0) : prevPct}
                                         disabled={isBilledPrev}
                                         onFocus={(e) => e.target.select()}
                                         onChange={(e) => {
-                                          let val = e.target.value.replace(/^0+(?=\d)/, '');
-                                          if (val === '') val = '0';
-                                          handleFieldChange(item.id, isQtyMode ? "previousQty" : "previousPct", parseFloat(val));
+                                          const val = parseFloat(e.target.value);
+                                          if (!isNaN(val)) {
+                                            handleFieldChange(item.id, isQtyMode ? "previousQty" : "previousPct", val);
+                                          } else if (e.target.value === '') {
+                                            handleFieldChange(item.id, isQtyMode ? "previousQty" : "previousPct", 0);
+                                          }
                                         }}
                                         className="w-16 h-8 font-mono text-xs text-center disabled:bg-muted/70 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                       />
@@ -616,14 +622,17 @@ export function TowerWorkManager({ site }: { site: any }) {
                             <TD className="text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <Input
-                                  type="text"
-                                  inputMode="numeric"
+                                  type="number"
+                                  step="any"
                                   value={selectedBuilding.calculationMethod === "QUANTITY" ? (state.currentQty || 0) : currPct}
                                   onFocus={(e) => e.target.select()}
                                   onChange={(e) => {
-                                    let val = e.target.value.replace(/^0+(?=\d)/, '');
-                                    if (val === '') val = '0';
-                                    handleFieldChange(item.id, selectedBuilding.calculationMethod === "QUANTITY" ? "currentQty" : "currentPct", parseFloat(val));
+                                    const val = parseFloat(e.target.value);
+                                    if (!isNaN(val)) {
+                                      handleFieldChange(item.id, selectedBuilding.calculationMethod === "QUANTITY" ? "currentQty" : "currentPct", val);
+                                    } else if (e.target.value === '') {
+                                      handleFieldChange(item.id, selectedBuilding.calculationMethod === "QUANTITY" ? "currentQty" : "currentPct", 0);
+                                    }
                                   }}
                                   className="w-16 h-8 font-mono text-xs text-center bg-emerald-500/10 border-emerald-500/30 font-bold text-emerald-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
