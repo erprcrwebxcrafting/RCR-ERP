@@ -22,6 +22,7 @@ export async function generateAttendanceExcel(
   legacyEndDate?: string
 ): Promise<Buffer> {
   let attendances: any[] = [];
+  let payments: any[] = [];
   let postPayments: any[] = [];
   let additionalLabours: any[] = [];
   let openingEarned: Record<string, number> = {};
