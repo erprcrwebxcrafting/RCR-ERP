@@ -3,8 +3,9 @@
 import { prisma } from "@/lib/prisma";
 import { getFinancialYearDates } from "@/lib/get-fy";
 import { getDaysInMonth } from "date-fns";
+import { unstable_cache } from "next/cache";
 
-export async function fetchReportsDataAction(range: string, siteId: string, customStartDate?: string, customEndDate?: string) {
+async function fetchReportsDataCore(range: string, siteId: string, customStartDate?: string, customEndDate?: string) {
   const { startDate: fyStart, endDate: fyEnd } = await getFinancialYearDates();
   
   let effectiveStartDate: Date | undefined;
@@ -344,4 +345,14 @@ export async function fetchReportsDataAction(range: string, siteId: string, cust
       supplyEntriesAggregated
     }
   };
+}
+
+export async function fetchReportsDataAction(range: string, siteId: string, customStartDate?: string, customEndDate?: string) {
+  const getCachedData = unstable_cache(
+    () => fetchReportsDataCore(range, siteId, customStartDate, customEndDate),
+    ['admin-reports-dashboard-v1', range, siteId, customStartDate || 'none', customEndDate || 'none'],
+    { revalidate: false, tags: ['reports-data'] }
+  );
+  
+  return getCachedData();
 }
