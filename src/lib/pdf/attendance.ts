@@ -518,7 +518,7 @@ export async function generateAttendancePdf(
     const earnedText = `${Math.round(worker.totalEarned)}`;
     const earnedW = bold.widthOfTextAtSize(earnedText, 7);
     page.drawText(earnedText, {
-      x: colX[4 + dates.length] - earnedW - 3,
+      x: colX[5 + dates.length] - earnedW - 3,
       y: y - 11,
       size: 7,
       font: bold,
@@ -529,7 +529,7 @@ export async function generateAttendancePdf(
     const paidText = worker.totalPaid > 0 ? `${Math.round(worker.totalPaid)}` : "0";
     const paidW = bold.widthOfTextAtSize(paidText, 7);
     page.drawText(paidText, {
-      x: colX[5 + dates.length] - paidW - 3,
+      x: colX[6 + dates.length] - paidW - 3,
       y: y - 11,
       size: 7,
       font: bold,
@@ -540,7 +540,7 @@ export async function generateAttendancePdf(
     const balText = `${Math.round(worker.netBalance)}`;
     const balW = bold.widthOfTextAtSize(balText, 7.5);
     page.drawText(balText, {
-      x: colX[6 + dates.length] - balW - 3,
+      x: colX[7 + dates.length] - balW - 3,
       y: y - 11,
       size: 7.5,
       font: bold,
@@ -627,7 +627,7 @@ export async function generateAttendancePdf(
   const gEarnText = `${Math.round(grandTotalEarned).toLocaleString("en-IN")}`;
   const gEarnW = bold.widthOfTextAtSize(gEarnText, 7);
   page.drawText(gEarnText, {
-    x: colX[4 + dates.length] - gEarnW - 3,
+    x: colX[5 + dates.length] - gEarnW - 3,
     y: y - 13,
     size: 7,
     font: bold,
@@ -638,7 +638,7 @@ export async function generateAttendancePdf(
   const gPaidText = `${Math.round(grandTotalPaid).toLocaleString("en-IN")}`;
   const gPaidW = bold.widthOfTextAtSize(gPaidText, 7);
   page.drawText(gPaidText, {
-    x: colX[5 + dates.length] - gPaidW - 3,
+    x: colX[6 + dates.length] - gPaidW - 3,
     y: y - 13,
     size: 7,
     font: bold,
@@ -649,7 +649,7 @@ export async function generateAttendancePdf(
   const gBalText = `${Math.round(grandTotalBalance).toLocaleString("en-IN")}`;
   const gBalW = bold.widthOfTextAtSize(gBalText, 7.5);
   page.drawText(gBalText, {
-    x: colX[6 + dates.length] - gBalW - 3,
+    x: colX[7 + dates.length] - gBalW - 3,
     y: y - 13,
     size: 7.5,
     font: bold,
