@@ -90,7 +90,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
           workerTotal += payment.amount;
           paymentCount++;
           
-          const dateStr = payment.date.split('T')[0];
+          const dateStr = pDate.toISOString().split('T')[0];
           paymentsByDate[dateStr] = (paymentsByDate[dateStr] || 0) + payment.amount;
           
           paymentDetails.push(`${formatDate(payment.date).split(' ')[0]} (₹${payment.amount})`);
