@@ -176,3 +176,35 @@ export async function updateSiteTaxSettingsAction(siteId: string, formData: Form
   revalidatePath(`/admin/sites/${siteId}`);
 }
 
+export async function updateSiteDetailsAction(siteId: string, formData: FormData) {
+  const projectName = formData.get("projectName") as string;
+  const address = formData.get("address") as string;
+  const gstNo = formData.get("gstNo") as string;
+  const workOrderNo = formData.get("workOrderNo") as string;
+
+  if (!projectName || projectName.trim().length < 2) {
+    throw new Error("Project / Site name is required (minimum 2 characters).");
+  }
+
+  let cleanedGST = null;
+  if (gstNo && gstNo.trim()) {
+    cleanedGST = gstNo.trim().toUpperCase();
+    if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(cleanedGST)) {
+      throw new Error("Invalid GST Number format (e.g. 27AAAAA0000A1Z5).");
+    }
+  }
+
+  await prisma.site.update({
+    where: { id: siteId },
+    data: {
+      projectName: projectName.trim(),
+      address: address ? address.trim() : null,
+      gstNo: cleanedGST,
+      workOrderNo: workOrderNo ? workOrderNo.trim() : null,
+    },
+  });
+
+  revalidatePath(`/admin/sites/${siteId}`);
+  revalidatePath(`/admin/sites`);
+}
+

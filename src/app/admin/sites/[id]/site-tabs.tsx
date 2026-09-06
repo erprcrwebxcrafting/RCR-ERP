@@ -14,7 +14,8 @@ import {
   addLabourCategoryAction, addLabourerAction, assignSupervisorAction,
   unassignSupervisorAction, calculateLabourPaymentAction, approveLabourEntryAction
 } from "./actions";
-import { updateSiteTaxSettingsAction } from "../actions";
+import { updateSiteTaxSettingsAction, updateSiteDetailsAction } from "../actions";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { TowerWorkManager } from "./components/tower-work-manager";
 import { SupplyLabourManager } from "./components/supply-labour-manager";
 import { RABillViewer } from "./components/ra-bill-viewer";
@@ -31,6 +32,7 @@ const tabTrigger =
 export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: any[] }) {
   const [isPending, startTransition] = useTransition();
   const [isEditingTaxes, setIsEditingTaxes] = useState(false);
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
   const assignedIds = new Set(site.supervisors.map((s: any) => s.supervisorId));
   const availableSupervisors = allSupervisors.filter((s) => !assignedIds.has(s.id));
 
@@ -62,7 +64,8 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
   const outstandingBal = (totalNetBilled + totalGstAmount) - (totalReceived + totalTdsDeducted);
 
   return (
-    <Tabs.Root defaultValue="towers">
+    <>
+      <Tabs.Root defaultValue="towers">
       <Tabs.List className="mb-6 flex overflow-x-auto scrollbar-hide gap-1 border-b border-border">
         <Tabs.Trigger className={tabTrigger} value="overview">Overview</Tabs.Trigger>
         <Tabs.Trigger className={tabTrigger} value="towers">Towers & Work Items</Tabs.Trigger>
@@ -120,11 +123,16 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
                 <MapPin className="h-4 w-4 text-muted-foreground" />
                 <CardTitle className="text-sm font-medium text-muted-foreground">Address & Project Info</CardTitle>
               </div>
-              {(site.bills?.length || 0) === 0 && !isEditingTaxes && (
-                <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setIsEditingTaxes(true)}>
-                  <Edit2 className="h-3 w-3 mr-1" /> Edit Taxes
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setIsEditingDetails(true)}>
+                  <Edit2 className="h-3 w-3 mr-1" /> Edit Info
                 </Button>
-              )}
+                {(site.bills?.length || 0) === 0 && !isEditingTaxes && (
+                  <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setIsEditingTaxes(true)}>
+                    <Edit2 className="h-3 w-3 mr-1" /> Edit Taxes
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="text-sm space-y-2">
               <p><span className="font-semibold">Address:</span> {site.address || "No address provided."}</p>
@@ -348,5 +356,56 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
       </Tabs.Content>
 
     </Tabs.Root>
+
+      {/* Edit Site Details Modal */}
+      <Dialog open={isEditingDetails} onOpenChange={setIsEditingDetails}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Project Info</DialogTitle>
+          </DialogHeader>
+          <form
+            action={(formData) => {
+              startTransition(async () => {
+                try {
+                  await updateSiteDetailsAction(site.id, formData);
+                  toast.success("Site details updated successfully!");
+                  setIsEditingDetails(false);
+                } catch (err: any) {
+                  toast.error(err.message || "Failed to update details.");
+                }
+              });
+            }}
+            className="space-y-4 pt-2"
+          >
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Project / Site Name *</label>
+              <Input name="projectName" defaultValue={site.projectName} required placeholder="e.g. S2 Building Concrete Work" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Site Address</label>
+              <Input name="address" defaultValue={site.address || ""} placeholder="Full address" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Client GST No.</label>
+                <Input name="gstNo" defaultValue={site.gstNo || ""} placeholder="27AAAAA0000A1Z5" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Work Order No.</label>
+                <Input name="workOrderNo" defaultValue={site.workOrderNo || ""} placeholder="WO/2026/001" />
+              </div>
+            </div>
+            <DialogFooter className="pt-4">
+              <DialogClose asChild>
+                <Button type="button" variant="outline" disabled={isPending}>Cancel</Button>
+              </DialogClose>
+              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white" disabled={isPending}>
+                {isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
