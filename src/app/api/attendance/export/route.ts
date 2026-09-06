@@ -132,14 +132,24 @@ export async function GET(request: NextRequest) {
       })
     ]);
 
-    const openingBalances: Record<string, number> = {};
+    const openingEarned: Record<string, number> = {};
+    const openingPaid: Record<string, number> = {};
     for (const pa of prevAttendances) {
       const rate = pa.hajariRate || pa.labour?.dailyWage || 0;
-      openingBalances[pa.labourId] = (openingBalances[pa.labourId] || 0) + (pa.hajari * rate);
+      openingEarned[pa.labourId] = (openingEarned[pa.labourId] || 0) + (pa.hajari * rate);
     }
     for (const pp of prevPayments) {
-      openingBalances[pp.labourId] = (openingBalances[pp.labourId] || 0) - pp.amount;
+      openingPaid[pp.labourId] = (openingPaid[pp.labourId] || 0) + pp.amount;
     }
+
+    // Fetch payments made AFTER the endDate up to today
+    const postPayments = await prisma.labourPayment.findMany({
+      where: {
+        labourId: { in: allLabourIds },
+        date: { gt: endDate },
+      },
+      orderBy: { date: "asc" },
+    });
 
     // --- SUPERVISOR INTEGRATION ---
     // Fetch all supervisors assigned to this site (if filtering by site)
@@ -160,6 +170,11 @@ export async function GET(request: NextRequest) {
         // Fetch Supervisor Payments in this period
         const supPayments = await prisma.supervisorPayment.findMany({
           where: { supervisorId: { in: supervisorUserIds }, date: { gte: startDate, lte: endDate } }
+        });
+
+        // Fetch Supervisor Payments AFTER this period
+        const postSupPayments = await prisma.supervisorPayment.findMany({
+          where: { supervisorId: { in: supervisorUserIds }, date: { gt: endDate } }
         });
 
         // Fetch prior balances for Supervisors
@@ -241,12 +256,24 @@ export async function GET(request: NextRequest) {
         // Calculate Supervisor Opening Balances
         for (const psa of prevSupAtt) {
           const supLabId = `sup_${psa.supervisorId}`;
-          // For supervisors, earnedAmount is directly available and accurate!
-          openingBalances[supLabId] = (openingBalances[supLabId] || 0) + psa.earnedAmount;
+          openingEarned[supLabId] = (openingEarned[supLabId] || 0) + psa.earnedAmount;
         }
         for (const psp of prevSupPay) {
           const supLabId = `sup_${psp.supervisorId}`;
-          openingBalances[supLabId] = (openingBalances[supLabId] || 0) - psp.amount;
+          openingPaid[supLabId] = (openingPaid[supLabId] || 0) + psp.amount;
+        }
+
+        // Map Post Supervisor Payments
+        for (const psp of postSupPayments) {
+          postPayments.push({
+            id: psp.id,
+            labourId: `sup_${psp.supervisorId}`,
+            amount: psp.amount,
+            date: psp.date,
+            reason: psp.reason,
+            transactionId: psp.transactionId,
+            createdAt: psp.createdAt
+          } as any);
         }
       }
     }
@@ -255,8 +282,10 @@ export async function GET(request: NextRequest) {
     const exportData = {
       attendances,
       payments,
+      postPayments,
       additionalLabours,
-      openingBalances,
+      openingEarned,
+      openingPaid,
       siteName,
       startDateStr,
       endDateStr,

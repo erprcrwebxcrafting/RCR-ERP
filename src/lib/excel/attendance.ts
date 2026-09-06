@@ -6,8 +6,10 @@ import path from "path";
 export interface AttendanceExportData {
   attendances: any[];
   payments?: any[];
+  postPayments?: any[];
   additionalLabours?: any[];
-  openingBalances?: Record<string, number>;
+  openingEarned?: Record<string, number>;
+  openingPaid?: Record<string, number>;
   siteName: string;
   startDateStr: string;
   endDateStr: string;
@@ -20,9 +22,10 @@ export async function generateAttendanceExcel(
   legacyEndDate?: string
 ): Promise<Buffer> {
   let attendances: any[] = [];
-  let payments: any[] = [];
+  let postPayments: any[] = [];
   let additionalLabours: any[] = [];
-  let openingBalances: Record<string, number> = {};
+  let openingEarned: Record<string, number> = {};
+  let openingPaid: Record<string, number> = {};
   let siteName = "Site";
   let startDateStr = "";
   let endDateStr = "";
@@ -35,8 +38,10 @@ export async function generateAttendanceExcel(
   } else {
     attendances = dataOrAttendances.attendances || [];
     payments = dataOrAttendances.payments || [];
+    postPayments = dataOrAttendances.postPayments || [];
     additionalLabours = dataOrAttendances.additionalLabours || [];
-    openingBalances = dataOrAttendances.openingBalances || {};
+    openingEarned = dataOrAttendances.openingEarned || {};
+    openingPaid = dataOrAttendances.openingPaid || {};
     siteName = dataOrAttendances.siteName || "Site";
     startDateStr = dataOrAttendances.startDateStr || "";
     endDateStr = dataOrAttendances.endDateStr || "";
@@ -93,7 +98,8 @@ export async function generateAttendanceExcel(
         totalOT: 0,
         totalEarned: 0,
         totalPaid: 0,
-        openingBalance: openingBalances[a.labourId] || 0,
+        openingEarned: openingEarned[a.labourId] || 0,
+        openingPaid: openingPaid[a.labourId] || 0,
       });
     }
 
@@ -127,7 +133,8 @@ export async function generateAttendanceExcel(
         totalOT: 0,
         totalEarned: 0,
         totalPaid: 0,
-        openingBalance: openingBalances[l.id] || 0,
+        openingEarned: openingEarned[l.id] || 0,
+        openingPaid: openingPaid[l.id] || 0,
       });
     }
   });
@@ -146,7 +153,8 @@ export async function generateAttendanceExcel(
         totalOT: 0,
         totalEarned: 0,
         totalPaid: 0,
-        openingBalance: openingBalances[p.labourId] || 0,
+        openingEarned: openingEarned[p.labourId] || 0,
+        openingPaid: openingPaid[p.labourId] || 0,
       });
     }
 
@@ -156,15 +164,41 @@ export async function generateAttendanceExcel(
     worker.totalPaid += (p.amount || 0);
   });
 
+  // Add post-period payments
+  postPayments.forEach(p => {
+    if (!labourMap.has(p.labourId)) {
+      labourMap.set(p.labourId, {
+        id: p.labourId,
+        name: p.labour?.name || "Unknown Worker",
+        category: p.labour?.labourCategory?.name || "General",
+        dailyWage: p.labour?.dailyWage || 0,
+        attendanceByDate: {},
+        paymentsByDate: {},
+        totalHajari: 0,
+        totalOT: 0,
+        totalEarned: 0,
+        totalPaid: 0,
+        openingEarned: openingEarned[p.labourId] || 0,
+        openingPaid: openingPaid[p.labourId] || 0,
+      });
+    }
+
+    const worker = labourMap.get(p.labourId);
+    worker.totalPaid += (p.amount || 0);
+  });
+
   // Calculate Net Balances and sort alphabetically
   const sortedWorkers = Array.from(labourMap.values()).map(worker => {
-    const netBalance = worker.openingBalance + worker.totalEarned - worker.totalPaid;
-    return { ...worker, netBalance };
+    const allTimeEarned = worker.openingEarned + worker.totalEarned;
+    const allTimePaid = worker.openingPaid + worker.totalPaid;
+    const netBalance = allTimeEarned - allTimePaid;
+    return { ...worker, allTimeEarned, allTimePaid, netBalance };
   }).sort((a, b) => a.name.localeCompare(b.name));
 
   // Compute Grand Totals
   let grandTotalHajari = 0;
   let grandTotalOT = 0;
+  let grandCurrEarned = 0;
   let grandTotalEarned = 0;
   let grandTotalPaid = 0;
   let grandTotalBalance = 0;
@@ -172,8 +206,9 @@ export async function generateAttendanceExcel(
   sortedWorkers.forEach(w => {
     grandTotalHajari += w.totalHajari;
     grandTotalOT += w.totalOT;
-    grandTotalEarned += w.totalEarned;
-    grandTotalPaid += w.totalPaid;
+    grandCurrEarned += w.totalEarned;
+    grandTotalEarned += w.allTimeEarned;
+    grandTotalPaid += w.allTimePaid;
     grandTotalBalance += w.netBalance;
   });
 
@@ -233,8 +268,8 @@ export async function generateAttendanceExcel(
     "TOTAL WORKERS",
     "TOTAL HAJARIS",
     "TOTAL OVERTIME",
-    "GROSS WAGES EARNED",
-    "TOTAL ADVANCE PAID",
+    "WAGES EARNED (ALL TIME)",
+    "ADVANCE PAID (ALL TIME)",
     "NET BALANCE DUE"
   ];
   const kpiValues = [
@@ -287,8 +322,8 @@ export async function generateAttendanceExcel(
     headerRow2Values.push(format(d, "dd"));  // e.g. 01, 02
   });
 
-  headerRow1Values.push("Total Hajari", "Total OT", "Total Earned", "Advance Paid", "Net Balance");
-  headerRow2Values.push("", "", "", "", "");
+  headerRow1Values.push("Total Hajari", "Total OT", "Curr. Earned", "Total Earned", "Total Paid", "Net Balance");
+  headerRow2Values.push("", "", "", "", "", "");
 
   const headerRow1 = sheet.addRow(headerRow1Values);
   const headerRow2 = sheet.addRow(headerRow2Values);
@@ -320,7 +355,7 @@ export async function generateAttendanceExcel(
   sheet.mergeCells("C8:C9");
   
   // Merge summary columns across row 8 and 9
-  for (let c = totalCols - 4; c <= totalCols; c++) {
+  for (let c = totalCols - 5; c <= totalCols; c++) {
     const colLetter = sheet.getColumn(c).letter;
     sheet.mergeCells(`${colLetter}8:${colLetter}9`);
   }
@@ -376,7 +411,8 @@ export async function generateAttendanceExcel(
     rowValues.push(worker.totalHajari > 0 ? worker.totalHajari : 0);
     rowValues.push(worker.totalOT > 0 ? worker.totalOT : "—");
     rowValues.push(`₹${Math.round(worker.totalEarned).toLocaleString("en-IN")}`);
-    rowValues.push(worker.totalPaid > 0 ? `₹${Math.round(worker.totalPaid).toLocaleString("en-IN")}` : "₹0");
+    rowValues.push(`₹${Math.round(worker.allTimeEarned).toLocaleString("en-IN")}`);
+    rowValues.push(worker.allTimePaid > 0 ? `₹${Math.round(worker.allTimePaid).toLocaleString("en-IN")}` : "₹0");
     rowValues.push(`₹${Math.round(worker.netBalance).toLocaleString("en-IN")}`);
 
     const row = sheet.addRow(rowValues);
@@ -413,14 +449,18 @@ export async function generateAttendanceExcel(
       }
 
       // Summary columns styling
-      if (colNum === totalCols - 4) { // Total Hajari
+      if (colNum === totalCols - 5) { // Total Hajari
         cell.font = { bold: true, color: { argb: "FF047857" }, size: 9 };
-      } else if (colNum === totalCols - 2) { // Total Earned
+      } else if (colNum === totalCols - 4) { // Total OT
+        cell.font = { bold: true, color: { argb: "FF475569" }, size: 9 };
+      } else if (colNum === totalCols - 3) { // Curr Earned
         cell.font = { bold: true, color: { argb: "FF1E3A8A" }, size: 9 };
+      } else if (colNum === totalCols - 2) { // Total Earned
+        cell.font = { bold: true, color: { argb: "FF0B2447" }, size: 9 };
       } else if (colNum === totalCols - 1) { // Advance Paid
-        cell.font = { bold: true, color: { argb: worker.totalPaid > 0 ? "FFDC2626" : "FF64748B" }, size: 9 };
+        cell.font = { bold: true, color: { argb: worker.allTimePaid > 0 ? "FFDC2626" : "FF64748B" }, size: 9 };
       } else if (colNum === totalCols) { // Net Balance
-        cell.font = { bold: true, color: { argb: worker.netBalance > 0 ? "FF047857" : "FF0F172A" }, size: 9 };
+        cell.font = { bold: true, color: { argb: worker.netBalance > 0 ? "FF047857" : (worker.netBalance < 0 ? "FFDC2626" : "FF0F172A") }, size: 9 };
       }
     });
   });
@@ -453,6 +493,7 @@ export async function generateAttendanceExcel(
 
   grandTotalRowValues.push(grandTotalHajari);
   grandTotalRowValues.push(grandTotalOT > 0 ? grandTotalOT : "—");
+  grandTotalRowValues.push(`₹${Math.round(grandCurrEarned).toLocaleString("en-IN")}`);
   grandTotalRowValues.push(`₹${Math.round(grandTotalEarned).toLocaleString("en-IN")}`);
   grandTotalRowValues.push(`₹${Math.round(grandTotalPaid).toLocaleString("en-IN")}`);
   grandTotalRowValues.push(`₹${Math.round(grandTotalBalance).toLocaleString("en-IN")}`);
@@ -476,14 +517,16 @@ export async function generateAttendanceExcel(
       cell.font = { bold: true, color: { argb: "FF0B2447" }, size: 10 };
     }
 
-    if (colNum === totalCols - 4) { // Total Hajari
+    if (colNum === totalCols - 5) { // Total Hajari
       cell.font = { bold: true, color: { argb: "FF047857" }, size: 10 };
-    } else if (colNum === totalCols - 2) { // Total Earned
+    } else if (colNum === totalCols - 3) { // Curr Earned
       cell.font = { bold: true, color: { argb: "FF1E3A8A" }, size: 10 };
+    } else if (colNum === totalCols - 2) { // Total Earned
+      cell.font = { bold: true, color: { argb: "FF0B2447" }, size: 10 };
     } else if (colNum === totalCols - 1) { // Advance Paid
       cell.font = { bold: true, color: { argb: "FFDC2626" }, size: 10 };
     } else if (colNum === totalCols) { // Net Balance
-      cell.font = { bold: true, color: { argb: "FF047857" }, size: 10.5 };
+      cell.font = { bold: true, color: { argb: grandTotalBalance > 0 ? "FF047857" : (grandTotalBalance < 0 ? "FFDC2626" : "FF0F172A") }, size: 10.5 };
     }
   });
 
@@ -505,8 +548,9 @@ export async function generateAttendanceExcel(
     if (colNum === 1) minWidth = 18; // Labour Name
     else if (colNum === 2) minWidth = 14; // Category
     else if (colNum === 3) minWidth = 10; // Rate
-    else if (colNum === totalCols - 4) minWidth = 12; // Total Hajari
-    else if (colNum === totalCols - 3) minWidth = 10; // Total OT
+    else if (colNum === totalCols - 5) minWidth = 12; // Total Hajari
+    else if (colNum === totalCols - 4) minWidth = 10; // Total OT
+    else if (colNum === totalCols - 3) minWidth = 14; // Curr Earned
     else if (colNum === totalCols - 2) minWidth = 14; // Total Earned
     else if (colNum === totalCols - 1) minWidth = 14; // Advance Paid
     else if (colNum === totalCols) minWidth = 15; // Net Balance

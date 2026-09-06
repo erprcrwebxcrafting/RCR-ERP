@@ -10,8 +10,10 @@ const PAGE_H = 595.28; // A4 landscape height
 export interface AttendanceExportData {
   attendances: any[];
   payments?: any[];
+  postPayments?: any[];
   additionalLabours?: any[];
-  openingBalances?: Record<string, number>;
+  openingEarned?: Record<string, number>;
+  openingPaid?: Record<string, number>;
   siteName: string;
   startDateStr: string;
   endDateStr: string;
@@ -41,9 +43,10 @@ export async function generateAttendancePdf(
   legacyEndDate?: string
 ): Promise<Uint8Array> {
   let attendances: any[] = [];
-  let payments: any[] = [];
+  let postPayments: any[] = [];
   let additionalLabours: any[] = [];
-  let openingBalances: Record<string, number> = {};
+  let openingEarned: Record<string, number> = {};
+  let openingPaid: Record<string, number> = {};
   let siteName = "Site";
   let startDateStr = "";
   let endDateStr = "";
@@ -56,8 +59,10 @@ export async function generateAttendancePdf(
   } else {
     attendances = dataOrAttendances.attendances || [];
     payments = dataOrAttendances.payments || [];
+    postPayments = dataOrAttendances.postPayments || [];
     additionalLabours = dataOrAttendances.additionalLabours || [];
-    openingBalances = dataOrAttendances.openingBalances || {};
+    openingEarned = dataOrAttendances.openingEarned || {};
+    openingPaid = dataOrAttendances.openingPaid || {};
     siteName = dataOrAttendances.siteName || "Site";
     startDateStr = dataOrAttendances.startDateStr || "";
     endDateStr = dataOrAttendances.endDateStr || "";
@@ -105,9 +110,10 @@ export async function generateAttendancePdf(
         paymentsByDate: {},
         totalHajari: 0,
         totalOT: 0,
-        totalEarned: 0,
-        totalPaid: 0,
-        openingBalance: openingBalances[a.labourId] || 0,
+        totalEarned: 0, // Current period earned
+        totalPaid: 0,   // Current + post period paid
+        openingEarned: openingEarned[a.labourId] || 0,
+        openingPaid: openingPaid[a.labourId] || 0,
       });
     }
 
@@ -141,7 +147,8 @@ export async function generateAttendancePdf(
         totalOT: 0,
         totalEarned: 0,
         totalPaid: 0,
-        openingBalance: openingBalances[l.id] || 0,
+        openingEarned: openingEarned[l.id] || 0,
+        openingPaid: openingPaid[l.id] || 0,
       });
     }
   });
@@ -160,7 +167,8 @@ export async function generateAttendancePdf(
         totalOT: 0,
         totalEarned: 0,
         totalPaid: 0,
-        openingBalance: openingBalances[p.labourId] || 0,
+        openingEarned: openingEarned[p.labourId] || 0,
+        openingPaid: openingPaid[p.labourId] || 0,
       });
     }
 
@@ -170,15 +178,41 @@ export async function generateAttendancePdf(
     worker.totalPaid += (p.amount || 0);
   });
 
+  // Add post-period payments
+  postPayments.forEach(p => {
+    if (!labourMap.has(p.labourId)) {
+      labourMap.set(p.labourId, {
+        id: p.labourId,
+        name: p.labour?.name || "Unknown Worker",
+        category: p.labour?.labourCategory?.name || "General",
+        dailyWage: p.labour?.dailyWage || 0,
+        attendanceByDate: {},
+        paymentsByDate: {}, // Will not render in grid because date is outside range
+        totalHajari: 0,
+        totalOT: 0,
+        totalEarned: 0,
+        totalPaid: 0,
+        openingEarned: openingEarned[p.labourId] || 0,
+        openingPaid: openingPaid[p.labourId] || 0,
+      });
+    }
+
+    const worker = labourMap.get(p.labourId);
+    worker.totalPaid += (p.amount || 0); // We only add to totalPaid, no need to add to paymentsByDate grid
+  });
+
   // Calculate Net Balances and sort alphabetically
   const sortedWorkers = Array.from(labourMap.values()).map(worker => {
-    const netBalance = worker.openingBalance + worker.totalEarned - worker.totalPaid;
-    return { ...worker, netBalance };
+    const allTimeEarned = worker.openingEarned + worker.totalEarned;
+    const allTimePaid = worker.openingPaid + worker.totalPaid;
+    const netBalance = allTimeEarned - allTimePaid;
+    return { ...worker, allTimeEarned, allTimePaid, netBalance };
   }).sort((a, b) => a.name.localeCompare(b.name));
 
   // Compute Grand Totals
   let grandTotalHajari = 0;
   let grandTotalOT = 0;
+  let grandCurrEarned = 0;
   let grandTotalEarned = 0;
   let grandTotalPaid = 0;
   let grandTotalBalance = 0;
@@ -186,8 +220,9 @@ export async function generateAttendancePdf(
   sortedWorkers.forEach(w => {
     grandTotalHajari += w.totalHajari;
     grandTotalOT += w.totalOT;
-    grandTotalEarned += w.totalEarned;
-    grandTotalPaid += w.totalPaid;
+    grandCurrEarned += w.totalEarned;
+    grandTotalEarned += w.allTimeEarned;
+    grandTotalPaid += w.allTimePaid;
     grandTotalBalance += w.netBalance;
   });
 
@@ -248,8 +283,8 @@ export async function generateAttendancePdf(
   const kpis = [
     { label: "TOTAL LABOURS", val: `${sortedWorkers.length}`, color: navy },
     { label: "TOTAL HAJARIS", val: `${grandTotalHajari.toFixed(1)}`, color: green },
-    { label: "WAGES EARNED", val: `Rs ${Math.round(grandTotalEarned).toLocaleString("en-IN")}`, color: primary },
-    { label: "ADVANCE PAID", val: `Rs ${Math.round(grandTotalPaid).toLocaleString("en-IN")}`, color: red },
+    { label: "WAGES EARNED (ALL TIME)", val: `Rs ${Math.round(grandTotalEarned).toLocaleString("en-IN")}`, color: primary },
+    { label: "ADVANCE PAID (ALL TIME)", val: `Rs ${Math.round(grandTotalPaid).toLocaleString("en-IN")}`, color: red },
     { label: "NET BALANCE DUE", val: `Rs ${Math.round(grandTotalBalance).toLocaleString("en-IN")}`, color: green }
   ];
 
@@ -284,16 +319,16 @@ export async function generateAttendancePdf(
 
   y = kpiBoxY - 14;
 
-  // Table Column Sizing
   const nameWidth = 76;
   const categoryWidth = 46;
   const rateWidth = 26;
   const hajariWidth = 32;
-  const earnedWidth = 46;
-  const paidWidth = 44;
-  const balanceWidth = 48;
+  const curEarnWidth = 36;
+  const totEarnWidth = 42;
+  const totPaidWidth = 42;
+  const balanceWidth = 44;
 
-  const fixedWidths = nameWidth + categoryWidth + rateWidth + hajariWidth + earnedWidth + paidWidth + balanceWidth;
+  const fixedWidths = nameWidth + categoryWidth + rateWidth + hajariWidth + curEarnWidth + totEarnWidth + totPaidWidth + balanceWidth;
   const availableForDates = usableWidth - fixedWidths;
   const dayColWidth = dates.length > 0 ? Math.min(22, availableForDates / dates.length) : 20;
 
@@ -308,9 +343,10 @@ export async function generateAttendancePdf(
   });
 
   cols.push({ name: "T.Haj", w: hajariWidth, align: "center" });
-  cols.push({ name: "Earned", w: earnedWidth, align: "right" });
-  cols.push({ name: "Paid", w: paidWidth, align: "right" });
-  cols.push({ name: "Balance", w: balanceWidth, align: "right" });
+  cols.push({ name: "C.Earn", w: curEarnWidth, align: "right" });
+  cols.push({ name: "T.Earn", w: totEarnWidth, align: "right" });
+  cols.push({ name: "T.Paid", w: totPaidWidth, align: "right" });
+  cols.push({ name: "Net Bal", w: balanceWidth, align: "right" });
 
   const colX: number[] = [MARGIN];
   for (let i = 0; i < cols.length; i++) {
@@ -514,26 +550,37 @@ export async function generateAttendancePdf(
       color: green
     });
 
-    // Total Earned
-    const earnedText = `${Math.round(worker.totalEarned)}`;
-    const earnedW = bold.widthOfTextAtSize(earnedText, 7);
-    page.drawText(earnedText, {
-      x: colX[5 + dates.length] - earnedW - 3,
+    // Curr Earned
+    const curEarnText = `${Math.round(worker.totalEarned)}`;
+    const curEarnW = bold.widthOfTextAtSize(curEarnText, 7);
+    page.drawText(curEarnText, {
+      x: colX[4 + dates.length] - curEarnW - 3,
       y: y - 11,
       size: 7,
       font: bold,
       color: primary
     });
 
-    // Total Paid
-    const paidText = worker.totalPaid > 0 ? `${Math.round(worker.totalPaid)}` : "0";
+    // Total Earned (All Time)
+    const totEarnText = `${Math.round(worker.allTimeEarned)}`;
+    const totEarnW = bold.widthOfTextAtSize(totEarnText, 7);
+    page.drawText(totEarnText, {
+      x: colX[5 + dates.length] - totEarnW - 3,
+      y: y - 11,
+      size: 7,
+      font: bold,
+      color: navy
+    });
+
+    // Total Paid (All Time)
+    const paidText = worker.allTimePaid > 0 ? `${Math.round(worker.allTimePaid)}` : "0";
     const paidW = bold.widthOfTextAtSize(paidText, 7);
     page.drawText(paidText, {
       x: colX[6 + dates.length] - paidW - 3,
       y: y - 11,
       size: 7,
       font: bold,
-      color: worker.totalPaid > 0 ? red : darkGray
+      color: worker.allTimePaid > 0 ? red : darkGray
     });
 
     // Net Balance
@@ -544,7 +591,7 @@ export async function generateAttendancePdf(
       y: y - 11,
       size: 7.5,
       font: bold,
-      color: worker.netBalance > 0 ? green : darkGray
+      color: worker.netBalance > 0 ? green : (worker.netBalance < 0 ? red : darkGray)
     });
 
     y -= rowH;
@@ -623,6 +670,17 @@ export async function generateAttendancePdf(
     color: green
   });
 
+  // Grand Curr Earned
+  const gCurEarnText = `${Math.round(grandCurrEarned).toLocaleString("en-IN")}`;
+  const gCurEarnW = bold.widthOfTextAtSize(gCurEarnText, 7);
+  page.drawText(gCurEarnText, {
+    x: colX[4 + dates.length] - gCurEarnW - 3,
+    y: y - 13,
+    size: 7,
+    font: bold,
+    color: primary
+  });
+
   // Grand Total Earned
   const gEarnText = `${Math.round(grandTotalEarned).toLocaleString("en-IN")}`;
   const gEarnW = bold.widthOfTextAtSize(gEarnText, 7);
@@ -631,7 +689,7 @@ export async function generateAttendancePdf(
     y: y - 13,
     size: 7,
     font: bold,
-    color: primary
+    color: navy
   });
 
   // Grand Total Paid
@@ -653,7 +711,7 @@ export async function generateAttendancePdf(
     y: y - 13,
     size: 7.5,
     font: bold,
-    color: green
+    color: grandTotalBalance > 0 ? green : (grandTotalBalance < 0 ? red : darkGray)
   });
 
   y -= grandRowH;
@@ -663,7 +721,7 @@ export async function generateAttendancePdf(
   // Footer Legend
   y -= 14;
   page.drawText(
-    "Legend: Green = Hajari (1 = Full, 0.5 = Half)  |  Red (bottom) = Advance / Payment Paid  |  A = Absent  |  Net Balance = Wages Earned - Advance Paid",
+    "Legend: Green = Hajari (1 = Full, 0.5 = Half)  |  Red (bottom) = Advance / Payment Paid  |  A = Absent  |  C.Earn = Cur. Earned, T.Earn = Total All Time, T.Paid = Paid All Time",
     {
       x: MARGIN,
       y,
