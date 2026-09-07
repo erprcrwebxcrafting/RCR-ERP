@@ -704,9 +704,23 @@ export async function generateAttendanceExcel(
       if (cNum > 2 && cNum <= 2 + (allMonths.length * 4)) {
         if (cell.value !== "—") {
           const colType = (cNum - 3) % 4; // 0: Hajari, 1: Earned, 2: Paid, 3: Balance
-          if (colType === 0) cell.font = { color: { argb: "FF0F172A" }, size: 9 }; // Hajari
+          const mIdx = Math.floor((cNum - 3) / 4);
+          const mStr = allMonths[mIdx];
+          const monthLedger = ledger[mStr];
+
+          if (colType === 0) {
+            cell.font = { color: { argb: "FF0F172A" }, size: 9 }; // Hajari
+            if (monthLedger?.attDetails?.length > 0) {
+              cell.note = { texts: [{ font: { size: 9, color: { argb: "FF0B2447" } }, text: "Attendance Details:\n" + monthLedger.attDetails.join("\n") }] };
+            }
+          }
           if (colType === 1) cell.font = { color: { argb: "FF1E3A8A" }, size: 9 }; // Earned
-          if (colType === 2) cell.font = { color: { argb: "FFDC2626" }, size: 9 }; // Paid
+          if (colType === 2) {
+            cell.font = { color: { argb: "FFDC2626" }, size: 9 }; // Paid
+            if (monthLedger?.paidDetails?.length > 0) {
+              cell.note = { texts: [{ font: { size: 9, color: { argb: "FF991B1B" } }, text: "Payment Details:\n" + monthLedger.paidDetails.join("\n") }] };
+            }
+          }
           if (colType === 3) {
             // Balance
             const balVal = parseInt(String(cell.value).replace(/[^0-9-]/g, "")) || 0;

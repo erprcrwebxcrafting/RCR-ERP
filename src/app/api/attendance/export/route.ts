@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { generateAttendanceExcel } from "@/lib/excel/attendance";
 import { generateAttendancePdf } from "@/lib/pdf/attendance";
+import { format as formatDate } from "date-fns";
 
 export const dynamic = "force-dynamic";
 
@@ -137,16 +138,21 @@ export async function GET(request: NextRequest) {
     ]);
 
     // --- MONTHLY LEDGER INITIALIZATION ---
-    const monthlyLedger: Record<string, Record<string, { hajari: number; earned: number; paid: number }>> = {};
+    const monthlyLedger: Record<string, Record<string, { hajari: number; earned: number; paid: number; attDetails: string[]; paidDetails: string[] }>> = {};
     const addLedgerEntry = (labourId: string, date: Date, hajari: number, earned: number, paid: number) => {
       if (!date || isNaN(date.getTime())) return;
       const d = new Date(date);
       const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       if (!monthlyLedger[labourId]) monthlyLedger[labourId] = {};
-      if (!monthlyLedger[labourId][monthKey]) monthlyLedger[labourId][monthKey] = { hajari: 0, earned: 0, paid: 0 };
+      if (!monthlyLedger[labourId][monthKey]) monthlyLedger[labourId][monthKey] = { hajari: 0, earned: 0, paid: 0, attDetails: [], paidDetails: [] };
+      
       monthlyLedger[labourId][monthKey].hajari += hajari;
       monthlyLedger[labourId][monthKey].earned += earned;
       monthlyLedger[labourId][monthKey].paid += paid;
+
+      const dStr = formatDate(d, "dd-MMM");
+      if (hajari > 0) monthlyLedger[labourId][monthKey].attDetails.push(`${dStr}: ${hajari}`);
+      if (paid > 0) monthlyLedger[labourId][monthKey].paidDetails.push(`${dStr}: ₹${paid}`);
     };
 
     const openingEarned: Record<string, number> = {};
