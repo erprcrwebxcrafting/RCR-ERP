@@ -565,7 +565,7 @@ export async function generateAttendancePdf(
     const pbText = `${Math.round(worker.openingEarned - worker.openingPaid)}`;
     const pbW = bold.widthOfTextAtSize(pbText, 7);
     page.drawText(pbText, {
-      x: colX[4 + dates.length] - pbW - 3,
+      x: colX[5 + dates.length] - pbW - 3,
       y: y - 11,
       size: 7,
       font: bold,
@@ -576,7 +576,7 @@ export async function generateAttendancePdf(
     const curEarnText = `${Math.round(worker.totalEarned)}`;
     const curEarnW = bold.widthOfTextAtSize(curEarnText, 7);
     page.drawText(curEarnText, {
-      x: colX[5 + dates.length] - curEarnW - 3,
+      x: colX[6 + dates.length] - curEarnW - 3,
       y: y - 11,
       size: 7,
       font: bold,
@@ -587,7 +587,7 @@ export async function generateAttendancePdf(
     const totEarnText = `${Math.round(worker.allTimeEarned)}`;
     const totEarnW = bold.widthOfTextAtSize(totEarnText, 7);
     page.drawText(totEarnText, {
-      x: colX[6 + dates.length] - totEarnW - 3,
+      x: colX[7 + dates.length] - totEarnW - 3,
       y: y - 11,
       size: 7,
       font: bold,
@@ -598,7 +598,7 @@ export async function generateAttendancePdf(
     const paidText = worker.allTimePaid > 0 ? `${Math.round(worker.allTimePaid)}` : "0";
     const paidW = bold.widthOfTextAtSize(paidText, 7);
     page.drawText(paidText, {
-      x: colX[7 + dates.length] - paidW - 3,
+      x: colX[8 + dates.length] - paidW - 3,
       y: y - 11,
       size: 7,
       font: bold,
@@ -609,7 +609,7 @@ export async function generateAttendancePdf(
     const balText = `${Math.round(worker.netBalance)}`;
     const balW = bold.widthOfTextAtSize(balText, 7.5);
     page.drawText(balText, {
-      x: colX[8 + dates.length] - balW - 3,
+      x: colX[9 + dates.length] - balW - 3,
       y: y - 11,
       size: 7.5,
       font: bold,
@@ -699,7 +699,7 @@ export async function generateAttendancePdf(
   const gPbText = `${Math.round(grandPrevBalance).toLocaleString("en-IN")}`;
   const gPbW = bold.widthOfTextAtSize(gPbText, 7);
   page.drawText(gPbText, {
-    x: colX[4 + dates.length] - gPbW - 3,
+    x: colX[5 + dates.length] - gPbW - 3,
     y: y - 13,
     size: 7,
     font: bold,
@@ -710,7 +710,7 @@ export async function generateAttendancePdf(
   const gCurEarnText = `${Math.round(grandCurrEarned).toLocaleString("en-IN")}`;
   const gCurEarnW = bold.widthOfTextAtSize(gCurEarnText, 7);
   page.drawText(gCurEarnText, {
-    x: colX[5 + dates.length] - gCurEarnW - 3,
+    x: colX[6 + dates.length] - gCurEarnW - 3,
     y: y - 13,
     size: 7,
     font: bold,
@@ -721,7 +721,7 @@ export async function generateAttendancePdf(
   const gEarnText = `${Math.round(grandTotalEarned).toLocaleString("en-IN")}`;
   const gEarnW = bold.widthOfTextAtSize(gEarnText, 7);
   page.drawText(gEarnText, {
-    x: colX[6 + dates.length] - gEarnW - 3,
+    x: colX[7 + dates.length] - gEarnW - 3,
     y: y - 13,
     size: 7,
     font: bold,
@@ -732,7 +732,7 @@ export async function generateAttendancePdf(
   const gPaidText = `${Math.round(grandTotalPaid).toLocaleString("en-IN")}`;
   const gPaidW = bold.widthOfTextAtSize(gPaidText, 7);
   page.drawText(gPaidText, {
-    x: colX[7 + dates.length] - gPaidW - 3,
+    x: colX[8 + dates.length] - gPaidW - 3,
     y: y - 13,
     size: 7,
     font: bold,
@@ -743,7 +743,7 @@ export async function generateAttendancePdf(
   const gBalText = `${Math.round(grandTotalBalance).toLocaleString("en-IN")}`;
   const gBalW = bold.widthOfTextAtSize(gBalText, 7.5);
   page.drawText(gBalText, {
-    x: colX[8 + dates.length] - gBalW - 3,
+    x: colX[9 + dates.length] - gBalW - 3,
     y: y - 13,
     size: 7.5,
     font: bold,
