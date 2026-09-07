@@ -710,30 +710,45 @@ export async function generateAttendanceExcel(
 
           if (colType === 0) {
             cell.font = { color: { argb: "FF0F172A" }, size: 9 }; // Hajari
-            if (monthLedger?.attDetails?.length > 0) {
-              const attChunks = [];
-              for(let i=0; i<monthLedger.attDetails.length; i+=2) {
-                attChunks.push(monthLedger.attDetails.slice(i, i+2).join("   |   "));
-              }
+              const groups: Record<string, number[]> = {};
+              monthLedger.attDetails.forEach((detail: string) => {
+                const parts = detail.split(": ");
+                if (parts.length === 2) {
+                  const day = parseInt(parts[0].split("-")[0]);
+                  const hajari = parts[1];
+                  if (!groups[hajari]) groups[hajari] = [];
+                  groups[hajari].push(day);
+                }
+              });
+              const groupedAttDetails = Object.entries(groups).map(([hajari, daysArr]) => {
+                const days = daysArr.sort((a, b) => a - b);
+                let result = [];
+                let start = days[0];
+                let prev = days[0];
+                for (let i = 1; i < days.length; i++) {
+                  if (days[i] === prev + 1) {
+                    prev = days[i];
+                  } else {
+                    result.push(start === prev ? `${start}` : `${start}-${prev}`);
+                    start = days[i];
+                    prev = days[i];
+                  }
+                }
+                result.push(start === prev ? `${start}` : `${start}-${prev}`);
+                return `H: ${hajari} -> ${result.join(", ")}`;
+              });
               cell.note = { 
-                texts: [{ font: { size: 9, color: { argb: "FF0B2447" } }, text: "Attendance Details:\n" + attChunks.join("\n") }],
-                margins: { insetmode: 'auto' },
-                ext: { width: 180, height: Math.max(80, 30 + (attChunks.length * 16)) }
+                texts: [{ font: { size: 9, color: { argb: "FF0B2447" } }, text: "Attendance Details:\n" + groupedAttDetails.join("  |  ") }],
+                margins: { insetmode: 'auto' }
               } as any;
-            }
           }
           if (colType === 1) cell.font = { color: { argb: "FF1E3A8A" }, size: 9 }; // Earned
           if (colType === 2) {
             cell.font = { color: { argb: "FFDC2626" }, size: 9 }; // Paid
             if (monthLedger?.paidDetails?.length > 0) {
-              const paidChunks = [];
-              for(let i=0; i<monthLedger.paidDetails.length; i+=2) {
-                paidChunks.push(monthLedger.paidDetails.slice(i, i+2).join("   |   "));
-              }
               cell.note = { 
-                texts: [{ font: { size: 9, color: { argb: "FF991B1B" } }, text: "Payment Details:\n" + paidChunks.join("\n") }],
-                margins: { insetmode: 'auto' },
-                ext: { width: 180, height: Math.max(80, 30 + (paidChunks.length * 16)) }
+                texts: [{ font: { size: 9, color: { argb: "FF991B1B" } }, text: "Payment Details:\n" + monthLedger.paidDetails.join("  |  ") }],
+                margins: { insetmode: 'auto' }
               } as any;
             }
           }
@@ -759,6 +774,83 @@ export async function generateAttendanceExcel(
     if (colIdx === 1) minWidth = 14;
     column.width = minWidth;
   });
+
+  // --- DETAILED BREAKDOWN SHEET ---
+  const detailSheet = workbook.addWorksheet("Detailed Breakdown");
+  
+  detailSheet.addRow([`Detailed Breakdown \u2014 ${siteName}`]);
+  detailSheet.addRow([`Generated: ${format(new Date(), "dd-MMM-yyyy hh:mm a")}`]);
+  detailSheet.addRow([]); // empty line
+  
+  const dHeadRow = detailSheet.addRow(["Labour Name", "Category", "Date", "Record Type", "Details", "Amount"]);
+  dHeadRow.eachCell(c => {
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E40AF" } };
+    c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+    c.alignment = { horizontal: "center" };
+  });
+
+  const detailRows: any[] = [];
+
+  attendances.forEach(a => {
+    if (!a.date) return;
+    const worker = sortedWorkers.find(w => w.id === a.labourId);
+    if (!worker) return;
+    const rate = a.hajariRate || a.labour?.dailyWage || 0;
+    const earned = a.earnedAmount !== undefined && a.earnedAmount !== null ? a.earnedAmount : (a.hajari || 0) * rate;
+    detailRows.push({
+      date: new Date(a.date),
+      labourName: worker.name,
+      category: worker.category,
+      type: "Attendance",
+      details: `${a.hajari} Hajari`,
+      amount: earned
+    });
+  });
+
+  const allPayments = [...payments, ...postPayments];
+  allPayments.forEach(p => {
+    if (!p.date) return;
+    const worker = sortedWorkers.find(w => w.id === p.labourId);
+    if (!worker) return;
+    detailRows.push({
+      date: new Date(p.date),
+      labourName: worker.name,
+      category: worker.category,
+      type: "Payment",
+      details: "Paid",
+      amount: p.amount
+    });
+  });
+
+  detailRows.sort((a, b) => {
+    if (a.labourName !== b.labourName) return a.labourName.localeCompare(b.labourName);
+    return a.date.getTime() - b.date.getTime();
+  });
+
+  detailRows.forEach(row => {
+    const r = detailSheet.addRow([
+      row.labourName,
+      row.category,
+      format(row.date, "dd-MMM-yyyy"),
+      row.type,
+      row.details,
+      row.amount > 0 ? `₹${row.amount}` : "0"
+    ]);
+    r.getCell(4).font = { color: { argb: row.type === "Attendance" ? "FF1E3A8A" : "FFDC2626" }, bold: true, size: 9 };
+    r.getCell(6).font = { color: { argb: row.type === "Attendance" ? "FF1E3A8A" : "FFDC2626" }, bold: true, size: 9 };
+    r.eachCell((c, cNum) => {
+      if (typeof cNum === "number" && cNum < 4) c.font = { size: 9 };
+      c.alignment = { vertical: "middle", horizontal: (typeof cNum === "number" && cNum < 3) ? "left" : "center" };
+    });
+  });
+
+  detailSheet.getColumn(1).width = 22;
+  detailSheet.getColumn(2).width = 18;
+  detailSheet.getColumn(3).width = 15;
+  detailSheet.getColumn(4).width = 15;
+  detailSheet.getColumn(5).width = 15;
+  detailSheet.getColumn(6).width = 15;
+
 
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
