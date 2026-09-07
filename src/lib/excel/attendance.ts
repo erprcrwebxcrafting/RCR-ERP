@@ -504,18 +504,18 @@ export async function generateAttendanceExcel(
       } else if (colNum === totalCols - 4) { // Prev Balance
         const pb = worker.openingEarned - worker.openingPaid;
         cell.font = { bold: true, color: { argb: pb > 0 ? "FF047857" : (pb < 0 ? "FFDC2626" : "FF0F172A") }, size: 9 };
-        if (hasData) cell.note = { texts: [{ font: { size: 9, color: { argb: "FF0B2447" } }, text: notePrevBal }], margins: { insetmode: 'auto' } } as any;
+        cell.note = notePrevBal;
       } else if (colNum === totalCols - 3) { // Curr Earned
         cell.font = { bold: true, color: { argb: "FF1E3A8A" }, size: 9 };
       } else if (colNum === totalCols - 2) { // Total Earned
         cell.font = { bold: true, color: { argb: "FF0B2447" }, size: 9 };
-        if (hasData) cell.note = { texts: [{ font: { size: 9, color: { argb: "FF0B2447" } }, text: noteEarned }], margins: { insetmode: 'auto' } } as any;
+        cell.note = noteEarned;
       } else if (colNum === totalCols - 1) { // Advance Paid
         cell.font = { bold: true, color: { argb: worker.allTimePaid > 0 ? "FFDC2626" : "FF64748B" }, size: 9 };
-        if (hasData) cell.note = { texts: [{ font: { size: 9, color: { argb: "FF0B2447" } }, text: notePaid }], margins: { insetmode: 'auto' } } as any;
+        cell.note = notePaid;
       } else if (colNum === totalCols) { // Net Balance
         cell.font = { bold: true, color: { argb: worker.netBalance > 0 ? "FF047857" : (worker.netBalance < 0 ? "FFDC2626" : "FF0F172A") }, size: 9 };
-        if (hasData) cell.note = { texts: [{ font: { size: 9, color: { argb: "FF0B2447" } }, text: noteNet }], margins: { insetmode: 'auto' } } as any;
+        cell.note = noteNet;
       }
     });
   });
