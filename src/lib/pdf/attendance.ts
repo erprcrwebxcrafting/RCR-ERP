@@ -17,7 +17,7 @@ export interface AttendanceExportData {
   siteName: string;
   startDateStr: string;
   endDateStr: string;
-  monthlyLedger?: Record<string, Record<string, { earned: number, paid: number }>>;
+  monthlyLedger?: Record<string, Record<string, { hajari: number; earned: number; paid: number }>>;
 }
 
 function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
@@ -326,13 +326,14 @@ export async function generateAttendancePdf(
   const nameWidth = 76;
   const categoryWidth = 46;
   const rateWidth = 26;
-  const hajariWidth = 32;
+  const hajariWidth = 22;
+  const pBalWidth = 32;
   const curEarnWidth = 36;
   const totEarnWidth = 42;
   const totPaidWidth = 42;
   const balanceWidth = 44;
 
-  const fixedWidths = nameWidth + categoryWidth + rateWidth + hajariWidth + curEarnWidth + totEarnWidth + totPaidWidth + balanceWidth;
+  const fixedWidths = nameWidth + categoryWidth + rateWidth + hajariWidth + pBalWidth + curEarnWidth + totEarnWidth + totPaidWidth + balanceWidth;
   const availableForDates = usableWidth - fixedWidths;
   const dayColWidth = dates.length > 0 ? Math.min(22, availableForDates / dates.length) : 20;
 
@@ -347,6 +348,7 @@ export async function generateAttendancePdf(
   });
 
   cols.push({ name: "T.Haj", w: hajariWidth, align: "center" });
+  cols.push({ name: "P.Bal", w: pBalWidth, align: "right" });
   cols.push({ name: "C.Earn", w: curEarnWidth, align: "right" });
   cols.push({ name: "T.Earn", w: totEarnWidth, align: "right" });
   cols.push({ name: "T.Paid", w: totPaidWidth, align: "right" });
@@ -554,11 +556,22 @@ export async function generateAttendancePdf(
       color: green
     });
 
+    // Prev Balance
+    const pbText = `${Math.round(worker.openingEarned - worker.openingPaid)}`;
+    const pbW = bold.widthOfTextAtSize(pbText, 7);
+    page.drawText(pbText, {
+      x: colX[4 + dates.length] - pbW - 3,
+      y: y - 11,
+      size: 7,
+      font: bold,
+      color: (worker.openingEarned - worker.openingPaid) > 0 ? green : ((worker.openingEarned - worker.openingPaid) < 0 ? red : darkGray)
+    });
+
     // Curr Earned
     const curEarnText = `${Math.round(worker.totalEarned)}`;
     const curEarnW = bold.widthOfTextAtSize(curEarnText, 7);
     page.drawText(curEarnText, {
-      x: colX[4 + dates.length] - curEarnW - 3,
+      x: colX[5 + dates.length] - curEarnW - 3,
       y: y - 11,
       size: 7,
       font: bold,
@@ -569,7 +582,7 @@ export async function generateAttendancePdf(
     const totEarnText = `${Math.round(worker.allTimeEarned)}`;
     const totEarnW = bold.widthOfTextAtSize(totEarnText, 7);
     page.drawText(totEarnText, {
-      x: colX[5 + dates.length] - totEarnW - 3,
+      x: colX[6 + dates.length] - totEarnW - 3,
       y: y - 11,
       size: 7,
       font: bold,
@@ -580,7 +593,7 @@ export async function generateAttendancePdf(
     const paidText = worker.allTimePaid > 0 ? `${Math.round(worker.allTimePaid)}` : "0";
     const paidW = bold.widthOfTextAtSize(paidText, 7);
     page.drawText(paidText, {
-      x: colX[6 + dates.length] - paidW - 3,
+      x: colX[7 + dates.length] - paidW - 3,
       y: y - 11,
       size: 7,
       font: bold,
@@ -591,7 +604,7 @@ export async function generateAttendancePdf(
     const balText = `${Math.round(worker.netBalance)}`;
     const balW = bold.widthOfTextAtSize(balText, 7.5);
     page.drawText(balText, {
-      x: colX[7 + dates.length] - balW - 3,
+      x: colX[8 + dates.length] - balW - 3,
       y: y - 11,
       size: 7.5,
       font: bold,
@@ -674,11 +687,25 @@ export async function generateAttendancePdf(
     color: green
   });
 
+  let grandPrevBalance = 0;
+  sortedWorkers.forEach(w => grandPrevBalance += (w.openingEarned - w.openingPaid));
+
+  // Grand Prev Balance
+  const gPbText = `${Math.round(grandPrevBalance).toLocaleString("en-IN")}`;
+  const gPbW = bold.widthOfTextAtSize(gPbText, 7);
+  page.drawText(gPbText, {
+    x: colX[4 + dates.length] - gPbW - 3,
+    y: y - 13,
+    size: 7,
+    font: bold,
+    color: grandPrevBalance > 0 ? green : (grandPrevBalance < 0 ? red : darkGray)
+  });
+
   // Grand Curr Earned
   const gCurEarnText = `${Math.round(grandCurrEarned).toLocaleString("en-IN")}`;
   const gCurEarnW = bold.widthOfTextAtSize(gCurEarnText, 7);
   page.drawText(gCurEarnText, {
-    x: colX[4 + dates.length] - gCurEarnW - 3,
+    x: colX[5 + dates.length] - gCurEarnW - 3,
     y: y - 13,
     size: 7,
     font: bold,
@@ -689,7 +716,7 @@ export async function generateAttendancePdf(
   const gEarnText = `${Math.round(grandTotalEarned).toLocaleString("en-IN")}`;
   const gEarnW = bold.widthOfTextAtSize(gEarnText, 7);
   page.drawText(gEarnText, {
-    x: colX[5 + dates.length] - gEarnW - 3,
+    x: colX[6 + dates.length] - gEarnW - 3,
     y: y - 13,
     size: 7,
     font: bold,
@@ -700,7 +727,7 @@ export async function generateAttendancePdf(
   const gPaidText = `${Math.round(grandTotalPaid).toLocaleString("en-IN")}`;
   const gPaidW = bold.widthOfTextAtSize(gPaidText, 7);
   page.drawText(gPaidText, {
-    x: colX[6 + dates.length] - gPaidW - 3,
+    x: colX[7 + dates.length] - gPaidW - 3,
     y: y - 13,
     size: 7,
     font: bold,
@@ -711,7 +738,7 @@ export async function generateAttendancePdf(
   const gBalText = `${Math.round(grandTotalBalance).toLocaleString("en-IN")}`;
   const gBalW = bold.widthOfTextAtSize(gBalText, 7.5);
   page.drawText(gBalText, {
-    x: colX[7 + dates.length] - gBalW - 3,
+    x: colX[8 + dates.length] - gBalW - 3,
     y: y - 13,
     size: 7.5,
     font: bold,
@@ -752,15 +779,15 @@ export async function generateAttendancePdf(
     page.drawText(`Generated: ${format(new Date(), "dd-MMM-yyyy hh:mm a")}`, { x: MARGIN, y: y - 18, size: 10, font: font, color: darkGray });
     y -= 40;
 
-    const ledgNameW = 90;
-    const ledgMonthW = Math.min(80, (usableWidth - ledgNameW - 140) / allMonths.length);
-    const ledgTotalW = 46;
+    const ledgNameW = 75;
+    const ledgMonthW = Math.min(85, (usableWidth - ledgNameW - 130) / allMonths.length);
+    const ledgTotalW = 43;
     
     let lCols: any[] = [{ name: "Labour Name", w: ledgNameW, align: "left" }];
     allMonths.forEach(mStr => {
       const [yy, mm] = mStr.split("-");
       const d = new Date(parseInt(yy), parseInt(mm) - 1, 1);
-      lCols.push({ name: format(d, "MMM yyyy"), w: ledgMonthW, align: "center" });
+      lCols.push({ name: format(d, "MMM yy"), w: ledgMonthW, align: "center" });
     });
     lCols.push({ name: "Tot Earn", w: ledgTotalW, align: "right" });
     lCols.push({ name: "Tot Paid", w: ledgTotalW, align: "right" });
@@ -809,25 +836,31 @@ export async function generateAttendancePdf(
       const nLines = wrapText(worker.name, bold, 7, ledgNameW - 6);
       page.drawText(nLines[0], { x: lColX[0] + 3, y: y - 11, size: 7, font: bold, color: navy });
 
-      const ledger = monthlyLedger[worker.id] || {};
+      const ledger: any = monthlyLedger[worker.id] || {};
+      let cumulativeBalance = 0;
       
       allMonths.forEach((mStr, mi) => {
+        const h = ledger[mStr]?.hajari || 0;
         const e = ledger[mStr]?.earned || 0;
         const p = ledger[mStr]?.paid || 0;
+        cumulativeBalance += (e - p);
+        
         const cX = lColX[mi + 1];
         const cW = lCols[mi + 1].w;
         
-        if (e > 0 || p > 0) {
+        if (h > 0 || e > 0 || p > 0 || cumulativeBalance !== 0) {
+           const ht = h > 0 ? `H: ${h}` : "";
            const et = e > 0 ? `E: ${e}` : "";
            const pt = p > 0 ? `P: ${p}` : "";
+           const bt = cumulativeBalance !== 0 ? `B: ${cumulativeBalance}` : "";
            
-           if (et) {
-             const ew = bold.widthOfTextAtSize(et, 6);
-             page.drawText(et, { x: cX + (cW/2) - ew - 2, y: y - 11, size: 6, font: bold, color: primary });
-           }
-           if (pt) {
-             page.drawText(pt, { x: cX + (cW/2) + 2, y: y - 11, size: 6, font: bold, color: red });
-           }
+           // Render H and E on left, P and B on right
+           const halfW = cW / 2;
+           if (ht) page.drawText(ht, { x: cX + 2, y: y - 7, size: 5.5, font: bold, color: darkGray });
+           if (et) page.drawText(et, { x: cX + 2, y: y - 14, size: 5.5, font: bold, color: primary });
+           
+           if (pt) page.drawText(pt, { x: cX + halfW + 1, y: y - 7, size: 5.5, font: bold, color: red });
+           if (bt) page.drawText(bt, { x: cX + halfW + 1, y: y - 14, size: 5.5, font: bold, color: cumulativeBalance > 0 ? green : (cumulativeBalance < 0 ? red : darkGray) });
         } else {
            const dw = font.widthOfTextAtSize("—", 7);
            page.drawText("—", { x: cX + (cW - dw)/2, y: y - 11, size: 7, font: font, color: mutedGray });
