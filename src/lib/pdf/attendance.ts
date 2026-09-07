@@ -444,7 +444,7 @@ export async function generateAttendancePdf(
       const k = amt / 1000;
       return `${k.toFixed(k % 1 === 0 ? 0 : 1)}k`;
     }
-    return `${amt}`;
+    return `${Math.round(amt)}`;
   };
 
   const rowH = 19; // Allows 2 clean lines per date cell (Hajari on top, Advance below)
@@ -486,7 +486,7 @@ export async function generateAttendancePdf(
     });
 
     // Rate
-    const rateText = worker.dailyWage > 0 ? `${worker.dailyWage}` : "—";
+    const rateText = worker.dailyWage > 0 ? `${Math.round(worker.dailyWage)}` : "—";
     const rateW = font.widthOfTextAtSize(rateText, 6.5);
     page.drawText(rateText, {
       x: colX[2] + (rateWidth - rateW) / 2,
@@ -510,7 +510,7 @@ export async function generateAttendancePdf(
 
       if (att) {
         if (att.hajari > 0) {
-          attText = att.hajari.toString();
+          attText = Number.isInteger(att.hajari) ? att.hajari.toString() : parseFloat(att.hajari.toFixed(2)).toString();
           attColor = green;
           attFont = bold;
         } else {
@@ -521,12 +521,17 @@ export async function generateAttendancePdf(
       }
 
       // Line 1: Hajari
-      const attTextW = attFont.widthOfTextAtSize(attText, 6.5);
+      let textSz = 6.5;
+      let attTextW = attFont.widthOfTextAtSize(attText, textSz);
+      if (attTextW > cellW - 1) {
+        textSz = 5;
+        attTextW = attFont.widthOfTextAtSize(attText, textSz);
+      }
       const attY = paid > 0 ? y - 8 : y - 11;
       page.drawText(attText, {
         x: colX[colIdx] + (cellW - attTextW) / 2,
         y: attY,
-        size: 6.5,
+        size: textSz,
         font: attFont,
         color: attColor
       });
@@ -849,10 +854,10 @@ export async function generateAttendancePdf(
         const cW = lCols[mi + 1].w;
         
         if (h > 0 || e > 0 || p > 0 || cumulativeBalance !== 0) {
-           const ht = h > 0 ? `H: ${h}` : "";
-           const et = e > 0 ? `E: ${e}` : "";
-           const pt = p > 0 ? `P: ${p}` : "";
-           const bt = cumulativeBalance !== 0 ? `B: ${cumulativeBalance}` : "";
+           const ht = h > 0 ? `H: ${Number.isInteger(h) ? h : parseFloat(h.toFixed(2))}` : "";
+           const et = e > 0 ? `E: ${Math.round(e)}` : "";
+           const pt = p > 0 ? `P: ${Math.round(p)}` : "";
+           const bt = cumulativeBalance !== 0 ? `B: ${Math.round(cumulativeBalance)}` : "";
            
            // Render H and E on left, P and B on right
            const halfW = cW / 2;
