@@ -711,14 +711,30 @@ export async function generateAttendanceExcel(
           if (colType === 0) {
             cell.font = { color: { argb: "FF0F172A" }, size: 9 }; // Hajari
             if (monthLedger?.attDetails?.length > 0) {
-              cell.note = { texts: [{ font: { size: 9, color: { argb: "FF0B2447" } }, text: "Attendance Details:\n" + monthLedger.attDetails.join("\n") }] };
+              const attChunks = [];
+              for(let i=0; i<monthLedger.attDetails.length; i+=2) {
+                attChunks.push(monthLedger.attDetails.slice(i, i+2).join("   |   "));
+              }
+              cell.note = { 
+                texts: [{ font: { size: 9, color: { argb: "FF0B2447" } }, text: "Attendance Details:\n" + attChunks.join("\n") }],
+                margins: { insetmode: 'auto' },
+                ext: { width: 180, height: Math.max(80, 30 + (attChunks.length * 16)) }
+              } as any;
             }
           }
           if (colType === 1) cell.font = { color: { argb: "FF1E3A8A" }, size: 9 }; // Earned
           if (colType === 2) {
             cell.font = { color: { argb: "FFDC2626" }, size: 9 }; // Paid
             if (monthLedger?.paidDetails?.length > 0) {
-              cell.note = { texts: [{ font: { size: 9, color: { argb: "FF991B1B" } }, text: "Payment Details:\n" + monthLedger.paidDetails.join("\n") }] };
+              const paidChunks = [];
+              for(let i=0; i<monthLedger.paidDetails.length; i+=2) {
+                paidChunks.push(monthLedger.paidDetails.slice(i, i+2).join("   |   "));
+              }
+              cell.note = { 
+                texts: [{ font: { size: 9, color: { argb: "FF991B1B" } }, text: "Payment Details:\n" + paidChunks.join("\n") }],
+                margins: { insetmode: 'auto' },
+                ext: { width: 180, height: Math.max(80, 30 + (paidChunks.length * 16)) }
+              } as any;
             }
           }
           if (colType === 3) {
