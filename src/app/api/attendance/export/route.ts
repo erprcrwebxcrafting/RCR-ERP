@@ -137,13 +137,14 @@ export async function GET(request: NextRequest) {
     ]);
 
     // --- MONTHLY LEDGER INITIALIZATION ---
-    const monthlyLedger: Record<string, Record<string, { earned: number; paid: number }>> = {};
-    const addLedgerEntry = (labourId: string, date: Date, earned: number, paid: number) => {
+    const monthlyLedger: Record<string, Record<string, { hajari: number; earned: number; paid: number }>> = {};
+    const addLedgerEntry = (labourId: string, date: Date, hajari: number, earned: number, paid: number) => {
       if (!date || isNaN(date.getTime())) return;
       const d = new Date(date);
       const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       if (!monthlyLedger[labourId]) monthlyLedger[labourId] = {};
-      if (!monthlyLedger[labourId][monthKey]) monthlyLedger[labourId][monthKey] = { earned: 0, paid: 0 };
+      if (!monthlyLedger[labourId][monthKey]) monthlyLedger[labourId][monthKey] = { hajari: 0, earned: 0, paid: 0 };
+      monthlyLedger[labourId][monthKey].hajari += hajari;
       monthlyLedger[labourId][monthKey].earned += earned;
       monthlyLedger[labourId][monthKey].paid += paid;
     };
@@ -153,11 +154,11 @@ export async function GET(request: NextRequest) {
     for (const pa of prevAttendances) {
       const rate = pa.hajariRate || pa.labour?.dailyWage || 0;
       openingEarned[pa.labourId] = (openingEarned[pa.labourId] || 0) + (pa.hajari * rate);
-      if (pa.date) addLedgerEntry(pa.labourId, pa.date, pa.hajari * rate, 0);
+      if (pa.date) addLedgerEntry(pa.labourId, pa.date, pa.hajari, pa.hajari * rate, 0);
     }
     for (const pp of prevPayments) {
       openingPaid[pp.labourId] = (openingPaid[pp.labourId] || 0) + pp.amount;
-      if (pp.date) addLedgerEntry(pp.labourId, pp.date, 0, pp.amount);
+      if (pp.date) addLedgerEntry(pp.labourId, pp.date, 0, 0, pp.amount);
     }
 
     // Fetch payments made AFTER the endDate up to today
@@ -168,32 +169,6 @@ export async function GET(request: NextRequest) {
       },
       orderBy: { date: "asc" },
     });
-
-    // Fetch attendance AFTER endDate up to today (for monthly ledger only)
-    const postAttendances = await prisma.attendance.findMany({
-      where: {
-        labourId: { in: allLabourIds },
-        date: { gt: endDate },
-      },
-      select: {
-        id: true,
-        date: true,
-        labourId: true,
-        hajari: true,
-        hajariRate: true,
-        labour: { select: { dailyWage: true } }
-      },
-      orderBy: { date: "asc" },
-    });
-
-    // Add post-period attendances to monthly ledger
-    for (const pa of postAttendances) {
-      if (pa.date) {
-        const rate = pa.hajariRate || pa.labour?.dailyWage || 0;
-        const earned = (pa.hajari || 0) * rate;
-        addLedgerEntry(pa.labourId, pa.date, earned, 0);
-      }
-    }
 
     // --- SUPERVISOR INTEGRATION ---
     // Fetch all supervisors assigned to this site (if filtering by site)
@@ -221,11 +196,6 @@ export async function GET(request: NextRequest) {
           where: { supervisorId: { in: supervisorUserIds }, date: { gt: endDate } }
         });
 
-        // Fetch Supervisor Attendances AFTER this period (for monthly ledger)
-        const postSupAttendances = await prisma.supervisorAttendance.findMany({
-          where: { supervisorId: { in: supervisorUserIds }, date: { gt: endDate } }
-        });
-
         // Fetch prior balances for Supervisors
         const [prevSupAtt, prevSupPay] = await Promise.all([
           prisma.supervisorAttendance.findMany({
@@ -235,11 +205,6 @@ export async function GET(request: NextRequest) {
             where: { supervisorId: { in: supervisorUserIds }, date: { lt: startDate } }
           })
         ]);
-
-        // Add post-period supervisor attendances to monthly ledger
-        for (const psa of postSupAttendances) {
-          if (psa.date) addLedgerEntry(`sup_${psa.supervisorId}`, psa.date, psa.earnedAmount || 0, 0);
-        }
 
         // Map Supervisor Attendances to Labour Attendance shape
         for (const sa of supAttendances) {
@@ -311,12 +276,13 @@ export async function GET(request: NextRequest) {
         for (const psa of prevSupAtt) {
           const supLabId = `sup_${psa.supervisorId}`;
           openingEarned[supLabId] = (openingEarned[supLabId] || 0) + psa.earnedAmount;
-          if (psa.date) addLedgerEntry(supLabId, psa.date, psa.earnedAmount || 0, 0);
+          const hajari = psa.status === "P" ? 1 : (psa.status === "H" ? 0.5 : 0);
+          if (psa.date) addLedgerEntry(supLabId, psa.date, hajari, psa.earnedAmount || 0, 0);
         }
         for (const psp of prevSupPay) {
           const supLabId = `sup_${psp.supervisorId}`;
           openingPaid[supLabId] = (openingPaid[supLabId] || 0) + psp.amount;
-          if (psp.date) addLedgerEntry(supLabId, psp.date, 0, psp.amount);
+          if (psp.date) addLedgerEntry(supLabId, psp.date, 0, 0, psp.amount);
         }
 
         // Map Post Supervisor Payments
@@ -345,16 +311,16 @@ export async function GET(request: NextRequest) {
           const rate = a.hajariRate || a.labour?.dailyWage || 0;
           earned = (a.hajari || 0) * rate;
         }
-        addLedgerEntry(a.labourId, a.date, earned, 0);
+        addLedgerEntry(a.labourId, a.date, a.hajari || 0, earned, 0);
       }
     }
     for (const p of payments) {
-      if (p.date) addLedgerEntry(p.labourId, p.date, 0, p.amount || 0);
+      if (p.date) addLedgerEntry(p.labourId, p.date, 0, 0, p.amount || 0);
     }
 
     // 4. Process Post Payments (including mapped supervisors)
     for (const p of postPayments) {
-      if (p.date) addLedgerEntry(p.labourId, p.date, 0, p.amount || 0);
+      if (p.date) addLedgerEntry(p.labourId, p.date, 0, 0, p.amount || 0);
     }
     // --- END MONTHLY LEDGER COMPUTATION ---
 
