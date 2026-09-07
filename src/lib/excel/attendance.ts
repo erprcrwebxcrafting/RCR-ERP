@@ -782,7 +782,7 @@ export async function generateAttendanceExcel(
   detailSheet.addRow([`Generated: ${format(new Date(), "dd-MMM-yyyy hh:mm a")}`]);
   detailSheet.addRow([]); // empty line
   
-  const dHeadRow = detailSheet.addRow(["Labour Name", "Category", "Date", "Record Type", "Details", "Amount"]);
+  const dHeadRow = detailSheet.addRow(["Date", "Record Type", "Details", "Amount"]);
   dHeadRow.eachCell(c => {
     c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E40AF" } };
     c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
@@ -827,29 +827,42 @@ export async function generateAttendanceExcel(
     return a.date.getTime() - b.date.getTime();
   });
 
+  let currentLabourName = "";
+  
   detailRows.forEach(row => {
+    if (row.labourName !== currentLabourName) {
+      if (currentLabourName !== "") {
+        const sep = detailSheet.addRow([]);
+        sep.eachCell(c => c.border = { top: { style: 'thin', color: { argb: 'FFE2E8F0' } } });
+      }
+      currentLabourName = row.labourName;
+      
+      const groupRow = detailSheet.addRow([`👨‍🔧 ${row.labourName}  (${row.category || 'N/A'})`]);
+      detailSheet.mergeCells(groupRow.number, 1, groupRow.number, 4);
+      groupRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+      groupRow.getCell(1).font = { bold: true, size: 11, color: { argb: "FF0F172A" } };
+      groupRow.getCell(1).alignment = { vertical: "middle", horizontal: "left" };
+    }
+
     const r = detailSheet.addRow([
-      row.labourName,
-      row.category,
       format(row.date, "dd-MMM-yyyy"),
       row.type,
       row.details,
       row.amount > 0 ? `₹${row.amount}` : "0"
     ]);
+
+    r.getCell(2).font = { color: { argb: row.type === "Attendance" ? "FF1E3A8A" : "FFDC2626" }, bold: true, size: 9 };
     r.getCell(4).font = { color: { argb: row.type === "Attendance" ? "FF1E3A8A" : "FFDC2626" }, bold: true, size: 9 };
-    r.getCell(6).font = { color: { argb: row.type === "Attendance" ? "FF1E3A8A" : "FFDC2626" }, bold: true, size: 9 };
     r.eachCell((c, cNum) => {
-      if (typeof cNum === "number" && cNum < 4) c.font = { size: 9 };
-      c.alignment = { vertical: "middle", horizontal: (typeof cNum === "number" && cNum < 3) ? "left" : "center" };
+      if (typeof cNum === "number" && cNum !== 2 && cNum !== 4) c.font = { size: 9 };
+      c.alignment = { vertical: "middle", horizontal: "center" };
     });
   });
 
-  detailSheet.getColumn(1).width = 22;
+  detailSheet.getColumn(1).width = 18;
   detailSheet.getColumn(2).width = 18;
   detailSheet.getColumn(3).width = 15;
   detailSheet.getColumn(4).width = 15;
-  detailSheet.getColumn(5).width = 15;
-  detailSheet.getColumn(6).width = 15;
 
 
   const buffer = await workbook.xlsx.writeBuffer();
