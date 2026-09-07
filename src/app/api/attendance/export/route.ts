@@ -169,6 +169,32 @@ export async function GET(request: NextRequest) {
       orderBy: { date: "asc" },
     });
 
+    // Fetch attendance AFTER endDate up to today (for monthly ledger only)
+    const postAttendances = await prisma.attendance.findMany({
+      where: {
+        labourId: { in: allLabourIds },
+        date: { gt: endDate },
+      },
+      select: {
+        id: true,
+        date: true,
+        labourId: true,
+        hajari: true,
+        hajariRate: true,
+        labour: { select: { dailyWage: true } }
+      },
+      orderBy: { date: "asc" },
+    });
+
+    // Add post-period attendances to monthly ledger
+    for (const pa of postAttendances) {
+      if (pa.date) {
+        const rate = pa.hajariRate || pa.labour?.dailyWage || 0;
+        const earned = (pa.hajari || 0) * rate;
+        addLedgerEntry(pa.labourId, pa.date, earned, 0);
+      }
+    }
+
     // --- SUPERVISOR INTEGRATION ---
     // Fetch all supervisors assigned to this site (if filtering by site)
     if (siteId && !labourId) {
@@ -195,6 +221,11 @@ export async function GET(request: NextRequest) {
           where: { supervisorId: { in: supervisorUserIds }, date: { gt: endDate } }
         });
 
+        // Fetch Supervisor Attendances AFTER this period (for monthly ledger)
+        const postSupAttendances = await prisma.supervisorAttendance.findMany({
+          where: { supervisorId: { in: supervisorUserIds }, date: { gt: endDate } }
+        });
+
         // Fetch prior balances for Supervisors
         const [prevSupAtt, prevSupPay] = await Promise.all([
           prisma.supervisorAttendance.findMany({
@@ -204,6 +235,11 @@ export async function GET(request: NextRequest) {
             where: { supervisorId: { in: supervisorUserIds }, date: { lt: startDate } }
           })
         ]);
+
+        // Add post-period supervisor attendances to monthly ledger
+        for (const psa of postSupAttendances) {
+          if (psa.date) addLedgerEntry(`sup_${psa.supervisorId}`, psa.date, psa.earnedAmount || 0, 0);
+        }
 
         // Map Supervisor Attendances to Labour Attendance shape
         for (const sa of supAttendances) {
