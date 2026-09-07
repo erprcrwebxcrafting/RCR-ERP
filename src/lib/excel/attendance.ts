@@ -370,8 +370,48 @@ export async function generateAttendanceExcel(
   // Freeze panes (Freeze Name, Category, Rate, and headers)
   sheet.views = [{ state: "frozen", ySplit: 9, xSplit: 3 }];
 
+  // Collect all unique month keys across all labourers and sort them
+  const allMonthsSet = new Set<string>();
+  for (const w of sortedWorkers) {
+    if (monthlyLedger[w.id]) {
+      Object.keys(monthlyLedger[w.id]).forEach(mk => allMonthsSet.add(mk));
+    }
+  }
+  const allMonths = Array.from(allMonthsSet).sort();
+
   // Render Worker Rows
   sortedWorkers.forEach((worker, workerIdx) => {
+    const ledger = monthlyLedger[worker.id] || {};
+    let notePrevBal = "Month-wise Balance Breakdown:\n";
+    let noteEarned = "Month-wise Earned:\n";
+    let notePaid = "Month-wise Paid:\n";
+    let noteNet = `Calculation:\nTotal Earned: ₹${Math.round(worker.allTimeEarned)}\n- Total Paid: ₹${Math.round(worker.allTimePaid)}\n= Net Balance: ₹${Math.round(worker.netBalance)}\n\nCumulative Net Balance:\n`;
+
+    let cumBal = 0;
+    let hasData = false;
+    allMonths.forEach(mStr => {
+      const e = ledger[mStr]?.earned || 0;
+      const p = ledger[mStr]?.paid || 0;
+      const mBal = e - p;
+      cumBal += mBal;
+      if (e > 0 || p > 0 || cumBal !== 0) {
+        hasData = true;
+        const [y, m] = mStr.split("-");
+        const mName = format(new Date(parseInt(y), parseInt(m) - 1, 1), "MMM yyyy");
+        notePrevBal += `${mName}: ₹${mBal}\n`;
+        noteEarned += `${mName}: ₹${e}\n`;
+        notePaid += `${mName}: ₹${p}\n`;
+        noteNet += `${mName}: ₹${cumBal}\n`;
+      }
+    });
+
+    if (!hasData) {
+      notePrevBal += "No data";
+      noteEarned += "No data";
+      notePaid += "No data";
+      noteNet += "No data";
+    }
+
     const rowValues: any[] = [
       worker.name,
       worker.category,
@@ -457,7 +497,6 @@ export async function generateAttendanceExcel(
       }
 
       // Summary columns styling
-      // Summary columns styling
       if (colNum === totalCols - 6) { // Total Hajari
         cell.font = { bold: true, color: { argb: "FF047857" }, size: 9 };
       } else if (colNum === totalCols - 5) { // Total OT
@@ -465,14 +504,18 @@ export async function generateAttendanceExcel(
       } else if (colNum === totalCols - 4) { // Prev Balance
         const pb = worker.openingEarned - worker.openingPaid;
         cell.font = { bold: true, color: { argb: pb > 0 ? "FF047857" : (pb < 0 ? "FFDC2626" : "FF0F172A") }, size: 9 };
+        if (hasData) cell.note = { texts: [{ font: { size: 9, color: { argb: "FF0B2447" } }, text: notePrevBal }], margins: { insetmode: 'auto' } } as any;
       } else if (colNum === totalCols - 3) { // Curr Earned
         cell.font = { bold: true, color: { argb: "FF1E3A8A" }, size: 9 };
       } else if (colNum === totalCols - 2) { // Total Earned
         cell.font = { bold: true, color: { argb: "FF0B2447" }, size: 9 };
+        if (hasData) cell.note = { texts: [{ font: { size: 9, color: { argb: "FF0B2447" } }, text: noteEarned }], margins: { insetmode: 'auto' } } as any;
       } else if (colNum === totalCols - 1) { // Advance Paid
         cell.font = { bold: true, color: { argb: worker.allTimePaid > 0 ? "FFDC2626" : "FF64748B" }, size: 9 };
+        if (hasData) cell.note = { texts: [{ font: { size: 9, color: { argb: "FF0B2447" } }, text: notePaid }], margins: { insetmode: 'auto' } } as any;
       } else if (colNum === totalCols) { // Net Balance
         cell.font = { bold: true, color: { argb: worker.netBalance > 0 ? "FF047857" : (worker.netBalance < 0 ? "FFDC2626" : "FF0F172A") }, size: 9 };
+        if (hasData) cell.note = { texts: [{ font: { size: 9, color: { argb: "FF0B2447" } }, text: noteNet }], margins: { insetmode: 'auto' } } as any;
       }
     });
   });
@@ -616,14 +659,7 @@ export async function generateAttendanceExcel(
   
   ledgerSheet.addRow([]);
 
-  // Collect all unique month keys across all labourers and sort them
-  const allMonthsSet = new Set<string>();
-  for (const w of sortedWorkers) {
-    if (monthlyLedger[w.id]) {
-      Object.keys(monthlyLedger[w.id]).forEach(mk => allMonthsSet.add(mk));
-    }
-  }
-  const allMonths = Array.from(allMonthsSet).sort();
+
 
   // Create Header Rows
   const headR1 = ["Labour Name", "Category"];
