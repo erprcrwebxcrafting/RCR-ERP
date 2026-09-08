@@ -9,24 +9,51 @@ import Link from "next/link";
 import { ActiveToggle } from "@/components/ui/active-toggle";
 import { toggleLabourActiveSupervisor } from "./[id]/actions";
 
-export default async function SupervisorLaboursPage({ searchParams }: { searchParams: Promise<{ showInactive?: string; q?: string }> }) {
+export default async function SupervisorLaboursPage({ searchParams }: { searchParams: Promise<{ showInactive?: string; q?: string; month?: string }> }) {
   const resolvedParams = await searchParams;
   const showInactive = resolvedParams.showInactive === "1";
   const q = resolvedParams.q || "";
+  const month = resolvedParams.month || "";
+  
   const session = await auth();
   const userId = (session?.user as any)?.id as string;
   const assigned = await prisma.siteSupervisor.findMany({ where: { supervisorId: userId }, select: { siteId: true } });
   const siteIds = assigned.map((a) => a.siteId);
 
+  let dateFilter = {};
+  if (month) {
+    const [yearStr, monthStr] = month.split('-');
+    const year = parseInt(yearStr);
+    const monthIndex = parseInt(monthStr) - 1;
+    const startDate = new Date(year, monthIndex, 1);
+    const endDate = new Date(year, monthIndex + 1, 1);
+    
+    dateFilter = {
+      createdAt: {
+        gte: startDate,
+        lt: endDate,
+      }
+    };
+  }
+
   const labours = await prisma.labour.findMany({
     where: { 
       siteId: { in: siteIds }, 
       ...(showInactive ? {} : { active: true }),
-      ...(q ? { name: { contains: q, mode: 'insensitive' } } : {})
+      ...(q ? { name: { contains: q, mode: 'insensitive' } } : {}),
+      ...dateFilter
     },
     include: { labourCategory: true },
     orderBy: { name: "asc" },
   });
+
+  const queryParams = new URLSearchParams();
+  if (q) queryParams.set("q", q);
+  if (month) queryParams.set("month", month);
+  
+  const toggleInactiveParams = new URLSearchParams(queryParams.toString());
+  if (!showInactive) toggleInactiveParams.set("showInactive", "1");
+  const toggleInactiveUrl = `/supervisor/labours${toggleInactiveParams.toString() ? `?${toggleInactiveParams.toString()}` : ""}`;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-12">
@@ -51,7 +78,7 @@ export default async function SupervisorLaboursPage({ searchParams }: { searchPa
                 <UserPlus className="h-4 w-4" /> Add Labourer
               </a>
               <Link
-                href={showInactive ? (q ? `/supervisor/labours?q=${q}` : "/supervisor/labours") : `/supervisor/labours?showInactive=1${q ? `&q=${q}` : ''}`}
+                href={toggleInactiveUrl}
                 className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold border transition-colors h-11 shrink-0 ${
                   showInactive
                     ? "bg-amber-500/20 text-amber-100 border-amber-300/30 hover:bg-amber-500/30"
@@ -72,7 +99,17 @@ export default async function SupervisorLaboursPage({ searchParams }: { searchPa
 
       {/* Filters and Search */}
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-        <form method="GET" action="/supervisor/labours" className="flex w-full sm:w-auto gap-2">
+        <form method="GET" action="/supervisor/labours" className="flex flex-col sm:flex-row w-full gap-2">
+          
+          <div className="relative sm:w-48">
+            <input
+              type="month"
+              name="month"
+              defaultValue={month}
+              className="h-10 w-full rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+            />
+          </div>
+
           <div className="relative flex-1 sm:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
@@ -84,11 +121,11 @@ export default async function SupervisorLaboursPage({ searchParams }: { searchPa
             />
             {showInactive && <input type="hidden" name="showInactive" value="1" />}
           </div>
-          <button type="submit" className="h-10 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-colors shadow-sm">
+          <button type="submit" className="h-10 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-colors shadow-sm whitespace-nowrap">
             Search
           </button>
-          {q && (
-            <Link href={showInactive ? "/supervisor/labours?showInactive=1" : "/supervisor/labours"} className="h-10 px-4 flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-sm font-bold transition-colors shadow-sm">
+          {(q || month) && (
+            <Link href={showInactive ? "/supervisor/labours?showInactive=1" : "/supervisor/labours"} className="h-10 px-4 flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-sm font-bold transition-colors shadow-sm whitespace-nowrap">
               Clear
             </Link>
           )}
