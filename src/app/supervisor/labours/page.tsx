@@ -6,14 +6,16 @@ import { HardHat, Phone, Users, IndianRupee, UserPlus, UserCheck, UserX, Search 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { ActiveToggle } from "@/components/ui/active-toggle";
+import { LabourStatusDialog } from "@/components/ui/labour-status-dialog";
 import { toggleLabourActiveSupervisor } from "./[id]/actions";
 
 export default async function SupervisorLaboursPage({ searchParams }: { searchParams: Promise<{ showInactive?: string; q?: string; month?: string }> }) {
   const resolvedParams = await searchParams;
   const showInactive = resolvedParams.showInactive === "1";
   const q = resolvedParams.q || "";
-  const month = resolvedParams.month || "";
+  const now = new Date();
+  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const month = resolvedParams.month || currentMonthStr;
   
   const session = await auth();
   const userId = (session?.user as any)?.id as string;
@@ -29,10 +31,10 @@ export default async function SupervisorLaboursPage({ searchParams }: { searchPa
     const endDate = new Date(year, monthIndex + 1, 1);
     
     dateFilter = {
-      createdAt: {
-        gte: startDate,
-        lt: endDate,
-      }
+      OR: [
+        { joiningDate: { lt: endDate } },
+        { joiningDate: null, createdAt: { lt: endDate } }
+      ]
     };
   }
 
@@ -158,7 +160,12 @@ export default async function SupervisorLaboursPage({ searchParams }: { searchPa
                         <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-xs ${colorClass} border dark:bg-slate-800 dark:border-slate-700 shadow-sm group-hover:scale-110 transition-transform`}>
                           {l.name.substring(0, 2).toUpperCase()}
                         </div>
-                        <span className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{l.name}</span>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{l.name}</span>
+                          <span className="text-xs text-slate-500 font-medium mt-0.5">
+                            Joined: {(l.joiningDate || l.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
                       </div>
                     </TD>
                     <TD className="px-6">
@@ -172,7 +179,7 @@ export default async function SupervisorLaboursPage({ searchParams }: { searchPa
                         <span className="font-bold text-slate-800 dark:text-slate-200">
                           {l.labourCategory.name === "Fitter Foreman" 
                             ? formatINR(Math.round((l.dailyWage ?? l.labourCategory.dailyWage) * 30)).replace('₹', '') + "/month"
-                            : formatINR(l.dailyWage ?? l.labourCategory.dailyWage).replace('₹', '') + "/day"}
+                            : formatINR(l.dailyWage ?? l.labourCategory.dailyWage).replace('₹', '') + "/hajri"}
                         </span>
                       </div>
                     </TD>
@@ -188,7 +195,7 @@ export default async function SupervisorLaboursPage({ searchParams }: { searchPa
                     </TD>
                     <TD className="px-6 text-center">
                       <div className="flex justify-center">
-                        <ActiveToggle id={l.id} active={l.active} entityName={l.name} onToggle={toggleLabourActiveSupervisor} size="sm" />
+                        <LabourStatusDialog id={l.id} active={l.active} entityName={l.name} onToggle={toggleLabourActiveSupervisor} size="sm" />
                       </div>
                     </TD>
                     <TD className="px-6 text-right">

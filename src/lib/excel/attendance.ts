@@ -235,8 +235,8 @@ export async function generateAttendanceExcel(
   // Columns:
   // 1: Name, 2: Category, 3: Rate
   // 4 .. (4 + dates.length - 1): Date columns
-  // After dates: Total Hajari, Total OT, Prev. Balance, Curr. Earned, Total Earned, Advance Paid, Net Balance
-  const totalCols = 3 + dates.length + 6;
+  // After dates: Total Hajari, Total OT, Prev Advance, Prev Pending, Curr Earned, Gross Payable, Total Advance Deducted, Net Balance
+  const totalCols = 3 + dates.length + 8;
   const lastColLetter = sheet.getColumn(totalCols).letter;
 
   // Row 1: Company Title
@@ -329,8 +329,8 @@ export async function generateAttendanceExcel(
     headerRow2Values.push(format(d, "dd"));  // e.g. 01, 02
   });
 
-  headerRow1Values.push("Total Hajari", "Total OT", "Prev. Balance", "Curr. Earned", "Total Earned", "Total Paid", "Net Balance");
-  headerRow2Values.push("", "", "", "", "", "", "");
+  headerRow1Values.push("Total Hajari", "Total OT", "Prev. Advance", "Prev. Pending", "Curr. Earned", "Gross Payable", "Total Adv. Deducted", "Net Balance");
+  headerRow2Values.push("", "", "", "", "", "", "", "");
 
   const headerRow1 = sheet.addRow(headerRow1Values);
   const headerRow2 = sheet.addRow(headerRow2Values);
@@ -341,7 +341,7 @@ export async function generateAttendanceExcel(
   [headerRow1, headerRow2].forEach(row => {
     row.eachCell((cell, colNum) => {
       let bgColor = "FF2563EB"; // Blue for general headers
-      if (colNum > 3 + dates.length) {
+      if (colNum > 3 + dates.length && colNum <= totalCols) {
         bgColor = "FF1E40AF"; // Darker blue for summary columns
       }
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgColor } };
@@ -362,7 +362,7 @@ export async function generateAttendanceExcel(
   sheet.mergeCells("C8:C9");
   
   // Merge summary columns across row 8 and 9
-  for (let c = totalCols - 5; c <= totalCols; c++) {
+  for (let c = totalCols - 7; c <= totalCols; c++) {
     const colLetter = sheet.getColumn(c).letter;
     sheet.mergeCells(`${colLetter}8:${colLetter}9`);
   }
@@ -455,12 +455,22 @@ export async function generateAttendanceExcel(
       }
     });
 
+    const openingBalance = worker.openingEarned - worker.openingPaid;
+    const prevAdvance = openingBalance < 0 ? Math.abs(openingBalance) : 0;
+    const prevPending = openingBalance > 0 ? openingBalance : 0;
+    const currEarned = worker.totalEarned;
+    const paidInPeriod = worker.totalPaid;
+    
+    const grossPayable = prevPending + currEarned;
+    const advanceDeducted = prevAdvance + paidInPeriod;
+
     rowValues.push(worker.totalHajari > 0 ? worker.totalHajari : 0);
     rowValues.push(worker.totalOT > 0 ? worker.totalOT : "—");
-    rowValues.push(`₹${Math.round(worker.openingEarned - worker.openingPaid).toLocaleString("en-IN")}`);
-    rowValues.push(`₹${Math.round(worker.totalEarned).toLocaleString("en-IN")}`);
-    rowValues.push(`₹${Math.round(worker.allTimeEarned).toLocaleString("en-IN")}`);
-    rowValues.push(worker.allTimePaid > 0 ? `₹${Math.round(worker.allTimePaid).toLocaleString("en-IN")}` : "₹0");
+    rowValues.push(prevAdvance > 0 ? `₹${Math.round(prevAdvance).toLocaleString("en-IN")}` : "—");
+    rowValues.push(prevPending > 0 ? `₹${Math.round(prevPending).toLocaleString("en-IN")}` : "—");
+    rowValues.push(`₹${Math.round(currEarned).toLocaleString("en-IN")}`);
+    rowValues.push(`₹${Math.round(grossPayable).toLocaleString("en-IN")}`);
+    rowValues.push(advanceDeducted > 0 ? `₹${Math.round(advanceDeducted).toLocaleString("en-IN")}` : "₹0");
     rowValues.push(`₹${Math.round(worker.netBalance).toLocaleString("en-IN")}`);
 
     const row = sheet.addRow(rowValues);
@@ -497,21 +507,23 @@ export async function generateAttendanceExcel(
       }
 
       // Summary columns styling
-      if (colNum === totalCols - 6) { // Total Hajari
+      if (colNum === totalCols - 7) { // Total Hajari
         cell.font = { bold: true, color: { argb: "FF047857" }, size: 9 };
-      } else if (colNum === totalCols - 5) { // Total OT
+      } else if (colNum === totalCols - 6) { // Total OT
         cell.font = { bold: true, color: { argb: "FF475569" }, size: 9 };
-      } else if (colNum === totalCols - 4) { // Prev Balance
-        const pb = worker.openingEarned - worker.openingPaid;
-        cell.font = { bold: true, color: { argb: pb > 0 ? "FF047857" : (pb < 0 ? "FFDC2626" : "FF0F172A") }, size: 9 };
+      } else if (colNum === totalCols - 5) { // Prev Advance
+        cell.font = { bold: true, color: { argb: "FFDC2626" }, size: 9 };
+        cell.note = notePrevBal;
+      } else if (colNum === totalCols - 4) { // Prev Pending
+        cell.font = { bold: true, color: { argb: "FF047857" }, size: 9 };
         cell.note = notePrevBal;
       } else if (colNum === totalCols - 3) { // Curr Earned
         cell.font = { bold: true, color: { argb: "FF1E3A8A" }, size: 9 };
-      } else if (colNum === totalCols - 2) { // Total Earned
-        cell.font = { bold: true, color: { argb: "FF0B2447" }, size: 9 };
+      } else if (colNum === totalCols - 2) { // Gross Payable
+        cell.font = { bold: true, color: { argb: "FF047857" }, size: 9 };
         cell.note = noteEarned;
-      } else if (colNum === totalCols - 1) { // Advance Paid
-        cell.font = { bold: true, color: { argb: worker.allTimePaid > 0 ? "FFDC2626" : "FF64748B" }, size: 9 };
+      } else if (colNum === totalCols - 1) { // Total Advance Deducted
+        cell.font = { bold: true, color: { argb: advanceDeducted > 0 ? "FFDC2626" : "FF64748B" }, size: 9 };
         cell.note = notePaid;
       } else if (colNum === totalCols) { // Net Balance
         cell.font = { bold: true, color: { argb: worker.netBalance > 0 ? "FF047857" : (worker.netBalance < 0 ? "FFDC2626" : "FF0F172A") }, size: 9 };
@@ -548,10 +560,17 @@ export async function generateAttendanceExcel(
 
   grandTotalRowValues.push(grandTotalHajari);
   grandTotalRowValues.push(grandTotalOT > 0 ? grandTotalOT : "—");
-  grandTotalRowValues.push(`₹${Math.round(grandPrevBalance).toLocaleString("en-IN")}`);
+  
+  const grandPrevAdvance = grandPrevBalance < 0 ? Math.abs(grandPrevBalance) : 0;
+  const grandPrevPending = grandPrevBalance > 0 ? grandPrevBalance : 0;
+  const grandGrossPayable = grandPrevPending + grandCurrEarned;
+  const grandAdvanceDeducted = grandPrevAdvance + grandTotalPaid;
+  
+  grandTotalRowValues.push(grandPrevAdvance > 0 ? `₹${Math.round(grandPrevAdvance).toLocaleString("en-IN")}` : "—");
+  grandTotalRowValues.push(grandPrevPending > 0 ? `₹${Math.round(grandPrevPending).toLocaleString("en-IN")}` : "—");
   grandTotalRowValues.push(`₹${Math.round(grandCurrEarned).toLocaleString("en-IN")}`);
-  grandTotalRowValues.push(`₹${Math.round(grandTotalEarned).toLocaleString("en-IN")}`);
-  grandTotalRowValues.push(`₹${Math.round(grandTotalPaid).toLocaleString("en-IN")}`);
+  grandTotalRowValues.push(`₹${Math.round(grandGrossPayable).toLocaleString("en-IN")}`);
+  grandTotalRowValues.push(`₹${Math.round(grandAdvanceDeducted).toLocaleString("en-IN")}`);
   grandTotalRowValues.push(`₹${Math.round(grandTotalBalance).toLocaleString("en-IN")}`);
 
   const totalRow = sheet.addRow(grandTotalRowValues);
@@ -573,28 +592,52 @@ export async function generateAttendanceExcel(
       cell.font = { bold: true, color: { argb: "FF0B2447" }, size: 10 };
     }
 
-    if (colNum === totalCols - 6) { // Total Hajari
+    if (colNum === totalCols - 7) { // Total Hajari
       cell.font = { bold: true, color: { argb: "FF047857" }, size: 10 };
-    } else if (colNum === totalCols - 4) { // Prev Balance
-      cell.font = { bold: true, color: { argb: grandPrevBalance > 0 ? "FF047857" : (grandPrevBalance < 0 ? "FFDC2626" : "FF0F172A") }, size: 10 };
+    } else if (colNum === totalCols - 5) { // Prev Advance
+      cell.font = { bold: true, color: { argb: "FFDC2626" }, size: 10 };
+    } else if (colNum === totalCols - 4) { // Prev Pending
+      cell.font = { bold: true, color: { argb: "FF047857" }, size: 10 };
     } else if (colNum === totalCols - 3) { // Curr Earned
       cell.font = { bold: true, color: { argb: "FF1E3A8A" }, size: 10 };
-    } else if (colNum === totalCols - 2) { // Total Earned
-      cell.font = { bold: true, color: { argb: "FF0B2447" }, size: 10 };
-    } else if (colNum === totalCols - 1) { // Advance Paid
+    } else if (colNum === totalCols - 2) { // Gross Payable
+      cell.font = { bold: true, color: { argb: "FF047857" }, size: 10 };
+    } else if (colNum === totalCols - 1) { // Advance Deducted
       cell.font = { bold: true, color: { argb: "FFDC2626" }, size: 10 };
     } else if (colNum === totalCols) { // Net Balance
       cell.font = { bold: true, color: { argb: grandTotalBalance > 0 ? "FF047857" : (grandTotalBalance < 0 ? "FFDC2626" : "FF0F172A") }, size: 10.5 };
     }
   });
 
-  // Footer Legend
-  const legendRowIdx = totalRow.number + 2;
-  sheet.mergeCells(`A${legendRowIdx}:${lastColLetter}${legendRowIdx}`);
-  const legendCell = sheet.getCell(`A${legendRowIdx}`);
-  legendCell.value = `Legend: Green numbers indicate Hajari attendance (1 = Full Day, 0.5 = Half Day) | Red numbers below date indicate Advance / Payment taken (e.g. ₹500) | A = Absent | Net Balance = Gross Wages Earned - Total Advance Paid`;
-  legendCell.font = { size: 8.5, italic: true, color: { argb: "FF64748B" } };
-  legendCell.alignment = { horizontal: "left", vertical: "middle" };
+  // Footer Legend and Detailed Explanation Note
+  let legendRowIdx = totalRow.number + 2;
+  
+  const explanations = [
+    "REPORT CALCULATION EXPLANATION (20 to 20 Payment Cycle):",
+    "1. Hajari (Attendance): Is sheet mein dikh rahi Date Range (e.g., 1 to 31) ke dauran ki gayi hajari hi calculate hoti hai.",
+    "2. Payments (Advance Deducted): Payments hamesha 21 tareekh se lekar agle mahine ki 20 tareekh tak jodi jati hain. Is report me dikh rahi total advance deduction usi settlement cycle ki hai.",
+    "3. First Month Rule: Agar yeh site ka pehla mahina hai, toh payments site start date se lekar agle mahine ki 20 tareekh tak jodi jati hain.",
+    "4. Pichla Hisaab (Prev. Advance/Pending): Is calculation cycle se pehle ka jitna bhi balance hai, wo automatically pichle mahine ke 'Prev Pending' ya 'Prev Advance' me shamil ho jata hai.",
+    "5. Final Formula: Net Balance = (Pichla Pending + Is mahine ki kamayi) - (Pichla Advance + Is mahine ki payment).",
+    "",
+    "Legend: Green = Hajari (1 = Full, 0.5 = Half) | Red = Payment / Advance | A = Absent"
+  ];
+
+  explanations.forEach((text, idx) => {
+    sheet.mergeCells(`A${legendRowIdx + idx}:${lastColLetter}${legendRowIdx + idx}`);
+    const cell = sheet.getCell(`A${legendRowIdx + idx}`);
+    cell.value = text;
+    cell.font = { 
+      size: idx === 0 ? 9 : 8.5, 
+      bold: idx === 0,
+      italic: idx > 0, 
+      color: { argb: idx === 0 ? "FF0F172A" : "FF475569" } 
+    };
+    cell.alignment = { horizontal: "left", vertical: "middle" };
+    sheet.getRow(legendRowIdx + idx).height = 16;
+  });
+
+  legendRowIdx += explanations.length;
 
   // Auto-fit Column Widths based on content
   sheet.columns.forEach((column, colIdx) => {
@@ -606,11 +649,13 @@ export async function generateAttendanceExcel(
     if (colNum === 1) minWidth = 18; // Labour Name
     else if (colNum === 2) minWidth = 14; // Category
     else if (colNum === 3) minWidth = 10; // Rate
-    else if (colNum === totalCols - 5) minWidth = 12; // Total Hajari
-    else if (colNum === totalCols - 4) minWidth = 10; // Total OT
+    else if (colNum === totalCols - 7) minWidth = 12; // Total Hajari
+    else if (colNum === totalCols - 6) minWidth = 10; // Total OT
+    else if (colNum === totalCols - 5) minWidth = 14; // Prev Advance
+    else if (colNum === totalCols - 4) minWidth = 14; // Prev Pending
     else if (colNum === totalCols - 3) minWidth = 14; // Curr Earned
-    else if (colNum === totalCols - 2) minWidth = 14; // Total Earned
-    else if (colNum === totalCols - 1) minWidth = 14; // Advance Paid
+    else if (colNum === totalCols - 2) minWidth = 14; // Gross Payable
+    else if (colNum === totalCols - 1) minWidth = 16; // Advance Deducted
     else if (colNum === totalCols) minWidth = 15; // Net Balance
 
     // Calculate maximum content length in this column

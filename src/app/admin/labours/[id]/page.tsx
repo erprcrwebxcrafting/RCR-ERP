@@ -12,7 +12,7 @@ import { ArrowLeft, User, Phone, Calendar, CreditCard, Building, WalletCards, Hi
 import { LabourForm } from "../labour-form";
 import { LabourCalendar } from "./labour-calendar";
 import { Pagination } from "@/components/ui/pagination";
-import { ActiveToggle } from "@/components/ui/active-toggle";
+import { LabourStatusDialog } from "@/components/ui/labour-status-dialog";
 import { AadharUpload } from "@/components/ui/aadhar-upload";
 import { toggleLabourActive } from "@/app/admin/labours/actions";
 import { PaymentSlipAction } from "@/components/ui/payment-slip-actions";
@@ -36,6 +36,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
       payments: { orderBy: { date: "desc" } },
       transferHistory: { include: { fromSite: true, toSite: true }, orderBy: { transferDate: "desc" } },
       wageHistory: { orderBy: { effectiveDate: "desc" } },
+      statusHistory: { orderBy: { effectiveDate: "desc" } },
     } as any,
   });
 
@@ -129,7 +130,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
                 {labour.active ? "Active" : "Inactive"}
               </Badge>
               <div className="ml-1">
-                <ActiveToggle id={labour.id} active={labour.active} entityName={labour.name} onToggle={toggleLabourActive} />
+                <LabourStatusDialog id={labour.id} active={labour.active} entityName={labour.name} onToggle={toggleLabourActive} />
               </div>
             </div>
             <p className="text-slate-500 dark:text-slate-400 mt-2.5 font-medium flex items-center gap-2 text-xs sm:text-sm">

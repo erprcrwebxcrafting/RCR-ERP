@@ -32,16 +32,51 @@ export async function GET(request: NextRequest) {
     endDate.setHours(23, 59, 59, 999);
 
     let siteName = "Unknown Site";
+    let filterSiteId = siteId;
     
     if (labourId) {
       const labour = await prisma.labour.findUnique({ where: { id: labourId }, include: { site: true } });
       if (!labour) return new NextResponse("Labour not found", { status: 404 });
       siteName = labour.site.projectName;
+      filterSiteId = labour.siteId;
     } else if (siteId) {
       const site = await prisma.site.findUnique({ where: { id: siteId } });
       if (!site) return new NextResponse("Site not found", { status: 404 });
       siteName = site.projectName;
     }
+
+    // --- DETERMINE 20-to-20 PAYMENT CYCLE BOUNDARIES ---
+    let isFirstMonth = false;
+    let payStart: Date;
+    let payEnd: Date;
+
+    if (filterSiteId) {
+       // Find the first attendance record for this site to determine if it's the first month
+       const firstAtt = await prisma.attendance.findFirst({
+         where: { siteId: filterSiteId },
+         orderBy: { date: "asc" }
+       });
+       
+       if (firstAtt) {
+         if (firstAtt.date.getFullYear() === startDate.getFullYear() && firstAtt.date.getMonth() === startDate.getMonth()) {
+           isFirstMonth = true;
+         }
+       } else {
+         isFirstMonth = true; // No attendance yet, treat as first month
+       }
+    }
+
+    if (isFirstMonth) {
+      // First month: Start from 1st of the month to capture initial payments/advances
+      payStart = new Date(startDate.getFullYear(), startDate.getMonth(), 1, 0, 0, 0, 0); 
+    } else {
+      // Normal month: Payment cycle starts on 21st of the CURRENT month
+      payStart = new Date(startDate.getFullYear(), startDate.getMonth(), 21, 0, 0, 0, 0);
+    }
+    
+    // Pay End is always 20th of the month AFTER the endDate's month
+    payEnd = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 20, 23, 59, 59, 999);
+
 
     const whereClause: any = {
       date: {
@@ -87,11 +122,11 @@ export async function GET(request: NextRequest) {
     }
     const allLabourIds = Array.from(labourIdSet);
 
-    // Fetch payments in this period for these labours
+    // Fetch payments in this rolling cycle period for these labours
     const payments = await prisma.labourPayment.findMany({
       where: {
         labourId: { in: allLabourIds },
-        date: { gte: startDate, lte: endDate },
+        date: { gte: payStart, lte: payEnd },
       },
       orderBy: { date: "asc" },
     });
@@ -126,7 +161,7 @@ export async function GET(request: NextRequest) {
       prisma.labourPayment.findMany({
         where: {
           labourId: { in: allLabourIds },
-          date: { lt: startDate }
+          date: { lt: payStart } // Previous payments are strictly before the 20-to-20 payment start
         },
         select: {
           id: true,
@@ -167,14 +202,8 @@ export async function GET(request: NextRequest) {
       if (pp.date) addLedgerEntry(pp.labourId, pp.date, 0, 0, pp.amount);
     }
 
-    // Fetch payments made AFTER the endDate up to today
-    const postPayments = await prisma.labourPayment.findMany({
-      where: {
-        labourId: { in: allLabourIds },
-        date: { gt: endDate },
-      },
-      orderBy: { date: "asc" },
-    });
+    // Fetch payments made AFTER the endDate up to today (REMOVED to maintain historical ledger accuracy)
+    const postPayments: any[] = [];
 
     // --- SUPERVISOR INTEGRATION ---
     // Fetch all supervisors assigned to this site (if filtering by site)
@@ -192,15 +221,13 @@ export async function GET(request: NextRequest) {
           include: { supervisor: true }
         });
         
-        // Fetch Supervisor Payments in this period
+        // Fetch Supervisor Payments in this rolling cycle period
         const supPayments = await prisma.supervisorPayment.findMany({
-          where: { supervisorId: { in: supervisorUserIds }, date: { gte: startDate, lte: endDate } }
+          where: { supervisorId: { in: supervisorUserIds }, date: { gte: payStart, lte: payEnd } }
         });
 
-        // Fetch Supervisor Payments AFTER this period
-        const postSupPayments = await prisma.supervisorPayment.findMany({
-          where: { supervisorId: { in: supervisorUserIds }, date: { gt: endDate } }
-        });
+        // Fetch Supervisor Payments AFTER this period (REMOVED)
+        const postSupPayments: any[] = [];
 
         // Fetch prior balances for Supervisors
         const [prevSupAtt, prevSupPay] = await Promise.all([
@@ -208,7 +235,7 @@ export async function GET(request: NextRequest) {
             where: { supervisorId: { in: supervisorUserIds }, date: { lt: startDate } }
           }),
           prisma.supervisorPayment.findMany({
-            where: { supervisorId: { in: supervisorUserIds }, date: { lt: startDate } }
+            where: { supervisorId: { in: supervisorUserIds }, date: { lt: payStart } } // Before 20-to-20 payment start
           })
         ]);
 

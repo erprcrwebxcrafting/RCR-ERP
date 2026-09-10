@@ -60,7 +60,7 @@ export async function markSupervisorAttendanceAction(
 
   const supervisor = await prisma.user.findUnique({
     where: { id: supervisorId },
-    select: { monthlySalary: true, name: true, dateOfJoining: true, createdAt: true },
+    select: { monthlySalary: true, name: true, dateOfJoining: true, createdAt: true, active: true },
   });
 
   if (!supervisor) return;
@@ -82,6 +82,22 @@ export async function markSupervisorAttendanceAction(
   joiningDate.setHours(0, 0, 0, 0);
   if (targetDate.getTime() < joiningDate.getTime()) {
     return { error: `Cannot mark attendance for ${supervisor.name} before their joining date (${joiningDate.toLocaleDateString()}).` };
+  }
+
+  // Status History Validation
+  // @ts-ignore: Prisma client cache issue in IDE
+  const lastStatus = await prisma.supervisorStatusHistory.findFirst({
+    where: {
+      supervisorId,
+      effectiveDate: { lte: targetDate }
+    },
+    orderBy: { effectiveDate: 'desc' }
+  });
+
+  if (lastStatus && lastStatus.status === "INACTIVE") {
+    return { error: `Cannot mark attendance for ${supervisor.name}. They were marked as INACTIVE on ${lastStatus.effectiveDate.toLocaleDateString()} (Reason: ${lastStatus.reason || 'None provided'}).` };
+  } else if (!lastStatus && !supervisor.active) {
+    return { error: `Cannot mark attendance for ${supervisor.name} as they are currently inactive.` };
   }
 
   const yesterday = new Date(today);

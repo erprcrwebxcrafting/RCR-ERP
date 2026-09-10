@@ -3,11 +3,17 @@ import { SupervisorAttendanceHub } from "./supervisor-attendance-hub";
 
 export const dynamic = "force-dynamic";
 
-export default async function SupervisorAttendanceHubPage() {
-  // ✅ Only load current month's attendance — NOT all 63,000+ historical records
+export default async function SupervisorAttendanceHubPage({ searchParams }: { searchParams: Promise<{ month?: string; year?: string }> }) {
+  const resolvedParams = await searchParams;
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+  // Parse month/year from URL, default to current month
+  const selectedMonth = resolvedParams.month ? parseInt(resolvedParams.month) : now.getMonth();
+  const selectedYear = resolvedParams.year ? parseInt(resolvedParams.year) : now.getFullYear();
+
+  // ✅ Load data for the selected month (or current month if none selected)
+  const monthStart = new Date(selectedYear, selectedMonth, 1);
+  const monthEnd = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999);
 
   const [supervisors, allSites, attendances] = await Promise.all([
     prisma.user.findMany({

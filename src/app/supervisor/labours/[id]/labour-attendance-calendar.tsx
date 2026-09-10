@@ -34,6 +34,8 @@ type Props = {
     name: string;
     dailyWage: number;
     isForeman?: boolean;
+    active?: boolean;
+    statusHistory?: any[];
   };
   initialAttendances: AttendanceRecord[];
 };
@@ -65,6 +67,27 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
     const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
     attendanceMap.set(key, att);
   });
+
+  const isInactiveOnDate = (dateStr: string) => {
+    const target = new Date(dateStr);
+    target.setHours(0, 0, 0, 0);
+    const targetTime = target.getTime();
+
+    const historyArray = (labour.statusHistory || []).map((h: any) => ({
+      status: h.status,
+      time: new Date(h.effectiveDate).setHours(0, 0, 0, 0),
+      createdAt: new Date(h.createdAt || 0).getTime(),
+      reason: h.reason
+    })).sort((a: any, b: any) => {
+      if (b.time !== a.time) return b.time - a.time;
+      return b.createdAt - a.createdAt;
+    });
+
+    const lastStatus = historyArray.find((h: any) => h.time <= targetTime);
+    if (lastStatus && lastStatus.status === "INACTIVE") return { inactive: true, reason: lastStatus.reason };
+    if (!lastStatus && labour.active === false) return { inactive: true, reason: null };
+    return { inactive: false, reason: null };
+  };
 
   let monthHajariCount = 0;
   let monthAbsentCount = 0;
@@ -243,16 +266,18 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
               }
               const now = new Date();
               const isFuture = new Date(year, month, day).getTime() > new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+              const { inactive: isInactive, reason: inactiveReason } = isInactiveOnDate(dateStr);
 
               let cardBg = "bg-white dark:bg-slate-900 hover:border-blue-400";
-              if (att && att.hajari > 0) cardBg = "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/70 shadow-sm";
+              if (isInactive) cardBg = "bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-60 grayscale";
+              else if (att && att.hajari > 0) cardBg = "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/70 shadow-sm";
               else if (att && att.hajari === 0) cardBg = "bg-rose-50/60 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800/70 shadow-sm";
 
               return (
                 <div key={day} className={`group relative min-h-[90px] sm:min-h-[110px] p-1.5 sm:p-2 md:p-2.5 rounded-xl border transition-all flex flex-col justify-between ${cardBg} ${isToday ? "ring-2 ring-blue-500 ring-offset-1" : ""} ${isFuture ? "opacity-50" : ""}`}>
                   <div className="flex items-start justify-between">
                     <span className={`inline-flex items-center justify-center h-6 w-6 rounded-lg text-xs font-bold ${isToday ? "bg-blue-600 text-white shadow-sm" : "text-slate-700 dark:text-slate-300"}`}>{day}</span>
-                    {att && (
+                    {att && !isInactive && (
                       <div className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md w-fit ${att.hajari > 0 ? "text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-900/50" : "text-rose-700 dark:text-rose-300 bg-rose-100/80 dark:bg-rose-900/50"}`}>
                         {att.hajari > 0 ? `${att.hajari} Hajari` : "Absent"}
                       </div>
@@ -260,7 +285,13 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
                   </div>
 
                   <div className="my-1">
-                    {att ? (
+                    {isInactive ? (
+                      <div className="flex flex-col items-center justify-center h-full opacity-50 pt-1 sm:pt-2">
+                        <XCircle className="h-5 w-5 sm:h-6 sm:w-6 text-slate-400 mb-1" />
+                        <span className="text-[10px] font-bold text-slate-500">Inactive</span>
+                        {inactiveReason && <span className="text-[9px] font-medium text-slate-500 max-w-full text-center truncate px-1 mt-0.5" title={inactiveReason}>{inactiveReason}</span>}
+                      </div>
+                    ) : att ? (
                       <div className="text-left">
                         <div className="text-[11px] sm:text-xs font-black tracking-tight text-slate-800 dark:text-slate-100">
                           ₹{(att.hajari * att.hajariRate).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
@@ -272,7 +303,7 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
                     )}
                   </div>
 
-                  {!isFuture && (
+                  {!isFuture && !isInactive && (
                     <div className="pt-1 border-t border-slate-100 dark:border-slate-800/60 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity mt-auto">
                       {isLocked ? (
                         <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-500/10 py-1 rounded">

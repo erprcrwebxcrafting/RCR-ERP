@@ -310,10 +310,26 @@ export async function updateSupervisor(id: string, formData: FormData) {
   revalidatePath("/admin/sites");
 }
 
-export async function toggleSupervisorActive(id: string, active: boolean) {
+export async function toggleSupervisorActive(id: string, active: boolean, effectiveDateStr?: string, reason?: string) {
   const session = await auth();
   if ((session?.user as any)?.role !== "ADMIN") throw new Error("Unauthorized");
-  await prisma.user.update({ where: { id, role: "SUPERVISOR" }, data: { active } });
+  
+  const effectiveDate = effectiveDateStr ? new Date(effectiveDateStr) : new Date();
+  effectiveDate.setHours(0, 0, 0, 0);
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id, role: "SUPERVISOR" }, data: { active } }),
+    // @ts-ignore: Prisma client cache issue in IDE
+    prisma.supervisorStatusHistory.create({
+      data: {
+        supervisorId: id,
+        status: active ? "ACTIVE" : "INACTIVE",
+        effectiveDate,
+        reason: active ? null : reason,
+      }
+    })
+  ]);
+
   revalidatePath("/admin/supervisors");
   revalidatePath(`/admin/supervisors/${id}`);
 }

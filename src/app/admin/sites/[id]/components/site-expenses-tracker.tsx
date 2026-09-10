@@ -19,10 +19,20 @@ export function SiteExpensesTracker({ site }: { site: any }) {
 
   // Date Filter State
   const now = new Date();
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const [startDateStr, setStartDateStr] = useState(firstDay.toISOString().split('T')[0]);
-  const [endDateStr, setEndDateStr] = useState(lastDay.toISOString().split('T')[0]);
+  
+  // Use site's creation date or start date as the default "From" date
+  let defaultStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  if (site.startDate) {
+    defaultStartDate = new Date(site.startDate);
+  } else if (site.createdAt) {
+    defaultStartDate = new Date(site.createdAt);
+  }
+  
+  // Set default "To" date to today
+  const defaultEndDate = new Date();
+  
+  const [startDateStr, setStartDateStr] = useState(defaultStartDate.toISOString().split('T')[0]);
+  const [endDateStr, setEndDateStr] = useState(defaultEndDate.toISOString().split('T')[0]);
   
   const startDate = new Date(startDateStr);
   const endDate = new Date(endDateStr);
@@ -31,6 +41,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
   // 1. Revenue Calculations (RA Bills)
   const bills = (site.bills || []).filter((b: any) => new Date(b.createdAt) >= startDate && new Date(b.createdAt) <= endDate);
   let totalRevenue = 0;
+  let totalGstExpense = 0;
   const billSummaries = bills.map((b: any) => {
     const gross = (b.lines || []).reduce((s: number, l: any) => s + (l.currentAmount || 0), 0);
     const retPct = b.retentionPct ?? site.retentionPct ?? 2;
@@ -45,6 +56,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
 
     const invoiceAmount = gross + gstAmt; // Actual invoice value
     totalRevenue += invoiceAmount;
+    totalGstExpense += gstAmt;
 
     return {
       id: b.id,
@@ -124,7 +136,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
   const supplyLabourTotal = supplyEntries.reduce((sum: number, entry: any) => sum + (entry.totalAmount || 0), 0);
 
   // Totals
-  const totalExpenses = manualExpensesTotal + labourPaymentsTotal + supplyLabourTotal;
+  const totalExpenses = manualExpensesTotal + labourPaymentsTotal + supplyLabourTotal + totalGstExpense;
   const netProfit = totalRevenue - totalExpenses;
 
   const dateRangeStr = startDate.getMonth() === endDate.getMonth()
@@ -481,7 +493,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatINR(totalExpenses)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Labours + Supply + Manual</p>
+            <p className="text-xs text-muted-foreground mt-1">Labours + Supply + Manual + GST</p>
           </CardContent>
         </Card>
 

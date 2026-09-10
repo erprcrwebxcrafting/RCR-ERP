@@ -5,8 +5,8 @@ import { LabourAttendanceCalendar } from "./labour-attendance-calendar";
 import Link from "next/link";
 import { ArrowLeft, User, Phone, MapPin, HardHat, CalendarDays, IndianRupee } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { ActiveToggle } from "@/components/ui/active-toggle";
 import { AadharUpload } from "@/components/ui/aadhar-upload";
+import { LabourStatusDialog } from "@/components/ui/labour-status-dialog";
 import { toggleLabourActiveSupervisor } from "./actions";
 
 export default async function SupervisorLabourDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -29,6 +29,7 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
       site: true,
       labourCategory: true,
       attendances: { orderBy: { date: "desc" }, take: 60 },
+      statusHistory: { orderBy: { effectiveDate: "desc" } },
     },
   });
 
@@ -65,7 +66,7 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
               {labour.name}
             </h1>
             <div className="flex items-center gap-2">
-              <ActiveToggle id={labour.id} active={labour.active} entityName={labour.name} onToggle={toggleLabourActiveSupervisor} />
+              <LabourStatusDialog id={labour.id} active={labour.active} entityName={labour.name} onToggle={toggleLabourActiveSupervisor} />
               {!labour.active && (
                 <Badge variant="secondary" className="bg-rose-500/20 text-rose-100 border border-rose-400/30 font-bold backdrop-blur-md px-2.5 py-0.5">
                   Inactive
@@ -146,10 +147,38 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
           </div>
         </div>
 
+        {/* Status History Section */}
+        {labour.statusHistory && labour.statusHistory.length > 0 && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
+            <h3 className="text-lg font-bold mb-4 text-slate-800 dark:text-slate-200">Status History</h3>
+            <div className="space-y-4">
+              {labour.statusHistory.map((history: any) => (
+                <div key={history.id} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="outline" className={history.status === "ACTIVE" ? "text-emerald-600 border-emerald-200" : "text-rose-600 border-rose-200"}>
+                        {history.status}
+                      </Badge>
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        Effective: {new Date(history.effectiveDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {history.reason && (
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                        <span className="font-medium text-slate-600 dark:text-slate-300">Reason:</span> {history.reason}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Main Content: Attendance Calendar */}
         <div className="w-full">
           <LabourAttendanceCalendar 
-            labour={{ id: labour.id, name: labour.name, dailyWage, isForeman }} 
+            labour={{ id: labour.id, name: labour.name, dailyWage, isForeman, active: labour.active, statusHistory: labour.statusHistory }} 
             initialAttendances={formattedAttendances} 
           />
         </div>

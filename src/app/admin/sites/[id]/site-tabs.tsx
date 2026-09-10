@@ -138,6 +138,7 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
               <p><span className="font-semibold">Address:</span> {site.address || "No address provided."}</p>
               <p><span className="font-semibold">GST No:</span> {site.gstNo || "—"}</p>
               <p><span className="font-semibold">Work Order No:</span> {site.workOrderNo || "—"}</p>
+              <p><span className="font-semibold">Site Start Date:</span> {site.startDate ? formatDate(new Date(site.startDate)).split(' ')[0] : <span className="text-muted-foreground italic text-xs">Auto-detected (Set manually to override)</span>}</p>
               
               {isEditingTaxes ? (
                 <form 
@@ -394,6 +395,11 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block">Work Order No.</label>
                 <Input name="workOrderNo" defaultValue={site.workOrderNo || ""} placeholder="WO/2026/001" />
               </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Site Start Date (Optional)</label>
+              <Input type="date" name="startDate" defaultValue={site.startDate ? new Date(site.startDate).toISOString().split('T')[0] : ""} />
+              <p className="text-[10px] text-muted-foreground mt-1">Leave empty to auto-detect from the first attendance or expense.</p>
             </div>
             <DialogFooter className="pt-4">
               <DialogClose asChild>

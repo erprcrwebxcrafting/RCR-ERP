@@ -34,6 +34,7 @@ model User {
   supervisorPayments    SupervisorPayment[]         @relation("SupervisorPayments")
   supervisorTransfers   SupervisorTransferHistory[]
   wageHistory           SupervisorWageHistory[]
+  statusHistory         SupervisorStatusHistory[]
 }
 
 model Client {
@@ -189,11 +190,25 @@ model Labour {
   payments         LabourPayment[]
   transferHistory  LabourTransferHistory[]
   wageHistory      LabourWageHistory[]
+  statusHistory    LabourStatusHistory[]
 
   @@index([siteId])
   @@index([labourCategoryId])
   @@index([supervisorId])
   @@index([active])
+}
+
+model LabourStatusHistory {
+  id            String   @id @default(cuid())
+  labourId      String
+  status        String   // "ACTIVE" or "INACTIVE"
+  effectiveDate DateTime
+  reason        String?
+  createdAt     DateTime @default(now())
+  labour        Labour   @relation(fields: [labourId], references: [id], onDelete: Cascade)
+
+  @@index([labourId])
+  @@index([effectiveDate])
 }
 
 model LabourPayment {
@@ -497,6 +512,19 @@ model SupervisorWageHistory {
   effectiveDate  DateTime
   createdAt      DateTime @default(now())
   supervisor     User     @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+
+  @@index([supervisorId])
+  @@index([effectiveDate])
+}
+
+model SupervisorStatusHistory {
+  id            String   @id @default(cuid())
+  supervisorId  String
+  status        String   // "ACTIVE" or "INACTIVE"
+  effectiveDate DateTime
+  reason        String?
+  createdAt     DateTime @default(now())
+  supervisor    User     @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
 
   @@index([supervisorId])
   @@index([effectiveDate])
