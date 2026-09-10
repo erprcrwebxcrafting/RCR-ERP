@@ -57,11 +57,12 @@ export async function saveSupervisorLabour(formData: FormData) {
     where: {
       aadharNumber: cleanedAadhar,
       ...(parsed.id ? { id: { not: parsed.id } } : {})
-    }
+    },
+    include: { site: true }
   });
 
   if (existingLabour) {
-    throw new Error(`Aadhar number already exists for another labourer (${existingLabour.name}).`);
+    throw new Error(`Aadhar number already exists for another labourer (${existingLabour.name}) who is assigned to site: "${existingLabour.site.projectName}".`);
   }
 
   parsed.aadharNumber = cleanedAadhar;

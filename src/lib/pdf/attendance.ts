@@ -323,17 +323,18 @@ export async function generateAttendancePdf(
 
   y = kpiBoxY - 14;
 
-  const nameWidth = 76;
-  const categoryWidth = 46;
-  const rateWidth = 26;
-  const hajariWidth = 22;
-  const pBalWidth = 32;
-  const curEarnWidth = 36;
-  const totEarnWidth = 42;
-  const totPaidWidth = 42;
-  const balanceWidth = 44;
+  const nameWidth = 74;
+  const categoryWidth = 42;
+  const rateWidth = 24;
+  const hajariWidth = 20;
+  const pAdvWidth = 30;
+  const pPenWidth = 30;
+  const curEarnWidth = 32;
+  const grossPayWidth = 36;
+  const advDedWidth = 38;
+  const balanceWidth = 40;
 
-  const fixedWidths = nameWidth + categoryWidth + rateWidth + hajariWidth + pBalWidth + curEarnWidth + totEarnWidth + totPaidWidth + balanceWidth;
+  const fixedWidths = nameWidth + categoryWidth + rateWidth + hajariWidth + pAdvWidth + pPenWidth + curEarnWidth + grossPayWidth + advDedWidth + balanceWidth;
   const availableForDates = usableWidth - fixedWidths;
   const dayColWidth = dates.length > 0 ? Math.min(22, availableForDates / dates.length) : 20;
 
@@ -348,11 +349,12 @@ export async function generateAttendancePdf(
   });
 
   cols.push({ name: "T.Haj", w: hajariWidth, align: "center" });
-  cols.push({ name: "P.Bal", w: pBalWidth, align: "right" });
-  cols.push({ name: "C.Earn", w: curEarnWidth, align: "right" });
-  cols.push({ name: "T.Earn", w: totEarnWidth, align: "right" });
-  cols.push({ name: "T.Paid", w: totPaidWidth, align: "right" });
-  cols.push({ name: "Net Bal", w: balanceWidth, align: "right" });
+  cols.push({ name: "P.Adv", w: pAdvWidth, align: "right" });
+  cols.push({ name: "P.Pen", w: pPenWidth, align: "right" });
+  cols.push({ name: "C.Ern", w: curEarnWidth, align: "right" });
+  cols.push({ name: "G.Pay", w: grossPayWidth, align: "right" });
+  cols.push({ name: "T.Ded", w: advDedWidth, align: "right" });
+  cols.push({ name: "N.Bal", w: balanceWidth, align: "right" });
 
   const colX: number[] = [MARGIN];
   for (let i = 0; i < cols.length; i++) {
@@ -561,19 +563,39 @@ export async function generateAttendancePdf(
       color: green
     });
 
-    // Prev Balance
-    const pbText = `${Math.round(worker.openingEarned - worker.openingPaid)}`;
-    const pbW = bold.widthOfTextAtSize(pbText, 7);
-    page.drawText(pbText, {
-      x: colX[5 + dates.length] - pbW - 3,
+    const openingBalance = worker.openingEarned - worker.openingPaid;
+    const prevAdvance = openingBalance < 0 ? Math.abs(openingBalance) : 0;
+    const prevPending = openingBalance > 0 ? openingBalance : 0;
+    const currEarned = worker.totalEarned;
+    const paidInPeriod = worker.totalPaid;
+    
+    const grossPayable = prevPending + currEarned;
+    const advanceDeducted = prevAdvance + paidInPeriod;
+
+    // Prev Advance
+    const pAdvText = prevAdvance > 0 ? `${Math.round(prevAdvance)}` : "—";
+    const pAdvW = bold.widthOfTextAtSize(pAdvText, 7);
+    page.drawText(pAdvText, {
+      x: colX[4 + dates.length] - pAdvW - 3,
       y: y - 11,
       size: 7,
       font: bold,
-      color: (worker.openingEarned - worker.openingPaid) > 0 ? green : ((worker.openingEarned - worker.openingPaid) < 0 ? red : darkGray)
+      color: prevAdvance > 0 ? red : darkGray
+    });
+
+    // Prev Pending
+    const pPenText = prevPending > 0 ? `${Math.round(prevPending)}` : "—";
+    const pPenW = bold.widthOfTextAtSize(pPenText, 7);
+    page.drawText(pPenText, {
+      x: colX[5 + dates.length] - pPenW - 3,
+      y: y - 11,
+      size: 7,
+      font: bold,
+      color: prevPending > 0 ? green : darkGray
     });
 
     // Curr Earned
-    const curEarnText = `${Math.round(worker.totalEarned)}`;
+    const curEarnText = `${Math.round(currEarned)}`;
     const curEarnW = bold.widthOfTextAtSize(curEarnText, 7);
     page.drawText(curEarnText, {
       x: colX[6 + dates.length] - curEarnW - 3,
@@ -583,26 +605,26 @@ export async function generateAttendancePdf(
       color: primary
     });
 
-    // Total Earned (All Time)
-    const totEarnText = `${Math.round(worker.allTimeEarned)}`;
-    const totEarnW = bold.widthOfTextAtSize(totEarnText, 7);
-    page.drawText(totEarnText, {
-      x: colX[7 + dates.length] - totEarnW - 3,
+    // Gross Payable
+    const grossPayText = `${Math.round(grossPayable)}`;
+    const grossPayW = bold.widthOfTextAtSize(grossPayText, 7);
+    page.drawText(grossPayText, {
+      x: colX[7 + dates.length] - grossPayW - 3,
       y: y - 11,
       size: 7,
       font: bold,
       color: navy
     });
 
-    // Total Paid (All Time)
-    const paidText = worker.allTimePaid > 0 ? `${Math.round(worker.allTimePaid)}` : "0";
+    // Total Advance Deducted
+    const paidText = advanceDeducted > 0 ? `${Math.round(advanceDeducted)}` : "0";
     const paidW = bold.widthOfTextAtSize(paidText, 7);
     page.drawText(paidText, {
       x: colX[8 + dates.length] - paidW - 3,
       y: y - 11,
       size: 7,
       font: bold,
-      color: worker.allTimePaid > 0 ? red : darkGray
+      color: advanceDeducted > 0 ? red : darkGray
     });
 
     // Net Balance
@@ -695,15 +717,31 @@ export async function generateAttendancePdf(
   let grandPrevBalance = 0;
   sortedWorkers.forEach(w => grandPrevBalance += (w.openingEarned - w.openingPaid));
 
-  // Grand Prev Balance
-  const gPbText = `${Math.round(grandPrevBalance).toLocaleString("en-IN")}`;
-  const gPbW = bold.widthOfTextAtSize(gPbText, 7);
-  page.drawText(gPbText, {
-    x: colX[5 + dates.length] - gPbW - 3,
+  const grandPrevAdvance = grandPrevBalance < 0 ? Math.abs(grandPrevBalance) : 0;
+  const grandPrevPending = grandPrevBalance > 0 ? grandPrevBalance : 0;
+  const grandGrossPayable = grandPrevPending + grandCurrEarned;
+  const grandAdvanceDeducted = grandPrevAdvance + grandTotalPaid;
+
+  // Grand Prev Advance
+  const gPAdvText = grandPrevAdvance > 0 ? `${Math.round(grandPrevAdvance).toLocaleString("en-IN")}` : "—";
+  const gPAdvW = bold.widthOfTextAtSize(gPAdvText, 7);
+  page.drawText(gPAdvText, {
+    x: colX[4 + dates.length] - gPAdvW - 3,
     y: y - 13,
     size: 7,
     font: bold,
-    color: grandPrevBalance > 0 ? green : (grandPrevBalance < 0 ? red : darkGray)
+    color: grandPrevAdvance > 0 ? red : darkGray
+  });
+
+  // Grand Prev Pending
+  const gPPenText = grandPrevPending > 0 ? `${Math.round(grandPrevPending).toLocaleString("en-IN")}` : "—";
+  const gPPenW = bold.widthOfTextAtSize(gPPenText, 7);
+  page.drawText(gPPenText, {
+    x: colX[5 + dates.length] - gPPenW - 3,
+    y: y - 13,
+    size: 7,
+    font: bold,
+    color: grandPrevPending > 0 ? green : darkGray
   });
 
   // Grand Curr Earned
@@ -717,19 +755,19 @@ export async function generateAttendancePdf(
     color: primary
   });
 
-  // Grand Total Earned
-  const gEarnText = `${Math.round(grandTotalEarned).toLocaleString("en-IN")}`;
-  const gEarnW = bold.widthOfTextAtSize(gEarnText, 7);
-  page.drawText(gEarnText, {
-    x: colX[7 + dates.length] - gEarnW - 3,
+  // Grand Gross Payable
+  const gGrossPayText = `${Math.round(grandGrossPayable).toLocaleString("en-IN")}`;
+  const gGrossPayW = bold.widthOfTextAtSize(gGrossPayText, 7);
+  page.drawText(gGrossPayText, {
+    x: colX[7 + dates.length] - gGrossPayW - 3,
     y: y - 13,
     size: 7,
     font: bold,
     color: navy
   });
 
-  // Grand Total Paid
-  const gPaidText = `${Math.round(grandTotalPaid).toLocaleString("en-IN")}`;
+  // Grand Total Deducted
+  const gPaidText = `${Math.round(grandAdvanceDeducted).toLocaleString("en-IN")}`;
   const gPaidW = bold.widthOfTextAtSize(gPaidText, 7);
   page.drawText(gPaidText, {
     x: colX[8 + dates.length] - gPaidW - 3,
@@ -755,17 +793,18 @@ export async function generateAttendancePdf(
   drawVerticalLines(tableTopY, y);
 
   // Footer Legend
-  y -= 14;
-  page.drawText(
-    "Legend: Green = Hajari (1 = Full, 0.5 = Half)  |  Red (bottom) = Advance / Payment Paid  |  A = Absent  |  C.Earn = Cur. Earned, T.Earn = Total All Time, T.Paid = Paid All Time",
-    {
-      x: MARGIN,
-      y,
-      size: 6.5,
-      font,
-      color: darkGray
-    }
-  );
+  y -= 12;
+  page.drawText("REPORT CALCULATION EXPLANATION (20 to 20 Payment Cycle):", { x: MARGIN, y, size: 7.5, font: bold, color: navy });
+  y -= 10;
+  page.drawText("1. Hajari (Attendance): Sirf is PDF mein dikh rahi Date Range (e.g. 1 to 31) ke dauran ki hajari (Earned) hi calculate hoti hai.", { x: MARGIN, y, size: 6.5, font: font, color: darkGray });
+  y -= 9;
+  page.drawText("2. Payments (Adv. Deducted): Payments 21 tareekh se agle mahine ki 20 tareekh tak jodi jati hain (First month me start date se agle mahine ki 20 tak).", { x: MARGIN, y, size: 6.5, font: font, color: darkGray });
+  y -= 9;
+  page.drawText("3. Pichla Hisaab (Prev Bal): Calculation cycle se pehle ka sabhi payment/hajari automatically 'Prev Pending' ya 'Prev Advance' ban jata hai.", { x: MARGIN, y, size: 6.5, font: font, color: darkGray });
+  y -= 9;
+  page.drawText("4. Net Balance = (Pichla Pending + Is mahine ki kamayi) - (Pichla Advance + Is mahine ki payment).", { x: MARGIN, y, size: 6.5, font: font, color: darkGray });
+  y -= 11;
+  page.drawText("Legend: Green = Hajari (1 = Full, 0.5 = Half)  |  Red = Advance / Payment  |  A = Absent", { x: MARGIN, y, size: 6, font: bold, color: darkGray });
 
   // --- ADD MONTHLY LEDGER SUMMARY PAGE ---
   const allMonthsSet = new Set<string>();

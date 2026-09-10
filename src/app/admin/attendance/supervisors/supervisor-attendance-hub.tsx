@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   CalendarDays,
   UserCheck,
@@ -73,15 +74,29 @@ export function SupervisorAttendanceHub({
   allSites,
   initialAttendances,
 }: SupervisorAttendanceHubProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [selectedTab, setSelectedTab] = useState<"daily" | "monthly" | "payroll">("daily");
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(
+    searchParams.has("month") ? parseInt(searchParams.get("month")!) : new Date().getMonth()
+  );
+  const [selectedYear, setSelectedYear] = useState<number>(
+    searchParams.has("year") ? parseInt(searchParams.get("year")!) : new Date().getFullYear()
+  );
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [siteFilter, setSiteFilter] = useState<string>("");
   const [isPending, startTransition] = useTransition();
+
+  // Sync state with URL params on mount/change
+  useEffect(() => {
+    if (searchParams.has("month")) setSelectedMonth(parseInt(searchParams.get("month")!));
+    if (searchParams.has("year")) setSelectedYear(parseInt(searchParams.get("year")!));
+  }, [searchParams]);
 
   // Map of attendances by `supervisorId_YYYY-MM-DD`
   const attendanceMap: Record<string, AttendanceItem> = {};
@@ -105,15 +120,28 @@ export function SupervisorAttendanceHub({
     return matchesQuery && matchesSite;
   });
 
-  // Date Navigation Helpers
+  const updateUrlParams = (month: number, year: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("month", month.toString());
+    params.set("year", year.toString());
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
   const handleShiftDate = (days: number) => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + days);
     setSelectedDate(d.toISOString().split("T")[0]);
+    if (d.getMonth() !== selectedMonth || d.getFullYear() !== selectedYear) {
+      updateUrlParams(d.getMonth(), d.getFullYear());
+    }
   };
 
   const handleSetToday = () => {
-    setSelectedDate(new Date().toISOString().split("T")[0]);
+    const d = new Date();
+    setSelectedDate(d.toISOString().split("T")[0]);
+    if (d.getMonth() !== selectedMonth || d.getFullYear() !== selectedYear) {
+      updateUrlParams(d.getMonth(), d.getFullYear());
+    }
   };
 
   // Single attendance marker
@@ -627,7 +655,11 @@ export function SupervisorAttendanceHub({
             <div className="flex items-center gap-3">
               <select
                 value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                onChange={(e) => {
+                  const m = Number(e.target.value);
+                  setSelectedMonth(m);
+                  updateUrlParams(m, selectedYear);
+                }}
                 className="flex h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm font-bold text-slate-800 dark:text-slate-200"
               >
                 {monthNames.map((m, i) => (
@@ -639,7 +671,11 @@ export function SupervisorAttendanceHub({
 
               <select
                 value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                onChange={(e) => {
+                  const y = Number(e.target.value);
+                  setSelectedYear(y);
+                  updateUrlParams(selectedMonth, y);
+                }}
                 className="flex h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm font-bold text-slate-800 dark:text-slate-200"
               >
                 {[2024, 2025, 2026, 2027].map((y) => (

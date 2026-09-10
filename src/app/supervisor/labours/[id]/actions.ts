@@ -44,6 +44,22 @@ export async function markIndividualLabourAttendance(
     throw new Error(`Cannot mark attendance for ${labour.name} before their joining date (${joiningDate.toLocaleDateString()}).`);
   }
 
+  // Status History Validation (Cannot mark attendance if inactive on that date)
+  const lastStatus = await prisma.labourStatusHistory.findFirst({
+    where: {
+      labourId,
+      effectiveDate: { lte: targetDate }
+    },
+    orderBy: { effectiveDate: 'desc' }
+  });
+
+  if (lastStatus && lastStatus.status === "INACTIVE") {
+    throw new Error(`Cannot mark attendance for ${labour.name}. They were marked as INACTIVE on ${lastStatus.effectiveDate.toLocaleDateString()} (Reason: ${lastStatus.reason || 'None provided'}).`);
+  } else if (!lastStatus && !labour.active) {
+    // Fallback if no history exists but currently inactive
+    throw new Error(`Cannot mark attendance for ${labour.name} as they are currently inactive.`);
+  }
+
   const existing = await prisma.attendance.findUnique({
     where: { labourId_date: { labourId, date } }
   });
@@ -88,7 +104,7 @@ export async function markIndividualLabourAttendance(
   return { success: true };
 }
 
-export async function toggleLabourActiveSupervisor(labourId: string, active: boolean) {
+export async function toggleLabourActiveSupervisor(labourId: string, active: boolean, effectiveDateStr: string, reason?: string) {
   const session = await auth();
   const userId = (session?.user as any)?.id as string;
   if (!userId || (session?.user as any)?.role !== "SUPERVISOR") throw new Error("Unauthorized");
@@ -98,7 +114,21 @@ export async function toggleLabourActiveSupervisor(labourId: string, active: boo
   if (!labour) throw new Error("Labour not found.");
   if (labour.supervisorId !== userId) throw new Error("You can only change status of labours assigned to you.");
 
-  await prisma.labour.update({ where: { id: labourId }, data: { active } });
+  const [year, month, day] = effectiveDateStr.split("-").map(Number);
+  const effectiveDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+
+  await prisma.$transaction([
+    prisma.labour.update({ where: { id: labourId }, data: { active } }),
+    prisma.labourStatusHistory.create({
+      data: {
+        labourId,
+        status: active ? "ACTIVE" : "INACTIVE",
+        effectiveDate,
+        reason: active ? null : reason,
+      }
+    })
+  ]);
+
   revalidatePath("/supervisor/labours");
   revalidatePath(`/supervisor/labours/${labourId}`);
 }

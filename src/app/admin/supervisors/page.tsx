@@ -8,7 +8,7 @@ import { SupervisorForm } from "./supervisor-form";
 import { EditSupervisorForm } from "./edit-supervisor-form";
 import { Pagination } from "@/components/ui/pagination";
 import { Search } from "@/components/search";
-import { ActiveToggle } from "@/components/ui/active-toggle";
+import { SupervisorStatusDialog } from "@/components/ui/supervisor-status-dialog";
 import { toggleSupervisorActive } from "./actions";
 
 export const dynamic = 'force-dynamic';
@@ -186,7 +186,7 @@ export default async function SupervisorsPage({ searchParams }: { searchParams: 
                     </div>
                   </div>
                 </div>
-                <ActiveToggle id={s.id} active={s.active} entityName={s.name} onToggle={toggleSupervisorActive} size="sm" />
+                <SupervisorStatusDialog id={s.id} active={s.active} entityName={s.name} onToggle={toggleSupervisorActive} size="sm" />
               </div>
             </CardHeader>
 

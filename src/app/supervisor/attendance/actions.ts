@@ -65,6 +65,22 @@ export async function saveAttendance(siteId: string, formData: FormData) {
       return { error: `Validation Error: Fitter Foreman (${labour.name}) cannot have more than 1 hajari per day.` };
     }
 
+    // Status History Validation (Cannot mark attendance if inactive on that date)
+    const lastStatus = await prisma.labourStatusHistory.findFirst({
+      where: {
+        labourId,
+        effectiveDate: { lte: targetDate }
+      },
+      orderBy: { effectiveDate: 'desc' }
+    });
+
+    if (lastStatus && lastStatus.status === "INACTIVE") {
+      return { error: `Cannot mark attendance for ${labour.name}. They were marked as INACTIVE on ${lastStatus.effectiveDate.toLocaleDateString()} (Reason: ${lastStatus.reason || 'None provided'}).` };
+    } else if (!lastStatus && !labour.active) {
+      // Fallback if no history exists but currently inactive
+      return { error: `Cannot mark attendance for ${labour.name} as they are currently inactive.` };
+    }
+
     // 2. Joining Date Validation (Cannot mark attendance before joining date)
     const joiningDate = new Date(labour.joiningDate || labour.createdAt);
     joiningDate.setHours(0, 0, 0, 0);

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { Pagination } from "@/components/ui/pagination";
 import { ActiveToggle } from "@/components/ui/active-toggle";
+import { SiteLaboursTable } from "./site-labours-table";
 
 export default async function LaboursPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; showInactive?: string }> }) {
   const resolvedParams = await searchParams;
@@ -172,113 +173,7 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
               </div>
             </summary>
             
-            <div className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-in slide-in-from-top-2">
-              <div className="overflow-x-auto">
-                <Table>
-                  <THead className="bg-slate-50/80 dark:bg-slate-900/80">
-                    <TR>
-                      <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Name & Details</TH>
-                      <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Category & Wage</TH>
-                      <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Contact & Info</TH>
-                      <TH className="font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Status</TH>
-                      <TH className="w-[120px] text-right font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">Actions</TH>
-                    </TR>
-                  </THead>
-                  <TBody>
-                    {site.labours.map((l: any) => (
-                      <TR key={l.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                        <TD className="align-top">
-                          <Link href={`/admin/labours/${l.id}`} className="font-bold text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                            {l.name}
-                          </Link>
-                          {l.joiningDate && (
-                            <div className="text-xs text-slate-500 font-medium mt-1">
-                              Joined: <span className="text-slate-700 dark:text-slate-300">{l.joiningDate.toLocaleDateString()}</span>
-                            </div>
-                          )}
-                        </TD>
-                        <TD className="align-top">
-                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-bold mb-1 border border-amber-200 dark:border-amber-500/20">
-                            <Pickaxe className="h-3 w-3" />
-                            {l.labourCategory.name}
-                          </div>
-                          <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex flex-col gap-0.5 mt-1">
-                            <span className="text-emerald-600 dark:text-emerald-500">
-                              ₹{l.labourCategory.name === "Fitter Foreman" 
-                                ? Math.round((l.dailyWage ?? l.labourCategory.dailyWage) * 30).toLocaleString("en-IN") + "/month" 
-                                : (l.dailyWage ?? l.labourCategory.dailyWage) + "/day"}
-                            </span>
-                            {l.overtimeRate && <span>₹{l.overtimeRate}/hr OT</span>}
-                          </div>
-                        </TD>
-                        <TD className="align-top">
-                          <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700 dark:text-slate-200">
-                            <Phone className="h-3.5 w-3.5 text-slate-400" />
-                            {l.phone || "No Phone"}
-                          </div>
-                          <div className="text-xs text-slate-500 mt-2 space-y-1">
-                            {l.aadharNumber && <div className="flex items-center gap-1"><FileText className="h-3 w-3" /> <span className="font-medium text-slate-600 dark:text-slate-400">Aadhar:</span> {l.aadharNumber}</div>}
-                            {l.bankName && (
-                              <div className="leading-tight mt-1">
-                                <span className="font-bold text-slate-700 dark:text-slate-300">{l.bankName}</span>
-                                <div className="mt-0.5 text-[11px]">
-                                  {l.accountNumber ? `A/C: ${l.accountNumber}` : ""}
-                                  {l.ifscCode ? ` • IFSC: ${l.ifscCode}` : ""}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </TD>
-                        <TD className="align-top pt-4">
-                          <ActiveToggle
-                            id={l.id}
-                            active={l.active}
-                            entityName={l.name}
-                            onToggle={toggleLabourActive}
-                            size="sm"
-                          />
-                        </TD>
-                        <TD className="align-top text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="icon" asChild className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/30">
-                              <a href={`/admin/labours/${l.id}`} title="View Ledger">
-                                <FileDown className="h-4 w-4" />
-                              </a>
-                            </Button>
-                            <LabourForm sites={allSites as any} supervisors={allSupervisors} labour={l as any} />
-                            <form
-                              action={async () => {
-                                "use server";
-                                await deleteLabour(l.id);
-                              }}
-                            >
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30"
-                                title="Delete"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </form>
-                          </div>
-                        </TD>
-                      </TR>
-                    ))}
-                    {site.labours.length === 0 && (
-                      <TR>
-                        <TD colSpan={5} className="py-12 text-center">
-                          <div className="inline-flex flex-col items-center justify-center">
-                            <Users className="h-8 w-8 text-slate-300 mb-3" />
-                            <p className="text-slate-500 font-medium">No labourers assigned to this site.</p>
-                          </div>
-                        </TD>
-                      </TR>
-                    )}
-                  </TBody>
-                </Table>
-              </div>
-            </div>
+            <SiteLaboursTable site={site} allSites={allSites} allSupervisors={allSupervisors} />
           </details>
         ))}
         {filteredSites.length === 0 && (

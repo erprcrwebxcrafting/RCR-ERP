@@ -82,11 +82,12 @@ export async function saveLabour(formData: FormData) {
       where: {
         aadharNumber: cleanedAadhar,
         ...(parsed.id ? { id: { not: parsed.id } } : {})
-      }
+      },
+      include: { site: true }
     });
     
     if (existingLabour) {
-      return { error: `Aadhar number already exists for another labourer (${existingLabour.name}).` };
+      return { error: `Aadhar number already exists for another labourer (${existingLabour.name}) who is assigned to site: "${existingLabour.site.projectName}".` };
     }
     
     parsed.aadharNumber = cleanedAadhar;
@@ -195,10 +196,25 @@ export async function deleteLabour(id: string) {
   revalidatePath("/admin/labours");
 }
 
-export async function toggleLabourActive(id: string, active: boolean) {
+export async function toggleLabourActive(id: string, active: boolean, effectiveDateStr: string, reason?: string) {
   const session = await auth();
   if ((session?.user as any)?.role !== "ADMIN") throw new Error("Unauthorized");
-  await prisma.labour.update({ where: { id }, data: { active } });
+
+  const [year, month, day] = effectiveDateStr.split("-").map(Number);
+  const effectiveDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+
+  await prisma.$transaction([
+    prisma.labour.update({ where: { id }, data: { active } }),
+    prisma.labourStatusHistory.create({
+      data: {
+        labourId: id,
+        status: active ? "ACTIVE" : "INACTIVE",
+        effectiveDate,
+        reason: active ? null : reason,
+      }
+    })
+  ]);
+
   revalidatePath("/admin/labours");
   revalidatePath(`/admin/labours/${id}`);
 }

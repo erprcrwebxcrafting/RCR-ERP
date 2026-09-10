@@ -16,7 +16,7 @@ export async function markSupervisorAttendanceUniversal(
 
   const supervisor = await prisma.user.findUnique({
     where: { id: supervisorId },
-    select: { monthlySalary: true, name: true, dateOfJoining: true, createdAt: true },
+    select: { monthlySalary: true, name: true, dateOfJoining: true, createdAt: true, active: true },
   });
 
   if (!supervisor) {
@@ -40,6 +40,22 @@ export async function markSupervisorAttendanceUniversal(
   joiningDate.setHours(0, 0, 0, 0);
   if (targetDate.getTime() < joiningDate.getTime()) {
     throw new Error(`Cannot mark attendance for ${supervisor.name} before their joining date (${joiningDate.toLocaleDateString()}).`);
+  }
+
+  // Status History Validation (Cannot mark attendance if inactive on that date)
+  // @ts-ignore: Prisma client cache issue in IDE
+  const lastStatus = await prisma.supervisorStatusHistory.findFirst({
+    where: {
+      supervisorId,
+      effectiveDate: { lte: targetDate }
+    },
+    orderBy: { effectiveDate: 'desc' }
+  });
+
+  if (lastStatus && lastStatus.status === "INACTIVE") {
+    throw new Error(`Cannot mark attendance for ${supervisor.name}. They were marked as INACTIVE on ${lastStatus.effectiveDate.toLocaleDateString()} (Reason: ${lastStatus.reason || 'None provided'}).`);
+  } else if (!lastStatus && !supervisor.active) {
+    throw new Error(`Cannot mark attendance for ${supervisor.name} as they are currently inactive.`);
   }
 
   const yesterday = new Date(today);
@@ -111,8 +127,8 @@ export async function markAllSupervisorsAttendanceUniversal(
   }
 
   const supervisors = await prisma.user.findMany({
-    where: { role: "SUPERVISOR", active: true },
-    select: { id: true, name: true, monthlySalary: true, dateOfJoining: true, createdAt: true },
+    where: { role: "SUPERVISOR" },
+    select: { id: true, name: true, monthlySalary: true, dateOfJoining: true, createdAt: true, active: true },
   });
 
   const [year, month, day] = dateStr.split("-").map(Number);
@@ -144,6 +160,22 @@ export async function markAllSupervisorsAttendanceUniversal(
     // Skip supervisors who haven't joined yet by this target date
     if (targetDate.getTime() < joiningDate.getTime()) {
       continue; 
+    }
+
+    // Status History Validation
+    // @ts-ignore: Prisma client cache issue in IDE
+    const lastStatus = await prisma.supervisorStatusHistory.findFirst({
+      where: {
+        supervisorId: sup.id,
+        effectiveDate: { lte: targetDate }
+      },
+      orderBy: { effectiveDate: 'desc' }
+    });
+
+    if (lastStatus && lastStatus.status === "INACTIVE") {
+      continue;
+    } else if (!lastStatus && !sup.active) {
+      continue;
     }
 
     const existing = existingMap.get(sup.id);

@@ -31,7 +31,7 @@ import { SupervisorPaymentForm } from "./payment-form";
 import { EditSupervisorForm } from "../edit-supervisor-form";
 import { Pagination } from "@/components/ui/pagination";
 import { DownloadSalarySlip } from "./download-salary-slip";
-import { ActiveToggle } from "@/components/ui/active-toggle";
+import { SupervisorStatusDialog } from "@/components/ui/supervisor-status-dialog";
 import { AadharUpload } from "@/components/ui/aadhar-upload";
 import { toggleSupervisorActive } from "../actions";
 import { Badge } from "@/components/ui/badge";
@@ -100,6 +100,9 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
         wageHistory: {
           orderBy: { effectiveDate: "desc" }
         },
+        statusHistory: {
+          orderBy: { effectiveDate: "desc" }
+        },
       },
     }),
     prisma.site.findMany({
@@ -163,7 +166,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
                 {sv.active ? "Active" : "Inactive"}
               </Badge>
               <div className="ml-1">
-                <ActiveToggle id={sv.id} active={sv.active} entityName={sv.name} onToggle={toggleSupervisorActive} />
+                <SupervisorStatusDialog id={sv.id} active={sv.active} entityName={sv.name} onToggle={toggleSupervisorActive} />
               </div>
             </div>
             <p className="text-slate-500 dark:text-slate-400 mt-2.5 font-medium text-xs sm:text-sm break-words">
@@ -338,6 +341,40 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
           </CardContent>
         </Card>
       </div>
+
+      {/* Status History Section */}
+      {sv.statusHistory && sv.statusHistory.length > 0 && (
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md min-w-0">
+          <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800 flex flex-row flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
+              <History className="h-4 w-4 text-slate-500" /> Status History
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="space-y-4">
+              {sv.statusHistory.map((history: any) => (
+                <div key={history.id} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="outline" className={history.status === "ACTIVE" ? "text-emerald-600 border-emerald-200" : "text-rose-600 border-rose-200"}>
+                        {history.status}
+                      </Badge>
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        Effective: {new Date(history.effectiveDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {history.reason && (
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                        <span className="font-medium text-slate-600 dark:text-slate-300">Reason:</span> {history.reason}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="min-w-0 w-full">
         <AttendanceCalendar supervisor={sv} initialAttendances={attendances} />

@@ -181,6 +181,7 @@ export async function updateSiteDetailsAction(siteId: string, formData: FormData
   const address = formData.get("address") as string;
   const gstNo = formData.get("gstNo") as string;
   const workOrderNo = formData.get("workOrderNo") as string;
+  const startDateStr = formData.get("startDate") as string;
 
   if (!projectName || projectName.trim().length < 2) {
     throw new Error("Project / Site name is required (minimum 2 characters).");
@@ -194,6 +195,11 @@ export async function updateSiteDetailsAction(siteId: string, formData: FormData
     }
   }
 
+  let startDate = null;
+  if (startDateStr) {
+    startDate = new Date(startDateStr);
+  }
+
   await prisma.site.update({
     where: { id: siteId },
     data: {
@@ -201,6 +207,7 @@ export async function updateSiteDetailsAction(siteId: string, formData: FormData
       address: address ? address.trim() : null,
       gstNo: cleanedGST,
       workOrderNo: workOrderNo ? workOrderNo.trim() : null,
+      startDate: startDate,
     },
   });
 

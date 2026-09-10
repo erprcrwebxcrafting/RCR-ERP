@@ -76,6 +76,27 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
     return { att: dayAttendances[0], payments: dayPayments, transfers: dayTransfers };
   };
 
+  const isInactiveOnDate = (dateStr: string) => {
+    const target = new Date(dateStr);
+    target.setHours(0, 0, 0, 0);
+    const targetTime = target.getTime();
+
+    const historyArray = (labour?.statusHistory || []).map((h: any) => ({
+      status: h.status,
+      time: new Date(h.effectiveDate).setHours(0, 0, 0, 0),
+      createdAt: new Date(h.createdAt || 0).getTime(),
+      reason: h.reason
+    })).sort((a: any, b: any) => {
+      if (b.time !== a.time) return b.time - a.time;
+      return b.createdAt - a.createdAt;
+    });
+
+    const lastStatus = historyArray.find((h: any) => h.time <= targetTime);
+    if (lastStatus && lastStatus.status === "INACTIVE") return { inactive: true, reason: lastStatus.reason };
+    if (!lastStatus && labour?.active === false) return { inactive: true, reason: null };
+    return { inactive: false, reason: null };
+  };
+
   const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
@@ -104,16 +125,24 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
             if (!date) return <div key={`empty-${currentDate.getFullYear()}-${currentDate.getMonth()}-${i}`} className="bg-card min-h-[100px]" />;
             
             const { att, payments, transfers } = getDayData(date);
-            const isToday = todayString === toLocalString(date);
+            const dateStr = toLocalString(date);
+            const isToday = todayString === dateStr;
+            const { inactive: isInactive, reason: inactiveReason } = isInactiveOnDate(dateStr);
             
             return (
-              <div key={`day-${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`} className={`bg-card min-h-[100px] p-2 flex flex-col gap-1 transition-colors hover:bg-muted/30 ${isToday ? "bg-primary/5" : ""}`}>
+              <div key={`day-${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`} className={`bg-card min-h-[100px] p-2 flex flex-col gap-1 transition-colors hover:bg-muted/30 ${isToday ? "bg-primary/5" : ""} ${isInactive ? "opacity-60 grayscale bg-slate-50 dark:bg-slate-800/50" : ""}`}>
                 <div className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full ${isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
                   {date.getDate()}
                 </div>
                 
                 <div className="flex flex-col gap-1 flex-1 mt-1">
-                  {att && (
+                  {isInactive && (
+                    <div className="text-[10px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded w-fit text-left mt-1">
+                      <span className="block">Inactive</span>
+                      {inactiveReason && <span className="block font-medium mt-0.5 opacity-80 text-[9px] break-all leading-tight max-w-[80px]" title={inactiveReason}>{inactiveReason}</span>}
+                    </div>
+                  )}
+                  {!isInactive && att && (
                     <div className={`text-[10px] px-1.5 py-0.5 rounded font-medium w-fit
                       ${att.status === 'PRESENT' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 
                         att.status === 'ABSENT' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' : 
