@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 const paymentSchema = z.object({
+  id: z.string().optional(),
   labourId: z.string().min(1, "Labour ID is required"),
   amount: z.string().min(1, "Amount is required"),
   date: z.string().min(1, "Date is required"),
@@ -42,15 +43,54 @@ export async function savePayment(formData: FormData) {
       throw new Error(`Cannot record payment for ${labour.name} before their joining date (${joiningDate.toLocaleDateString()}).`);
     }
   }
-  await (prisma as any).labourPayment.create({
-    data: {
-      labourId: parsed.labourId,
-      amount,
-      date: new Date(parsed.date),
-      reason: parsed.reason || null,
-      transactionId: parsed.transactionId || null,
+
+  if (parsed.id) {
+    const existing = await (prisma as any).labourPayment.findUnique({ where: { id: parsed.id } });
+    if (!existing) throw new Error("Payment record not found.");
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    if (existing.createdAt.getTime() < thirtyMinutesAgo.getTime()) {
+      throw new Error("Payment editing is disabled. It was recorded more than 30 minutes ago and is now locked.");
     }
-  });
+    await (prisma as any).labourPayment.update({
+      where: { id: parsed.id },
+      data: {
+        amount,
+        date: new Date(parsed.date),
+        reason: parsed.reason || null,
+        transactionId: parsed.transactionId || null,
+      }
+    });
+  } else {
+    await (prisma as any).labourPayment.create({
+      data: {
+        labourId: parsed.labourId,
+        amount,
+        date: new Date(parsed.date),
+        reason: parsed.reason || null,
+        transactionId: parsed.transactionId || null,
+      }
+    });
+  }
 
   revalidatePath(`/admin/labours/${parsed.labourId}`);
+}
+
+export async function deleteLabourPayment(paymentId: string, labourId: string) {
+  const existing = await (prisma as any).labourPayment.findUnique({
+    where: { id: paymentId }
+  });
+  if (!existing) {
+    return { error: "Payment record not found." };
+  }
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+  if (existing.createdAt.getTime() < thirtyMinutesAgo.getTime()) {
+    return { error: "Payment deletion is disabled. It was recorded more than 30 minutes ago and is now locked." };
+  }
+  
+  await (prisma as any).labourPayment.delete({
+    where: { id: paymentId }
+  });
+  
+  revalidatePath(`/admin/labours/${labourId}`);
+  return { success: true };
 }

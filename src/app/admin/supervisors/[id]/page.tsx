@@ -415,7 +415,10 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
                         <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{p.reason || "Payout"}</div>
                         {p.transactionId && <div className="text-xs text-slate-500 mt-0.5 font-mono">Tx: {p.transactionId}</div>}
                       </TD>
-                      <TD className="text-right">
+                      <TD className="text-right flex items-center justify-end gap-2">
+                        {p.createdAt && (Date.now() - new Date(p.createdAt).getTime() <= 30 * 60 * 1000) && (
+                          <SupervisorPaymentForm supervisorId={sv.id} initialData={p} />
+                        )}
                         <PaymentSlipAction entityId={sv.id} entityType="SUPERVISOR" paymentId={p.id} />
                       </TD>
                     </TR>
