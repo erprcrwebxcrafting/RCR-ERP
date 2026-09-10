@@ -12,15 +12,14 @@ import {
 } from "@/components/ui/dialog";
 import { recordSupervisorPayment } from "./actions";
 import { useState, useTransition } from "react";
-import { IndianRupee, Calendar, Search, Hash, Save } from "lucide-react";
+import { IndianRupee, Calendar, Search, Hash, Save, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { validatePositiveNumber } from "@/lib/validations";
 
-export function SupervisorPaymentForm({ supervisorId }: { supervisorId: string }) {
+export function SupervisorPaymentForm({ supervisorId, initialData }: { supervisorId: string, initialData?: any }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-
-  const today = new Date().toISOString().split("T")[0];
+  const isEditing = !!initialData;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -35,19 +34,19 @@ export function SupervisorPaymentForm({ supervisorId }: { supervisorId: string }
     }
 
     if (!dateStr) {
-      toast.error("Please select a payment date.");
+      toast.error("Please select a valid payment date.");
       return;
     }
 
     startTransition(async () => {
       try {
         await recordSupervisorPayment(formData);
-        toast.success("Supervisor advance payment recorded successfully!", {
-          description: `₹${Number(amountStr).toLocaleString("en-IN")} payment saved.`,
+        toast.success(`Advance payout ${isEditing ? 'updated' : 'recorded'} successfully!`, {
+          description: `₹${Number(amountStr).toLocaleString("en-IN")} advance ${isEditing ? 'updated' : 'recorded'} for supervisor.`,
         });
         setOpen(false);
       } catch (err: any) {
-        toast.error("Failed to record payment", {
+        toast.error(`Failed to ${isEditing ? 'update' : 'record'} payout`, {
           description: err?.message || "Please check inputs and retry.",
         });
       }
@@ -57,10 +56,15 @@ export function SupervisorPaymentForm({ supervisorId }: { supervisorId: string }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-sm shadow-blue-500/20 transition-all hover:-translate-y-0.5">
-          <IndianRupee className="h-4 w-4 mr-2" />
-          Record Payment
-        </Button>
+        {isEditing ? (
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          </Button>
+        ) : (
+          <Button size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl">
+            <Plus className="h-4 w-4" /> Record Advance Payout
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden border-0 shadow-2xl rounded-2xl">
         <div className="h-2 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500" />
@@ -70,15 +74,18 @@ export function SupervisorPaymentForm({ supervisorId }: { supervisorId: string }
               <IndianRupee className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-bold text-slate-900 dark:text-white">Record Advance Payment</DialogTitle>
+              <DialogTitle className="text-xl font-bold text-slate-900 dark:text-white">
+                {isEditing ? "Edit Advance Payment" : "Record Advance Payment"}
+              </DialogTitle>
               <DialogDescription className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
-                Enter the details of the advance payout made to this supervisor.
+                {isEditing ? "Update the details of the advance payout." : "Enter the details of the advance payout made to this supervisor."}
               </DialogDescription>
             </div>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <input type="hidden" name="supervisorId" value={supervisorId} />
+            {isEditing && <input type="hidden" name="id" value={initialData.id} />}
             
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Date *</Label>

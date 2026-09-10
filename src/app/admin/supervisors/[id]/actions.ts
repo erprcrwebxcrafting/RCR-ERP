@@ -5,6 +5,7 @@ import { getDaysInMonth } from "date-fns";
 
 export async function recordSupervisorPayment(formData: FormData) {
   const supervisorId = formData.get("supervisorId") as string;
+  const paymentId = formData.get("id") as string | null;
   const amount = parseFloat(formData.get("amount") as string);
   const transactionId = formData.get("transactionId") as string;
   const reason = formData.get("reason") as string;
@@ -36,18 +37,57 @@ export async function recordSupervisorPayment(formData: FormData) {
     }
   }
 
-  await prisma.supervisorPayment.create({
-    data: {
-      supervisorId,
-      amount,
-      transactionId,
-      reason,
-      date,
-    },
-  });
+  if (paymentId) {
+    const existing = await prisma.supervisorPayment.findUnique({ where: { id: paymentId } });
+    if (!existing) throw new Error("Payment record not found.");
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    if (existing.createdAt.getTime() < thirtyMinutesAgo.getTime()) {
+      throw new Error("Payment editing is disabled. It was recorded more than 30 minutes ago and is now locked.");
+    }
+    await prisma.supervisorPayment.update({
+      where: { id: paymentId },
+      data: {
+        amount,
+        transactionId,
+        reason,
+        date,
+      },
+    });
+  } else {
+    await prisma.supervisorPayment.create({
+      data: {
+        supervisorId,
+        amount,
+        transactionId,
+        reason,
+        date,
+      },
+    });
+  }
 
   revalidatePath(`/admin/supervisors/${supervisorId}`);
   revalidatePath("/admin/supervisors");
+}
+
+export async function deleteSupervisorPayment(paymentId: string, supervisorId: string) {
+  const existing = await prisma.supervisorPayment.findUnique({
+    where: { id: paymentId }
+  });
+  if (!existing) {
+    return { error: "Payment record not found." };
+  }
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+  if (existing.createdAt.getTime() < thirtyMinutesAgo.getTime()) {
+    return { error: "Payment deletion is disabled. It was recorded more than 30 minutes ago and is now locked." };
+  }
+  
+  await prisma.supervisorPayment.delete({
+    where: { id: paymentId }
+  });
+  
+  revalidatePath(`/admin/supervisors/${supervisorId}`);
+  revalidatePath("/admin/supervisors");
+  return { success: true };
 }
 
 export async function markSupervisorAttendanceAction(
