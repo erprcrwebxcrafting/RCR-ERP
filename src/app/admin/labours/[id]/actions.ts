@@ -47,9 +47,9 @@ export async function savePayment(formData: FormData) {
   if (parsed.id) {
     const existing = await (prisma as any).labourPayment.findUnique({ where: { id: parsed.id } });
     if (!existing) throw new Error("Payment record not found.");
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-    if (existing.createdAt.getTime() < thirtyMinutesAgo.getTime()) {
-      throw new Error("Payment editing is disabled. It was recorded more than 30 minutes ago and is now locked.");
+    const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    if (existing.createdAt.getTime() < timeLimit.getTime()) {
+      throw new Error("Payment editing is disabled. It was recorded more than 24 hours ago and is now locked.");
     }
     await (prisma as any).labourPayment.update({
       where: { id: parsed.id },
@@ -82,9 +82,9 @@ export async function deleteLabourPayment(paymentId: string, labourId: string) {
   if (!existing) {
     return { error: "Payment record not found." };
   }
-  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-  if (existing.createdAt.getTime() < thirtyMinutesAgo.getTime()) {
-    return { error: "Payment deletion is disabled. It was recorded more than 30 minutes ago and is now locked." };
+  const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  if (existing.createdAt.getTime() < timeLimit.getTime()) {
+    return { error: "Payment deletion is disabled. It was recorded more than 24 hours ago and is now locked." };
   }
   
   await (prisma as any).labourPayment.delete({
