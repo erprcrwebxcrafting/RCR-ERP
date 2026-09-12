@@ -10,9 +10,9 @@ import {
   DialogTrigger,
   DialogDescription
 } from "@/components/ui/dialog";
-import { recordSupervisorPayment } from "./actions";
+import { recordSupervisorPayment, deleteSupervisorPayment } from "./actions";
 import { useState, useTransition } from "react";
-import { IndianRupee, Calendar, Search, Hash, Save, Plus, X } from "lucide-react";
+import { IndianRupee, Calendar, Search, Hash, Save, Plus, X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { validatePositiveNumber } from "@/lib/validations";
 
@@ -49,6 +49,24 @@ export function SupervisorPaymentForm({ supervisorId, initialData }: { superviso
         toast.error(`Failed to ${isEditing ? 'update' : 'record'} payout`, {
           description: err?.message || "Please check inputs and retry.",
         });
+      }
+    });
+  }
+
+  async function handleDelete() {
+    if (!initialData?.id || !confirm("Are you sure you want to delete this payment?")) return;
+    
+    startTransition(async () => {
+      try {
+        const res = await deleteSupervisorPayment(initialData.id, supervisorId);
+        if (res?.error) {
+          toast.error("Failed to delete payment", { description: res.error });
+          return;
+        }
+        toast.success("Payment deleted successfully!");
+        setOpen(false);
+      } catch (err: any) {
+        toast.error("Failed to delete payment", { description: err?.message || "Please try again." });
       }
     });
   }
@@ -122,10 +140,17 @@ export function SupervisorPaymentForm({ supervisorId, initialData }: { superviso
               </div>
             </div>
 
-            <Button type="submit" disabled={isPending} className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-base shadow-lg shadow-blue-500/25 transition-all hover:-translate-y-0.5 mt-2 gap-2">
-              <Save className="h-4 w-4" />
-              {isPending ? "Recording Payment..." : "Save Payment"}
-            </Button>
+            <div className="flex gap-2 mt-2">
+              <Button type="submit" disabled={isPending} className="flex-1 h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-base shadow-lg shadow-blue-500/25 transition-all hover:-translate-y-0.5 gap-2">
+                <Save className="h-4 w-4" />
+                {isPending ? "Recording Payment..." : "Save Payment"}
+              </Button>
+              {isEditing && (
+                <Button type="button" variant="destructive" disabled={isPending} onClick={handleDelete} className="h-12 rounded-xl font-bold gap-2 px-4 shadow-lg shadow-red-500/25 transition-all hover:-translate-y-0.5" title="Delete Payment">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </form>
         </div>
       </DialogContent>
