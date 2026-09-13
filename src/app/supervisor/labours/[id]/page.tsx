@@ -28,7 +28,7 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
     include: {
       site: true,
       labourCategory: true,
-      attendances: { orderBy: { date: "desc" }, take: 60 },
+      attendances: { orderBy: { date: "desc" } },
       statusHistory: { orderBy: { effectiveDate: "desc" } },
     },
   });

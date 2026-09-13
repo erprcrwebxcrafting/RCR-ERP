@@ -326,7 +326,7 @@ export async function generateAttendancePdf(
   const nameWidth = 74;
   const categoryWidth = 42;
   const rateWidth = 24;
-  const hajariWidth = 20;
+  const hajariWidth = 26;
   const pAdvWidth = 30;
   const pPenWidth = 30;
   const curEarnWidth = 32;
