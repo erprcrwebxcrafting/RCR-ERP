@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 export async function recordSiteExpenseAction(siteId: string, formData: FormData) {
   const dateStr = formData.get("date") as string;
@@ -29,6 +29,7 @@ export async function recordSiteExpenseAction(siteId: string, formData: FormData
   });
 
   revalidatePath(`/admin/sites/${siteId}`);
+  revalidateTag("site-detail");
 }
 
 export async function deleteSiteExpenseAction(siteId: string, expenseId: string) {
@@ -37,4 +38,5 @@ export async function deleteSiteExpenseAction(siteId: string, expenseId: string)
   });
 
   revalidatePath(`/admin/sites/${siteId}`);
+  revalidateTag("site-detail");
 }

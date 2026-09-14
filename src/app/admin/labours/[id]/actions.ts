@@ -1,6 +1,6 @@
 "use server";
 import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 
 const paymentSchema = z.object({
@@ -73,6 +73,7 @@ export async function savePayment(formData: FormData) {
   }
 
   revalidatePath(`/admin/labours/${parsed.labourId}`);
+  revalidateTag("site-detail");
 }
 
 export async function deleteLabourPayment(paymentId: string, labourId: string) {
@@ -92,5 +93,6 @@ export async function deleteLabourPayment(paymentId: string, labourId: string) {
   });
   
   revalidatePath(`/admin/labours/${labourId}`);
+  revalidateTag("site-detail");
   return { success: true };
 }

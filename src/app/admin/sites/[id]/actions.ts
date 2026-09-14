@@ -1,6 +1,6 @@
 "use server";
 import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 
 export async function addBuildingAction(siteId: string, formData: FormData) {
@@ -19,6 +19,7 @@ export async function addBuildingAction(siteId: string, formData: FormData) {
 
   await prisma.building.create({ data: { siteId, name, approxArea, contractRate, calculationMethod, order: nextOrder } });
   revalidatePath(`/admin/sites/${siteId}`);
+  revalidateTag("site-detail");
 }
 
 export async function updateBuildingHeaderAction(siteId: string, buildingId: string, formData: FormData) {
@@ -36,6 +37,7 @@ export async function updateBuildingHeaderAction(siteId: string, buildingId: str
     data,
   });
   revalidatePath(`/admin/sites/${siteId}`);
+  revalidateTag("site-detail");
 }
 
 export async function addWorkItemAction(siteId: string, formData: FormData) {
@@ -53,6 +55,7 @@ export async function addWorkItemAction(siteId: string, formData: FormData) {
 
   await prisma.workItem.create({ data: { siteId, name, unit, rate, order: nextOrder } });
   revalidatePath(`/admin/sites/${siteId}`);
+  revalidateTag("site-detail");
 }
 
 export async function addLabourCategoryAction(siteId: string, formData: FormData) {
@@ -70,6 +73,7 @@ export async function addLabourCategoryAction(siteId: string, formData: FormData
 
   await prisma.labourCategory.create({ data: { siteId, name, dailyWage, overtimeRate, order: nextOrder } });
   revalidatePath(`/admin/sites/${siteId}`);
+  revalidateTag("site-detail");
 }
 
 export async function addLabourerAction(siteId: string, labourCategoryId: string, formData: FormData) {
@@ -78,6 +82,7 @@ export async function addLabourerAction(siteId: string, labourCategoryId: string
   if (!name) return;
   await prisma.labour.create({ data: { siteId, labourCategoryId, name, phone } });
   revalidatePath(`/admin/sites/${siteId}`);
+  revalidateTag("site-detail");
 }
 
 export async function assignSupervisorAction(siteId: string, formData: FormData) {
@@ -90,12 +95,14 @@ export async function assignSupervisorAction(siteId: string, formData: FormData)
   });
   revalidatePath(`/admin/sites/${siteId}`);
   revalidatePath(`/admin/supervisors`);
+  revalidateTag("site-detail");
 }
 
 export async function unassignSupervisorAction(siteId: string, supervisorId: string) {
   await prisma.siteSupervisor.delete({ where: { siteId_supervisorId: { siteId, supervisorId } } });
   revalidatePath(`/admin/sites/${siteId}`);
   revalidatePath(`/admin/supervisors`);
+  revalidateTag("site-detail");
 }
 
 export async function recordPaymentAction(siteId: string, formData: FormData) {
@@ -125,6 +132,7 @@ export async function recordPaymentAction(siteId: string, formData: FormData) {
   });
 
   revalidatePath(`/admin/sites/${siteId}`);
+  revalidateTag("site-detail");
 }
 
 export async function calculateLabourPaymentAction(siteId: string, formData: FormData) {
@@ -166,6 +174,7 @@ export async function calculateLabourPaymentAction(siteId: string, formData: For
   }
 
   revalidatePath(`/admin/sites/${siteId}`);
+  revalidateTag("site-detail");
 }
 
 export async function approveLabourEntryAction(siteId: string, entryId: string) {
@@ -176,4 +185,5 @@ export async function approveLabourEntryAction(siteId: string, entryId: string) 
     data: { approved: true, approvedById },
   });
   revalidatePath(`/admin/sites/${siteId}`);
+  revalidateTag("site-detail");
 }
