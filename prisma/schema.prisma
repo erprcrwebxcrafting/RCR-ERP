@@ -19,6 +19,7 @@ model User {
   createdAt             DateTime                    @default(now())
   updatedAt             DateTime                    @updatedAt
   monthlySalary         Float?
+  openingBalance        Float                       @default(0)
   aadharNumber          String?
   aadharCardUrl         String?
   accountNumber         String?
@@ -178,6 +179,7 @@ model Labour {
   bankBranch       String?
   supervisorId     String?
   dailyWage        Float?
+  openingBalance   Float                   @default(0)
   overtimeRate     Float?
   active           Boolean                 @default(true)
   createdAt        DateTime                @default(now())

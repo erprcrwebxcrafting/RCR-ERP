@@ -59,6 +59,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
         monthlySalary: true,
         dateOfJoining: true,
         address: true,
+        openingBalance: true,
         // ✅ Safe bank details only (needed for ledger display)
         bankName: true,
         accountNumber: true,
@@ -125,8 +126,10 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
   const halfDays = attendances.filter((a: any) => a.status === "HALF_DAY").length;
   const totalDaysEquivalent = presentDays + (halfDays * 0.5);
 
-  // Total earned strictly based on attendance marked
-  const totalEarned = attendances.reduce((sum: number, a: any) => sum + (a.earnedAmount || 0), 0);
+  // Total earned strictly based on attendance marked + opening balance
+  const openingBalance = sv.openingBalance || 0;
+  const attendanceEarned = attendances.reduce((sum: number, a: any) => sum + (a.earnedAmount || 0), 0);
+  const totalEarned = attendanceEarned + openingBalance;
   const totalPaid = (sv.supervisorPayments || []).reduce((sum: number, p: any) => sum + p.amount, 0);
   const balance = totalEarned - totalPaid;
 
@@ -204,12 +207,12 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
                 <TrendingUp className="h-5 w-5 text-emerald-600" />
               </div>
             </div>
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Attendance Earned</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Earned</p>
             <p className="text-2xl sm:text-3xl font-black tracking-tight text-emerald-600 dark:text-emerald-500">
               ₹{totalEarned.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
             </p>
             <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">
-              For {totalDaysEquivalent} days present ({presentDays} full, {halfDays} half)
+              Attendance: ₹{attendanceEarned.toLocaleString("en-IN")} + Opening: ₹{openingBalance.toLocaleString("en-IN")}
             </p>
           </CardContent>
         </Card>

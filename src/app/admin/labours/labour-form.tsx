@@ -336,20 +336,31 @@ export function LabourForm({
                   </div>
                 </div>
 
-                <div className="space-y-2 mt-4">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                    {selectedCategoryName === "Fitter Foreman" ? "Monthly Salary (₹)" : "Hajri / Daily Wage (₹)"}
-                  </Label>
-                  <div className="relative">
-                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500 pointer-events-none" />
-                    <Input name="wageInput" type="number" step="0.01" value={currentWageInput} onChange={(e) => setCurrentWageInput(e.target.value)} placeholder={selectedCategoryName === "Fitter Foreman" ? "e.g. 45000" : "e.g. 800"} className="pl-10 h-11 rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-bold text-emerald-600 dark:text-emerald-400 font-mono" />
-                    <input type="hidden" name="dailyWage" value="" id="actualDailyWage" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                      {selectedCategoryName === "Fitter Foreman" ? "Monthly Salary (₹)" : "Hajri / Daily Wage (₹)"}
+                    </Label>
+                    <div className="relative">
+                      <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500 pointer-events-none" />
+                      <Input name="wageInput" type="number" step="0.01" value={currentWageInput} onChange={(e) => setCurrentWageInput(e.target.value)} placeholder={selectedCategoryName === "Fitter Foreman" ? "e.g. 45000" : "e.g. 800"} className="pl-10 h-11 rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-bold text-emerald-600 dark:text-emerald-400 font-mono" />
+                      <input type="hidden" name="dailyWage" value="" id="actualDailyWage" />
+                    </div>
+                    {selectedCategoryName === "Fitter Foreman" && (
+                      <p className="text-[10px] text-slate-500">
+                        * This will be automatically divided by 30 to store the daily Hajri rate in the system.
+                      </p>
+                    )}
                   </div>
-                  {selectedCategoryName === "Fitter Foreman" && (
-                    <p className="text-[10px] text-slate-500">
-                      * This will be automatically divided by 30 to store the daily Hajri rate in the system.
-                    </p>
-                  )}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                      Opening Balance (₹)
+                    </Label>
+                    <div className="relative">
+                      <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500 pointer-events-none" />
+                      <Input name="openingBalance" type="number" step="0.01" defaultValue={labour?.openingBalance || ""} placeholder="e.g. 5000" className="pl-10 h-11 rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-bold text-blue-600 dark:text-blue-400 font-mono" />
+                    </div>
+                  </div>
                 </div>
 
                 {showEffectiveDate && (
