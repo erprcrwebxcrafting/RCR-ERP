@@ -20,6 +20,7 @@ const labourSchema = z.object({
   bankBranch: z.string().optional(),
   supervisorId: z.string().optional(),
   dailyWage: z.string().optional(),
+  openingBalance: z.string().optional(),
   effectiveDate: z.string().optional(),
 });
 
@@ -114,6 +115,7 @@ export async function saveLabour(formData: FormData) {
       bankBranch: parsed.bankBranch || null,
       supervisorId: parsed.supervisorId || null,
       dailyWage: parsed.dailyWage ? parseFloat(parsed.dailyWage) : null,
+      openingBalance: parsed.openingBalance ? parseFloat(parsed.openingBalance) : 0,
     };
 
     if (parsed.id) {

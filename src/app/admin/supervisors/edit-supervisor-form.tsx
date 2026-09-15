@@ -209,6 +209,14 @@ export function EditSupervisorForm({ supervisor, allSites = [] }: { supervisor: 
                   <Input name="monthlySalary" type="number" value={currentSalaryInput} onChange={(e) => setCurrentSalaryInput(e.target.value)} placeholder="e.g. 30000" className={`${inputClass} font-mono font-bold`} />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className={labelClass}>
+                    <IndianRupee className="h-3.5 w-3.5 text-blue-500" /> Opening Balance (₹)
+                  </Label>
+                  <Input name="openingBalance" type="number" step="0.01" defaultValue={supervisor.openingBalance || ""} placeholder="e.g. 5000" className={`${inputClass} font-mono font-bold`} />
+                </div>
+              </div>
 
               <div className="pt-2">
                 <AadharUpload 

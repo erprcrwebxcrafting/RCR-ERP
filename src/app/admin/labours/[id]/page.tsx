@@ -84,14 +84,15 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
   ]);
 
   const presentDays = attendanceAgg._sum.hajari ?? 0;
-  let totalEarned = 0;
+  const openingBalance = labour.openingBalance || 0;
+  let attendanceEarned = 0;
   for (const record of allAttendance) {
     if (record.hajari > 0) {
       const rate = record.hajariRate || dailyWage || 0;
-      totalEarned += record.hajari * rate;
+      attendanceEarned += record.hajari * rate;
     }
   }
-
+  const totalEarned = attendanceEarned + openingBalance;
 
   const totalPaid = labour.payments.reduce((sum: any, p: any) => sum + p.amount, 0);
   const balance = totalEarned - totalPaid;
@@ -230,7 +231,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
             </div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Earned</p>
             <p className="text-2xl sm:text-3xl font-black tracking-tight text-emerald-600 dark:text-emerald-500">₹{totalEarned.toLocaleString("en-IN")}</p>
-            <p className="text-xs text-slate-400 font-medium mt-1">From {presentDays} Hajaris</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">Hajari: ₹{attendanceEarned.toLocaleString("en-IN")} + Opening: ₹{openingBalance.toLocaleString("en-IN")}</p>
           </CardContent>
         </Card>
 

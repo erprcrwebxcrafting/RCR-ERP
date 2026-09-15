@@ -12,6 +12,8 @@ export async function createSupervisor(formData: FormData) {
   const password = (formData.get("password") as string) || "supervisor123";
   const monthlySalaryStr = formData.get("monthlySalary") as string;
   const monthlySalary = monthlySalaryStr ? parseFloat(monthlySalaryStr) : null;
+  const openingBalanceStr = formData.get("openingBalance") as string;
+  const openingBalance = openingBalanceStr ? parseFloat(openingBalanceStr) : 0;
 
   // New personal fields
   const address = (formData.get("address") as string || "").trim() || null;
@@ -84,6 +86,7 @@ export async function createSupervisor(formData: FormData) {
       passwordHash, 
       role: "SUPERVISOR",
       monthlySalary,
+      openingBalance,
       address,
       aadharNumber,
       aadharCardUrl,
@@ -136,6 +139,8 @@ export async function updateSupervisor(id: string, formData: FormData) {
   const phone = (formData.get("phone") as string || "").trim();
   const monthlySalaryStr = formData.get("monthlySalary") as string;
   const monthlySalary = monthlySalaryStr ? parseFloat(monthlySalaryStr) : null;
+  const openingBalanceStr = formData.get("openingBalance") as string;
+  const openingBalance = openingBalanceStr ? parseFloat(openingBalanceStr) : 0;
   const password = formData.get("password") as string;
 
   // New personal fields
@@ -203,6 +208,7 @@ export async function updateSupervisor(id: string, formData: FormData) {
     email,
     phone: phone || null,
     monthlySalary,
+    openingBalance,
     address,
     aadharNumber,
     aadharCardUrl,
