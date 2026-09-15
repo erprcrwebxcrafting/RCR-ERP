@@ -16,8 +16,8 @@ export async function savePayment(formData: FormData) {
   const parsed = paymentSchema.parse(Object.fromEntries(formData));
   const amount = parseFloat(parsed.amount);
 
-  if (isNaN(amount) || amount <= 0) {
-    throw new Error("Payment/Advance amount must be greater than 0.");
+  if (isNaN(amount)) {
+    throw new Error("Invalid payment amount.");
   }
   
   const paymentDate = new Date(parsed.date);
