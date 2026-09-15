@@ -68,7 +68,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
         aadharCardUrl: true,
         // ✅ NO passwordHash sent to browser
         supervisorPayments: {
-          select: { id: true, amount: true, date: true, transactionId: true, reason: true },
+          select: { id: true, amount: true, date: true, transactionId: true, reason: true, createdAt: true },
           orderBy: { date: "desc" }
         },
         assignedSites: {
