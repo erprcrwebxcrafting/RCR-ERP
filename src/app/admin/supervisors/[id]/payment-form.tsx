@@ -109,7 +109,7 @@ export function SupervisorPaymentForm({ supervisorId, initialData }: { superviso
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <input type="hidden" name="supervisorId" value={supervisorId} />
             {isEditing && <input type="hidden" name="id" value={initialData.id} />}
             <div className="space-y-2">
@@ -132,48 +132,50 @@ export function SupervisorPaymentForm({ supervisorId, initialData }: { superviso
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Date *</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                <Input name="date" type="date" required defaultValue={initialData?.date ? new Date(initialData.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]} className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all cursor-pointer" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Date *</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                  <Input name="date" type="date" required defaultValue={initialData?.date ? new Date(initialData.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]} className="pl-8 h-10 rounded-lg bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all cursor-pointer" />
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Amount (₹) *</Label>
-              <div className="relative">
-                <IndianRupee className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${paymentType === "CREDIT" ? "text-emerald-500" : "text-rose-500"}`} />
-                <Input name="amount" type="number" step="0.01" required defaultValue={initialData ? Math.abs(initialData.amount) : ""} placeholder="e.g. 5000" className={`pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-mono font-bold ${paymentType === "CREDIT" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`} />
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Amount (₹) *</Label>
+                <div className="relative">
+                  <IndianRupee className={`absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${paymentType === "CREDIT" ? "text-emerald-500" : "text-rose-500"}`} />
+                  <Input name="amount" type="number" step="0.01" required defaultValue={initialData ? Math.abs(initialData.amount) : ""} placeholder="e.g. 5000" className={`pl-8 h-10 rounded-lg bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-mono font-bold ${paymentType === "CREDIT" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`} />
+                </div>
               </div>
             </div>
             
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Reason / Note</Label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                <Input name="reason" defaultValue={initialData?.reason || ""} placeholder={paymentType === "CREDIT" ? "e.g. Previous pending balance" : "e.g. Monthly Advance, Site Expense"} className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                <Input name="reason" defaultValue={initialData?.reason || ""} placeholder={paymentType === "CREDIT" ? "e.g. Previous pending balance" : "e.g. Monthly Advance, Site Expense"} className="pl-8 h-10 rounded-lg bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all" />
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center justify-between">
                 <span>Transaction ID / Ref</span>
                 <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-400 normal-case tracking-normal">Optional</span>
               </Label>
               <div className="relative">
-                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                <Input name="transactionId" placeholder="UPI / NEFT Ref No." className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-mono text-sm" />
+                <Hash className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                <Input name="transactionId" placeholder="UPI / NEFT Ref No." className="pl-8 h-10 rounded-lg bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-mono text-sm" />
               </div>
             </div>
 
             <div className="flex gap-2 mt-2">
-              <Button type="submit" disabled={isPending} className="flex-1 h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-base shadow-lg shadow-blue-500/25 transition-all hover:-translate-y-0.5 gap-2">
+              <Button type="submit" disabled={isPending} className="flex-1 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md transition-all gap-2">
                 <Save className="h-4 w-4" />
-                {isPending ? "Recording Payment..." : "Save Payment"}
+                {isPending ? "Recording..." : "Save"}
               </Button>
               {isEditing && (
-                <Button type="button" variant="destructive" disabled={isPending} onClick={handleDelete} className="h-12 rounded-xl font-bold gap-2 px-4 shadow-lg shadow-red-500/25 transition-all hover:-translate-y-0.5" title="Delete Payment">
+                <Button type="button" variant="destructive" disabled={isPending} onClick={handleDelete} className="h-10 rounded-lg font-bold gap-2 px-4 shadow-md transition-all" title="Delete Payment">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               )}

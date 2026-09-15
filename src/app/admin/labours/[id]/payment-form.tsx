@@ -97,7 +97,7 @@ export function PaymentForm({ labourId, initialData }: { labourId: string, initi
               </Button>
             </Dialog.Close>
           </div>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <input type="hidden" name="labourId" value={labourId} />
             {isEditing && <input type="hidden" name="id" value={initialData.id} />}
             
@@ -121,48 +121,56 @@ export function PaymentForm({ labourId, initialData }: { labourId: string, initi
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="amount" className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Amount (₹) *
-              </Label>
-              <Input id="amount" name="amount" type="number" step="0.01" required defaultValue={initialData ? Math.abs(initialData.amount) : ""} placeholder="e.g. 3000" className={`h-11 rounded-xl font-mono font-bold ${paymentType === "CREDIT" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`} />
-            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="date" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Date *
+                </Label>
+                <div className="relative">
+                  <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                  <Input
+                    id="date"
+                    name="date"
+                    type="date"
+                    required
+                    defaultValue={initialData?.date ? new Date(initialData.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}
+                    className="pl-8 h-10 rounded-lg cursor-pointer"
+                  />
+                </div>
+              </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="date" className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Date *
-              </Label>
-              <Input
-                id="date"
-                name="date"
-                type="date"
-                required
-                defaultValue={initialData?.date ? new Date(initialData.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}
-                className="h-11 rounded-xl cursor-pointer"
-              />
+              <div className="space-y-1.5">
+                <Label htmlFor="amount" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Amount (₹) *
+                </Label>
+                <div className="relative">
+                  <IndianRupee className={`absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${paymentType === "CREDIT" ? "text-emerald-500" : "text-rose-500"}`} />
+                  <Input id="amount" name="amount" type="number" step="0.01" required defaultValue={initialData ? Math.abs(initialData.amount) : ""} placeholder="e.g. 3000" className={`pl-8 h-10 rounded-lg font-mono font-bold ${paymentType === "CREDIT" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`} />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="reason" className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Reason / Remarks
               </Label>
-              <Input id="reason" name="reason" defaultValue={initialData?.reason || ""} placeholder={paymentType === "CREDIT" ? "e.g. Previous pending balance" : "e.g. Weekly Advance, Festival Bonus"} className="h-11 rounded-xl" />
+              <Input id="reason" name="reason" defaultValue={initialData?.reason || ""} placeholder={paymentType === "CREDIT" ? "e.g. Previous pending balance" : "e.g. Weekly Advance, Festival Bonus"} className="h-10 rounded-lg" />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="transactionId" className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Transaction / Ref ID
               </Label>
-              <Input id="transactionId" name="transactionId" defaultValue={initialData?.transactionId || ""} placeholder="UPI Ref / Cash Voucher #" className="h-11 rounded-xl font-mono text-sm" />
+              <Input id="transactionId" name="transactionId" defaultValue={initialData?.transactionId || ""} placeholder="UPI Ref / Cash Voucher #" className="h-10 rounded-lg font-mono text-sm" />
             </div>
 
             <div className="flex gap-2 mt-2">
-              <Button type="submit" disabled={isPending} className="flex-1 h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2">
+              <Button type="submit" disabled={isPending} className="flex-1 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md gap-2">
                 <Save className="h-4 w-4" />
-                {isPending ? "Saving..." : (isEditing ? "Update Payout" : "Save Payout")}
+                {isPending ? "Saving..." : "Save"}
               </Button>
               {isEditing && (
-                <Button type="button" variant="destructive" disabled={isPending} onClick={handleDelete} className="h-11 rounded-xl font-bold gap-2 px-4" title="Delete Payment">
+                <Button type="button" variant="destructive" disabled={isPending} onClick={handleDelete} className="h-10 rounded-lg font-bold gap-2 px-4 shadow-md" title="Delete Payment">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               )}
