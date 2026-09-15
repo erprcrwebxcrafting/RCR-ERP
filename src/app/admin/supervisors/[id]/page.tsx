@@ -413,7 +413,9 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
                   {paginatedPayments.map((p: any) => (
                     <TR key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                       <TD className="whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">{formatDate(p.date)}</TD>
-                      <TD className="whitespace-nowrap font-bold text-rose-600 dark:text-rose-400">- ₹{p.amount.toLocaleString("en-IN")}</TD>
+                      <TD className={`whitespace-nowrap font-bold ${p.amount < 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                        {p.amount < 0 ? '+ ' : '- '}₹{Math.abs(p.amount).toLocaleString("en-IN")}
+                      </TD>
                       <TD>
                         <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{p.reason || "Payout"}</div>
                         {p.transactionId && <div className="text-xs text-slate-500 mt-0.5 font-mono">Tx: {p.transactionId}</div>}

@@ -12,6 +12,7 @@ import { validatePositiveNumber } from "@/lib/validations";
 export function PaymentForm({ labourId, initialData }: { labourId: string, initialData?: any }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [paymentType, setPaymentType] = useState<"PAYOUT" | "CREDIT">("PAYOUT");
   const isEditing = !!initialData;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -19,12 +20,18 @@ export function PaymentForm({ labourId, initialData }: { labourId: string, initi
     const formData = new FormData(e.currentTarget);
     const amountStr = (formData.get("amount") as string)?.trim();
     const dateStr = (formData.get("date") as string)?.trim();
+    let amount = Number(amountStr);
 
-    const amtCheck = validatePositiveNumber(amountStr, "Payment Amount");
-    if (!amtCheck.valid) {
-      toast.error(amtCheck.error);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount greater than 0");
       return;
     }
+
+    if (paymentType === "CREDIT") {
+      amount = -amount;
+    }
+
+    formData.set("amount", amount.toString());
 
     if (!dateStr) {
       toast.error("Please select a valid payment date.");
@@ -95,10 +102,30 @@ export function PaymentForm({ labourId, initialData }: { labourId: string, initi
             {isEditing && <input type="hidden" name="id" value={initialData.id} />}
             
             <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Transaction Type</Label>
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setPaymentType("PAYOUT")}
+                  className={`flex-1 text-sm font-bold py-2 rounded-lg transition-all ${paymentType === "PAYOUT" ? "bg-white dark:bg-slate-700 shadow-sm text-rose-600" : "text-slate-500 hover:text-slate-700"}`}
+                >
+                  Payout (You Paid)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentType("CREDIT")}
+                  className={`flex-1 text-sm font-bold py-2 rounded-lg transition-all ${paymentType === "CREDIT" ? "bg-white dark:bg-slate-700 shadow-sm text-emerald-600" : "text-slate-500 hover:text-slate-700"}`}
+                >
+                  Credit (Pending Dues)
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
               <Label htmlFor="amount" className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Amount Paid (₹) *
+                Amount (₹) *
               </Label>
-              <Input id="amount" name="amount" type="number" required defaultValue={initialData?.amount} placeholder="e.g. 3000" className="h-11 rounded-xl font-mono font-bold text-emerald-600 dark:text-emerald-400" />
+              <Input id="amount" name="amount" type="number" step="0.01" required defaultValue={initialData ? Math.abs(initialData.amount) : ""} placeholder="e.g. 3000" className={`h-11 rounded-xl font-mono font-bold ${paymentType === "CREDIT" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`} />
             </div>
 
             <div className="space-y-1.5">
@@ -119,7 +146,7 @@ export function PaymentForm({ labourId, initialData }: { labourId: string, initi
               <Label htmlFor="reason" className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Reason / Remarks
               </Label>
-              <Input id="reason" name="reason" defaultValue={initialData?.reason || ""} placeholder="e.g. Weekly Advance, Festival Bonus" className="h-11 rounded-xl" />
+              <Input id="reason" name="reason" defaultValue={initialData?.reason || ""} placeholder={paymentType === "CREDIT" ? "e.g. Previous pending balance" : "e.g. Weekly Advance, Festival Bonus"} className="h-11 rounded-xl" />
             </div>
 
             <div className="space-y-1.5">
