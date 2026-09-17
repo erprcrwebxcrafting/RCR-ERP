@@ -96,6 +96,7 @@ export async function generateAttendanceExcel(
         name: a.labour?.name || "Unknown Worker",
         category: a.labour?.labourCategory?.name || "General",
         dailyWage: a.hajariRate || a.labour?.dailyWage || 0,
+        baseDailyWage: a.labour?.dailyWage || 0,
         attendanceByDate: {},
         paymentsByDate: {},
         totalHajari: 0,
@@ -176,6 +177,7 @@ export async function generateAttendanceExcel(
         name: p.labour?.name || "Unknown Worker",
         category: p.labour?.labourCategory?.name || "General",
         dailyWage: p.labour?.dailyWage || 0,
+        baseDailyWage: p.labour?.dailyWage || 0,
         attendanceByDate: {},
         paymentsByDate: {},
         totalHajari: 0,
@@ -202,18 +204,37 @@ export async function generateAttendanceExcel(
   // Compute Grand Totals
   let grandTotalHajari = 0;
   let grandTotalOT = 0;
-  let grandCurrEarned = 0;
-  let grandTotalEarned = 0;
-  let grandTotalPaid = 0;
-  let grandTotalBalance = 0;
+
+  let sumPrevAdvance = 0;
+  let sumPrevPending = 0;
+  let sumCurrEarned = 0;
+  let sumGrossPayable = 0;
+  let sumAdvanceDeducted = 0;
+  let sumNetBalance = 0;
+
+  let grandTotalEarned = 0; // All time earned (for KPI)
+  let grandTotalPaid = 0; // All time paid (for KPI)
 
   sortedWorkers.forEach(w => {
     grandTotalHajari += w.totalHajari;
     grandTotalOT += w.totalOT;
-    grandCurrEarned += w.totalEarned;
+    
     grandTotalEarned += w.allTimeEarned;
     grandTotalPaid += w.allTimePaid;
-    grandTotalBalance += w.netBalance;
+
+    const openingBalance = w.openingEarned - w.openingPaid;
+    const prevAdvance = openingBalance < 0 ? Math.abs(openingBalance) : 0;
+    const prevPending = openingBalance > 0 ? openingBalance : 0;
+    
+    const grossPayable = prevPending + w.totalEarned;
+    const advanceDeducted = prevAdvance + w.totalPaid;
+
+    sumPrevAdvance += prevAdvance;
+    sumPrevPending += prevPending;
+    sumCurrEarned += w.totalEarned;
+    sumGrossPayable += grossPayable;
+    sumAdvanceDeducted += advanceDeducted;
+    sumNetBalance += w.netBalance;
   });
 
   // Daily totals across all workers
@@ -239,114 +260,118 @@ export async function generateAttendanceExcel(
   const totalCols = 3 + dates.length + 8;
   const lastColLetter = sheet.getColumn(totalCols).letter;
 
-  // Row 1: Company Title
-  sheet.mergeCells(`A1:${lastColLetter}1`);
-  const compTitleCell = sheet.getCell("A1");
+  // Row 1, 2, 3: Company Title & Subtitles
+  sheet.mergeCells(`B1:C1`);
+  const compTitleCell = sheet.getCell("B1");
   compTitleCell.value = `RCR Enterprises`;
-  compTitleCell.font = { size: 20, bold: true, color: { argb: "FF0B2447" } };
-  compTitleCell.alignment = { horizontal: "center", vertical: "middle" };
-  sheet.getRow(1).height = 36;
+  compTitleCell.font = { size: 14, bold: true, color: { argb: "FF0B2447" } };
+  compTitleCell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+  sheet.getRow(1).height = 20;
 
-  // Row 2: Subtitle
-  sheet.mergeCells(`A2:${lastColLetter}2`);
-  const titleCell = sheet.getCell("A2");
-  titleCell.value = `Labour Attendance & Payment Ledger — ${siteName}`;
-  titleCell.font = { size: 13, bold: true, color: { argb: "FF1E3A8A" } };
-  titleCell.alignment = { horizontal: "center", vertical: "middle" };
-  sheet.getRow(2).height = 22;
+  sheet.mergeCells(`B2:C2`);
+  const titleCell = sheet.getCell("B2");
+  titleCell.value = `Labour Attendance Ledger\n${siteName}`;
+  titleCell.font = { size: 10, bold: true, color: { argb: "FF1E3A8A" } };
+  titleCell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+  sheet.getRow(2).height = 32;
 
-  // Row 3: Period & Timestamp
-  sheet.mergeCells(`A3:${lastColLetter}3`);
-  const subtitleCell = sheet.getCell("A3");
-  subtitleCell.value = `Period: ${format(start, "dd MMM yyyy")} to ${format(end, "dd MMM yyyy")} | Generated: ${format(new Date(), "dd-MMM-yyyy hh:mm a")}`;
-  subtitleCell.font = { size: 10, italic: true, color: { argb: "FF475569" } };
-  subtitleCell.alignment = { horizontal: "center", vertical: "middle" };
-  sheet.getRow(3).height = 18;
+  sheet.mergeCells(`B3:C3`);
+  const subtitleCell = sheet.getCell("B3");
+  subtitleCell.value = `Period: ${format(start, "dd MMM yy")} to ${format(end, "dd MMM yy")}`;
+  subtitleCell.font = { size: 9, italic: true, color: { argb: "FF475569" } };
+  subtitleCell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+  sheet.getRow(3).height = 24;
 
-  // Row 4: Blank spacing
-  sheet.addRow([]);
-  sheet.getRow(4).height = 8;
-
-  // Rows 5 & 6: Executive KPI Summary Cards
+  // KPIs in Rows 1 to 3 (Columns 4 to 9)
   const kpiLabels = [
-    "TOTAL WORKERS",
-    "TOTAL HAJARIS",
-    "TOTAL OVERTIME",
-    "WAGES EARNED (ALL TIME)",
-    "ADVANCE PAID (ALL TIME)",
-    "NET BALANCE DUE"
+    "TOTAL WORKERS", "TOTAL HAJARIS", "TOTAL OVERTIME",
+    "WAGES EARNED", "ADVANCE PAID", "NET BALANCE"
   ];
+  
+  // Calculate Totals for KPIs
   const kpiValues = [
     `${sortedWorkers.length}`,
     `${grandTotalHajari.toFixed(1)}`,
     `${grandTotalOT.toFixed(1)} hrs`,
     `₹${Math.round(grandTotalEarned).toLocaleString("en-IN")}`,
     `₹${Math.round(grandTotalPaid).toLocaleString("en-IN")}`,
-    `₹${Math.round(grandTotalBalance).toLocaleString("en-IN")}`
+    `₹${Math.round(sumNetBalance).toLocaleString("en-IN")}`
   ];
 
-  let grandPrevBalance = 0;
-  sortedWorkers.forEach(w => grandPrevBalance += (w.openingEarned - w.openingPaid));
+  const kpiLayout = [
+    { row: 1, labelIdx: 0, valIdx: 3 }, // Workers, Wages
+    { row: 2, labelIdx: 1, valIdx: 4 }, // Hajaris, Advance
+    { row: 3, labelIdx: 2, valIdx: 5 }  // Overtime, Net Balance
+  ];
 
-  // Distribute KPI cards across available columns
-  const kpiRow1 = sheet.addRow(kpiLabels);
-  const kpiRow2 = sheet.addRow(kpiValues);
-  sheet.getRow(5).height = 18;
-  sheet.getRow(6).height = 26;
+  kpiLayout.forEach(layout => {
+    const r = layout.row;
+    
+    // Left KPI (Label in 4-5, Value in 6)
+    sheet.mergeCells(r, 4, r, 5);
+    const leftLabel = sheet.getCell(r, 4);
+    leftLabel.value = kpiLabels[layout.labelIdx];
+    leftLabel.font = { size: 8, bold: true, color: { argb: "FF475569" } };
+    leftLabel.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+    leftLabel.alignment = { horizontal: "right", vertical: "middle" };
+    leftLabel.border = { top: { style: "thin", color: { argb: "FFCBD5E1" } }, left: { style: "thin", color: { argb: "FFCBD5E1" } }, bottom: { style: "thin", color: { argb: "FFCBD5E1" } } };
 
-  kpiRow1.eachCell((cell, colNum) => {
-    if (colNum <= 6) {
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
-      cell.font = { size: 8, bold: true, color: { argb: "FF475569" } };
-      cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.border = { top: { style: "thin", color: { argb: "FFCBD5E1" } }, left: { style: "thin", color: { argb: "FFCBD5E1" } }, right: { style: "thin", color: { argb: "FFCBD5E1" } } };
-    }
+    const leftVal = sheet.getCell(r, 6);
+    leftVal.value = kpiValues[layout.labelIdx];
+    leftVal.font = { size: 10, bold: true, color: { argb: "FF0F172A" } };
+    leftVal.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFFFF" } };
+    leftVal.alignment = { horizontal: "left", vertical: "middle", indent: 1 };
+    leftVal.border = { top: { style: "thin", color: { argb: "FFCBD5E1" } }, right: { style: "thin", color: { argb: "FFCBD5E1" } }, bottom: { style: "thin", color: { argb: "FFCBD5E1" } } };
+
+    // Right KPI (Label in 7-8, Value in 9)
+    sheet.mergeCells(r, 7, r, 8);
+    const rightLabel = sheet.getCell(r, 7);
+    rightLabel.value = kpiLabels[layout.valIdx];
+    rightLabel.font = { size: 8, bold: true, color: { argb: "FF475569" } };
+    rightLabel.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+    rightLabel.alignment = { horizontal: "right", vertical: "middle" };
+    rightLabel.border = { top: { style: "thin", color: { argb: "FFCBD5E1" } }, left: { style: "thin", color: { argb: "FFCBD5E1" } }, bottom: { style: "thin", color: { argb: "FFCBD5E1" } } };
+
+    const rightVal = sheet.getCell(r, 9);
+    rightVal.value = kpiValues[layout.valIdx];
+    
+    let textColor = "FF0F172A";
+    if (layout.valIdx === 3) textColor = "FF1E3A8A"; // Wages
+    if (layout.valIdx === 4) textColor = "FFC00000"; // Advance Paid
+    if (layout.valIdx === 5) textColor = "FF047857"; // Net Balance
+    
+    rightVal.font = { size: 10, bold: true, color: { argb: textColor } };
+    rightVal.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFFFF" } };
+    rightVal.alignment = { horizontal: "left", vertical: "middle", indent: 1 };
+    rightVal.border = { top: { style: "thin", color: { argb: "FFCBD5E1" } }, right: { style: "thin", color: { argb: "FFCBD5E1" } }, bottom: { style: "thin", color: { argb: "FFCBD5E1" } } };
   });
 
-  kpiRow2.eachCell((cell, colNum) => {
-    if (colNum <= 6) {
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFFFF" } };
-      let textColor = "FF0F172A";
-      if (colNum === 4) textColor = "FF1E3A8A"; // Wages
-      if (colNum === 5) textColor = "FFC00000"; // Advance Paid
-      if (colNum === 6) textColor = "FF047857"; // Net Balance
-      cell.font = { size: 12, bold: true, color: { argb: textColor } };
-      cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.border = { bottom: { style: "medium", color: { argb: "FF94A3B8" } }, left: { style: "thin", color: { argb: "FFCBD5E1" } }, right: { style: "thin", color: { argb: "FFCBD5E1" } } };
-    }
-  });
-
-  // Row 7: Blank separator
-  sheet.addRow([]);
-  sheet.getRow(7).height = 10;
-
-  // Rows 8 & 9: Table Header (Days of week + Date numbers + Summary Columns)
+  // Table Headers
   const headerRow1Values = ["Labour Name", "Category", "Rate (₹)"];
   const headerRow2Values = ["", "", ""];
 
   dates.forEach(d => {
-    headerRow1Values.push(format(d, "EEE")); // e.g. Mon, Tue
-    headerRow2Values.push(format(d, "dd"));  // e.g. 01, 02
+    headerRow1Values.push(format(d, "EEE"));
+    headerRow2Values.push(format(d, "dd"));
   });
 
-  headerRow1Values.push("Total Hajari", "Total OT", "Prev. Advance", "Prev. Pending", "Curr. Earned", "Gross Payable", "Total Adv. Deducted", "Net Balance");
+  headerRow1Values.push("Total\nHajari", "Total\nOT", "Prev.\nAdvance", "Prev.\nPending", "Curr.\nEarned", "Gross\nPayable", "Adv.\nDeducted", "Net\nBalance");
   headerRow2Values.push("", "", "", "", "", "", "", "");
 
-  const headerRow1 = sheet.addRow(headerRow1Values);
-  const headerRow2 = sheet.addRow(headerRow2Values);
-  sheet.getRow(8).height = 20;
-  sheet.getRow(9).height = 20;
+  const headerRow1 = sheet.addRow(headerRow1Values); // Row 4
+  const headerRow2 = sheet.addRow(headerRow2Values); // Row 5
+  // Row height will auto-fit based on content
 
   // Style Header Rows
   [headerRow1, headerRow2].forEach(row => {
     row.eachCell((cell, colNum) => {
-      let bgColor = "FF2563EB"; // Blue for general headers
+      let bgColor = "FF2563EB";
       if (colNum > 3 + dates.length && colNum <= totalCols) {
-        bgColor = "FF1E40AF"; // Darker blue for summary columns
+        bgColor = "FF1E40AF";
       }
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgColor } };
-      cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9 };
-      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 8.5 };
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
       cell.border = {
         top: { style: "thin", color: { argb: "FFFFFFFF" } },
         left: { style: "thin", color: { argb: "FFFFFFFF" } },
@@ -356,19 +381,18 @@ export async function generateAttendanceExcel(
     });
   });
 
-  // Merge the empty cells in the two-tier header
-  sheet.mergeCells("A8:A9");
-  sheet.mergeCells("B8:B9");
-  sheet.mergeCells("C8:C9");
+  // Merge headers
+  sheet.mergeCells("A4:A5");
+  sheet.mergeCells("B4:B5");
+  sheet.mergeCells("C4:C5");
   
-  // Merge summary columns across row 8 and 9
   for (let c = totalCols - 7; c <= totalCols; c++) {
     const colLetter = sheet.getColumn(c).letter;
-    sheet.mergeCells(`${colLetter}8:${colLetter}9`);
+    sheet.mergeCells(`${colLetter}4:${colLetter}5`);
   }
 
-  // Freeze panes (Freeze Name, Category, Rate, and headers)
-  sheet.views = [{ state: "frozen", ySplit: 9, xSplit: 3 }];
+  // Freeze panes
+  sheet.views = [{ state: "frozen", ySplit: 5, xSplit: 3 }];
 
   // Collect all unique month keys across all labourers and sort them
   const allMonthsSet = new Set<string>();
@@ -412,10 +436,15 @@ export async function generateAttendanceExcel(
       noteNet += "No data";
     }
 
+    const isMonthlyCategory = worker.category.toLowerCase().includes("supervisor") || worker.category.toLowerCase().includes("foreman");
+    const displayRate = isMonthlyCategory 
+      ? `₹${Math.round(worker.baseDailyWage * 30).toLocaleString("en-IN")}/mo`
+      : (worker.dailyWage > 0 ? worker.dailyWage : "—");
+
     const rowValues: any[] = [
       worker.name,
       worker.category,
-      worker.dailyWage > 0 ? worker.dailyWage : "—"
+      displayRate
     ];
 
     dates.forEach(d => {
@@ -474,7 +503,7 @@ export async function generateAttendanceExcel(
     rowValues.push(`₹${Math.round(worker.netBalance).toLocaleString("en-IN")}`);
 
     const row = sheet.addRow(rowValues);
-    row.height = 26; // Ample height for 2-line cells (Hajari + Payment)
+    // Row height will auto-fit based on content
 
     const isZebra = workerIdx % 2 === 1;
     const zebraBg = isZebra ? "FFF8FAFC" : "FFFFFFFF";
@@ -503,6 +532,16 @@ export async function generateAttendanceExcel(
           cell.font = { color: { argb: "FF047857" }, bold: true, size: 9 };
         } else if (cell.value === "—") {
           cell.font = { color: { argb: "FF94A3B8" }, size: 9 };
+        }
+
+        const dateIndex = colNum - 4;
+        if (dateIndex >= 0 && dateIndex < dates.length) {
+          const d = dates[dateIndex];
+          const dateKey = format(d, "yyyy-MM-dd");
+          const att = worker.attendanceByDate[dateKey];
+          if (att && att.remarks) {
+            cell.note = att.remarks;
+          }
         }
       }
 
@@ -561,20 +600,15 @@ export async function generateAttendanceExcel(
   grandTotalRowValues.push(grandTotalHajari);
   grandTotalRowValues.push(grandTotalOT > 0 ? grandTotalOT : "—");
   
-  const grandPrevAdvance = grandPrevBalance < 0 ? Math.abs(grandPrevBalance) : 0;
-  const grandPrevPending = grandPrevBalance > 0 ? grandPrevBalance : 0;
-  const grandGrossPayable = grandPrevPending + grandCurrEarned;
-  const grandAdvanceDeducted = grandPrevAdvance + grandTotalPaid;
-  
-  grandTotalRowValues.push(grandPrevAdvance > 0 ? `₹${Math.round(grandPrevAdvance).toLocaleString("en-IN")}` : "—");
-  grandTotalRowValues.push(grandPrevPending > 0 ? `₹${Math.round(grandPrevPending).toLocaleString("en-IN")}` : "—");
-  grandTotalRowValues.push(`₹${Math.round(grandCurrEarned).toLocaleString("en-IN")}`);
-  grandTotalRowValues.push(`₹${Math.round(grandGrossPayable).toLocaleString("en-IN")}`);
-  grandTotalRowValues.push(`₹${Math.round(grandAdvanceDeducted).toLocaleString("en-IN")}`);
-  grandTotalRowValues.push(`₹${Math.round(grandTotalBalance).toLocaleString("en-IN")}`);
+  grandTotalRowValues.push(sumPrevAdvance > 0 ? `₹${Math.round(sumPrevAdvance).toLocaleString("en-IN")}` : "—");
+  grandTotalRowValues.push(sumPrevPending > 0 ? `₹${Math.round(sumPrevPending).toLocaleString("en-IN")}` : "—");
+  grandTotalRowValues.push(`₹${Math.round(sumCurrEarned).toLocaleString("en-IN")}`);
+  grandTotalRowValues.push(`₹${Math.round(sumGrossPayable).toLocaleString("en-IN")}`);
+  grandTotalRowValues.push(`₹${Math.round(sumAdvanceDeducted).toLocaleString("en-IN")}`);
+  grandTotalRowValues.push(`₹${Math.round(sumNetBalance).toLocaleString("en-IN")}`);
 
   const totalRow = sheet.addRow(grandTotalRowValues);
-  totalRow.height = 30;
+  // Row height will auto-fit based on content
 
   totalRow.eachCell((cell, colNum) => {
     cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
@@ -605,7 +639,7 @@ export async function generateAttendanceExcel(
     } else if (colNum === totalCols - 1) { // Advance Deducted
       cell.font = { bold: true, color: { argb: "FFDC2626" }, size: 10 };
     } else if (colNum === totalCols) { // Net Balance
-      cell.font = { bold: true, color: { argb: grandTotalBalance > 0 ? "FF047857" : (grandTotalBalance < 0 ? "FFDC2626" : "FF0F172A") }, size: 10.5 };
+      cell.font = { bold: true, color: { argb: sumNetBalance > 0 ? "FF047857" : (sumNetBalance < 0 ? "FFDC2626" : "FF0F172A") }, size: 10.5 };
     }
   });
 
@@ -640,30 +674,24 @@ export async function generateAttendanceExcel(
   legendRowIdx += explanations.length;
 
   // Auto-fit Column Widths based on content
-  sheet.columns.forEach((column, colIdx) => {
+  for (let colNum = 1; colNum <= totalCols; colNum++) {
+    const column = sheet.getColumn(colNum);
     let maxLength = 0;
-    const colNum = colIdx + 1;
 
-    // Minimum width constraints
-    let minWidth = 8;
-    if (colNum === 1) minWidth = 18; // Labour Name
-    else if (colNum === 2) minWidth = 14; // Category
-    else if (colNum === 3) minWidth = 10; // Rate
-    else if (colNum === totalCols - 7) minWidth = 12; // Total Hajari
-    else if (colNum === totalCols - 6) minWidth = 10; // Total OT
-    else if (colNum === totalCols - 5) minWidth = 14; // Prev Advance
-    else if (colNum === totalCols - 4) minWidth = 14; // Prev Pending
-    else if (colNum === totalCols - 3) minWidth = 14; // Curr Earned
-    else if (colNum === totalCols - 2) minWidth = 14; // Gross Payable
-    else if (colNum === totalCols - 1) minWidth = 16; // Advance Deducted
-    else if (colNum === totalCols) minWidth = 15; // Net Balance
+    // Absolute minimum widths (ultra tight)
+    let minWidth = 3.5; 
+    if (colNum === 1) minWidth = 10; // Labour Name
+    else if (colNum === 2) minWidth = 8;  // Category
+    else if (colNum === 3) minWidth = 6;  // Rate
+    else if (colNum > 3 && colNum <= 3 + dates.length) minWidth = 3.5; // Dates
+    else minWidth = 6; // Summary columns will expand purely on content length
 
     // Calculate maximum content length in this column
     if (column.eachCell) {
       column.eachCell({ includeEmpty: true }, (cell: any) => {
         const rowNum = Number(cell.row);
-        // Ignore long merged title rows and legend row
-        if (rowNum < 8 || rowNum >= legendRowIdx) return;
+        // Ignore KPI cards and legend row
+        if (rowNum < 4 || rowNum >= legendRowIdx) return;
         
         let textLength = 0;
         if (cell.value && typeof cell.value === 'object' && 'richText' in cell.value) {
@@ -672,7 +700,8 @@ export async function generateAttendanceExcel(
           const lines = fullText.split("\n");
           textLength = Math.max(...lines.map((l: string) => l.trim().length));
         } else if (cell.value) {
-          textLength = cell.value.toString().trim().length;
+          const lines = cell.value.toString().split("\n");
+          textLength = Math.max(...lines.map((l: string) => l.trim().length));
         }
         
         if (textLength > maxLength) {
@@ -681,9 +710,9 @@ export async function generateAttendanceExcel(
       });
     }
 
-    // Set width to max content length + padding, constrained between minWidth and 40
-    column.width = Math.min(40, Math.max(minWidth, maxLength + 2.5));
-  });
+    // Ultra-tight padding: just 0.8 chars extra. Constrain max width to 30 to prevent anomalies.
+    column.width = Math.min(30, Math.max(minWidth, maxLength + 0.8));
+  }
 
   // --- ADD MONTHLY LEDGER SUMMARY SHEET ---
   const ledgerSheet = workbook.addWorksheet("Monthly Ledger Summary");
@@ -692,14 +721,14 @@ export async function generateAttendanceExcel(
   const lsTitleCell = ledgerSheet.getCell("A1");
   lsTitleCell.value = `Labour Monthly Ledger Summary — ${siteName}`;
   lsTitleCell.font = { size: 16, bold: true, color: { argb: "FF0B2447" } };
-  lsTitleCell.alignment = { horizontal: "center", vertical: "middle" };
-  ledgerSheet.getRow(1).height = 30;
+  lsTitleCell.alignment = { horizontal: "left", vertical: "middle" };
+  ledgerSheet.getRow(1).height = 28;
 
   ledgerSheet.mergeCells("A2:M2");
   const lsSubCell = ledgerSheet.getCell("A2");
   lsSubCell.value = `Generated: ${format(new Date(), "dd-MMM-yyyy hh:mm a")}`;
   lsSubCell.font = { size: 10, italic: true, color: { argb: "FF475569" } };
-  lsSubCell.alignment = { horizontal: "center", vertical: "middle" };
+  lsSubCell.alignment = { horizontal: "left", vertical: "middle" };
   ledgerSheet.getRow(2).height = 18;
   
   ledgerSheet.addRow([]);
