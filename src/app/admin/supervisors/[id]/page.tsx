@@ -139,6 +139,50 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
   const totalTransfers = sv.supervisorTransfers.length;
   const paginatedTransfers = sv.supervisorTransfers.slice((transferPage - 1) * PAGE_SIZE, transferPage * PAGE_SIZE);
 
+  const monthParam = (resolvedSearchParams as any).month;
+  const now = monthParam ? new Date(monthParam) : new Date();
+  
+  const earnedStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const earnedEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  
+  const paidStart = new Date(now.getFullYear(), now.getMonth(), 21);
+  const paidEnd = new Date(now.getFullYear(), now.getMonth() + 1, 20, 23, 59, 59, 999);
+
+  const displayMonthName = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(now);
+
+  let thisMonthEarned = 0;
+  let thisMonthHajari = 0;
+  let previousEarned = 0;
+  for (const record of attendances) {
+    const d = new Date(record.date);
+    if (record.status !== "ABSENT") {
+      const earned = record.earnedAmount || 0;
+      const days = record.status === "PRESENT" ? 1 : 0.5;
+      if (d < earnedStart) {
+        previousEarned += earned;
+      } else if (d >= earnedStart && d <= earnedEnd) {
+        thisMonthEarned += earned;
+        thisMonthHajari += days;
+      }
+    }
+  }
+
+  let thisMonthPaid = 0;
+  let previousPaid = 0;
+  let thisMonthTxns = 0;
+  for (const payment of sv.supervisorPayments || []) {
+    const d = new Date(payment.date);
+    if (d < paidStart) {
+      previousPaid += payment.amount;
+    } else if (d >= paidStart && d <= paidEnd) {
+      thisMonthPaid += payment.amount;
+      thisMonthTxns++;
+    }
+  }
+  
+  const thisMonthOpeningBalance = openingBalance + previousEarned - previousPaid;
+  const thisMonthClosingBalance = thisMonthOpeningBalance + thisMonthEarned - thisMonthPaid;
+
   const totalWageHistory = sv.wageHistory?.length || 0;
   const paginatedWageHistory = (sv.wageHistory || []).slice((wageHistoryPage - 1) * PAGE_SIZE, wageHistoryPage * PAGE_SIZE);
 
@@ -184,7 +228,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900 min-w-0">
           <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-blue-500/10 blur-2xl transition-all duration-500 group-hover:bg-blue-500/20" />
           <CardContent className="p-6">
@@ -212,7 +256,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
               ₹{totalEarned.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
             </p>
             <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">
-              Attendance: ₹{attendanceEarned.toLocaleString("en-IN")} + Opening: ₹{openingBalance.toLocaleString("en-IN")}
+              Attendance: ₹{attendanceEarned.toLocaleString("en-IN")} ({totalDaysEquivalent} Days) + Opening: ₹{openingBalance.toLocaleString("en-IN")}
             </p>
           </CardContent>
         </Card>
@@ -228,6 +272,40 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Paid</p>
             <p className="text-2xl sm:text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{totalPaid.toLocaleString("en-IN")}</p>
             <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">Across {sv.supervisorPayments.length} payout(s)</p>
+          </CardContent>
+        </Card>
+
+        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900 min-w-0">
+          <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-cyan-500/10 blur-2xl transition-all duration-500 group-hover:bg-cyan-500/20" />
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <TrendingUp className="h-5 w-5 text-cyan-600" />
+              </div>
+            </div>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Earned ({displayMonthName})</p>
+            <p className="text-2xl sm:text-3xl font-black tracking-tight text-cyan-600 dark:text-cyan-500">₹{thisMonthEarned.toLocaleString("en-IN")}</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">Hajari: {thisMonthHajari} Days @ ₹{standardDailyRate.toLocaleString("en-IN")}/day</p>
+          </CardContent>
+        </Card>
+
+        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900 min-w-0">
+          <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-fuchsia-500/10 blur-2xl transition-all duration-500 group-hover:bg-fuchsia-500/20" />
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="h-10 w-10 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <History className="h-5 w-5 text-fuchsia-600" />
+              </div>
+            </div>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Paid ({displayMonthName})</p>
+            <p className="text-2xl sm:text-3xl font-black tracking-tight text-fuchsia-600 dark:text-fuchsia-500">₹{thisMonthPaid.toLocaleString("en-IN")}</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">
+              Payout: 21st {displayMonthName} - 20th Next Month
+              <br/>
+              Prev. Bal: ₹{Math.abs(thisMonthOpeningBalance).toLocaleString("en-IN")} {thisMonthOpeningBalance > 0 ? "(Pending Due)" : thisMonthOpeningBalance < 0 ? "(Advance)" : "(Cleared)"}
+              <br/>
+              Closing Bal: ₹{Math.abs(thisMonthClosingBalance).toLocaleString("en-IN")} {thisMonthClosingBalance > 0 ? "(Pending Due)" : thisMonthClosingBalance < 0 ? "(Advance)" : "(Cleared)"}
+            </p>
           </CardContent>
         </Card>
 

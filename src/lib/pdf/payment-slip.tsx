@@ -152,6 +152,52 @@ const styles = StyleSheet.create({
   colDate: { width: "22%" },
   colRef: { width: "48%" },
   colAmount: { width: "30%", textAlign: "right" },
+  colMonth: { width: "25%" },
+  colHajari: { width: "15%", textAlign: "center" },
+  colEarned: { width: "20%", textAlign: "right" },
+  colPaid: { width: "20%", textAlign: "right" },
+  colBal: { width: "20%", textAlign: "right" },
+  finalSummaryBox: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 6,
+  },
+  finalSummaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  finalSummaryLabel: {
+    fontSize: 10,
+    fontFamily: "Helvetica-Bold",
+    color: "#475569",
+  },
+  finalSummaryValue: {
+    fontSize: 10,
+    fontFamily: "Helvetica-Bold",
+    color: "#0f172a",
+  },
+  finalOutstandingRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 6,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#cbd5e1",
+  },
+  finalOutstandingLabel: {
+    fontSize: 12,
+    fontFamily: "Helvetica-Bold",
+    color: "#e11d48",
+  },
+  finalOutstandingValue: {
+    fontSize: 14,
+    fontFamily: "Helvetica-Bold",
+    color: "#be123c",
+  },
   totalRow: {
     flexDirection: "row",
     backgroundColor: "#eef2ff",
@@ -253,6 +299,14 @@ export interface PaymentSlipData {
   entityRole: string; // "Labour" or "Supervisor"
   entityPhone?: string;
   entitySite?: string;
+  entityAddress?: string;
+  entityAadhar?: string;
+  entityJoiningDate?: Date | string;
+  transferHistory?: Array<{
+    date: Date | string;
+    fromSite: string;
+    toSite: string;
+  }>;
   payments: Array<{
     id: string;
     date: Date | string;
@@ -260,9 +314,22 @@ export interface PaymentSlipData {
     reason?: string | null;
     transactionId?: string | null;
   }>;
+  monthlyBreakdown?: Array<{
+    monthStr: string;
+    earned: number;
+    paid: number;
+    hajari: number;
+    closingBalance: number;
+  }>;
+  finalCalculations?: {
+    totalEarned: number;
+    totalPaid: number;
+    outstandingBalance: number;
+  };
   statementPeriod?: {
     from: Date | string;
     to: Date | string;
+    openingBalance?: number;
   };
   logoStr?: string | null;
   stampStr?: string | null;
@@ -329,6 +396,12 @@ const PaymentSlipDocument: React.FC<{ data: PaymentSlipData }> = ({ data }) => {
                 <Text style={styles.metaValue}>{data.entityPhone}</Text>
               </View>
             )}
+            {data.entityAadhar && (
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Aadhar:</Text>
+                <Text style={styles.metaValue}>{data.entityAadhar}</Text>
+              </View>
+            )}
           </View>
           <View style={styles.metaColumn}>
             {data.entitySite && (
@@ -345,42 +418,158 @@ const PaymentSlipDocument: React.FC<{ data: PaymentSlipData }> = ({ data }) => {
                 </Text>
               </View>
             )}
+            {data.entityJoiningDate && (
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Joined:</Text>
+                <Text style={styles.metaValue}>{getFormattedDate(data.entityJoiningDate)}</Text>
+              </View>
+            )}
+            {data.entityAddress && (
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Address:</Text>
+                <Text style={styles.metaValue}>{data.entityAddress}</Text>
+              </View>
+            )}
           </View>
         </View>
 
-        {/* Table */}
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderCell, styles.colDate]}>Date</Text>
-            <Text style={[styles.tableHeaderCell, styles.colRef]}>Details / Ref</Text>
-            <Text style={[styles.tableHeaderCell, styles.colAmount]}>Amount Paid (Rs.)</Text>
-          </View>
-          
-          {data.payments.map((p, i) => (
-            <View key={p.id || i} style={styles.tableRow}>
-              <Text style={[styles.tableCellDate, styles.colDate]}>{getFormattedDate(p.date)}</Text>
-              <View style={[styles.colRef]}>
-                <Text style={styles.tableCellDesc}>{p.reason || "Advance Payout"}</Text>
-                {p.transactionId && (
-                  <Text style={styles.tableCellTx}>
-                    Tx ID: {p.transactionId}
-                  </Text>
-                )}
+        {/* Table Area */}
+        {data.monthlyBreakdown ? (
+          <View>
+            <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", marginBottom: 10, color: "#334155" }}>Month-by-Month Summary Ledger</Text>
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, styles.colMonth]}>Month</Text>
+                <Text style={[styles.tableHeaderCell, styles.colHajari]}>Hajari</Text>
+                <Text style={[styles.tableHeaderCell, styles.colEarned]}>Earned</Text>
+                <Text style={[styles.tableHeaderCell, styles.colPaid]}>Paid</Text>
+                <Text style={[styles.tableHeaderCell, styles.colBal]}>Balance</Text>
               </View>
-              <Text style={[styles.tableCellAmount, styles.colAmount]}>
-                {p.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              
+              {data.monthlyBreakdown.map((m, i) => (
+                <View key={i} style={styles.tableRow}>
+                  <Text style={[styles.tableCellDate, styles.colMonth]}>{m.monthStr}</Text>
+                  <Text style={[styles.tableCellDesc, styles.colHajari]}>{m.hajari}</Text>
+                  <Text style={[styles.tableCellAmount, styles.colEarned]}>
+                    {m.earned.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </Text>
+                  <Text style={[styles.tableCellAmount, styles.colPaid]}>
+                    {m.paid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </Text>
+                  <Text style={[styles.tableCellAmount, styles.colBal, { color: m.closingBalance > 0 ? "#e11d48" : "#0f172a" }]}>
+                    {m.closingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {data.finalCalculations && (
+              <View style={styles.finalSummaryBox}>
+                <View style={styles.finalSummaryRow}>
+                  <Text style={styles.finalSummaryLabel}>Total Earned (Date Range):</Text>
+                  <Text style={styles.finalSummaryValue}>Rs. {data.finalCalculations.totalEarned.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</Text>
+                </View>
+                <View style={styles.finalSummaryRow}>
+                  <Text style={styles.finalSummaryLabel}>Total Paid (Date Range):</Text>
+                  <Text style={styles.finalSummaryValue}>Rs. {data.finalCalculations.totalPaid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</Text>
+                </View>
+                <View style={styles.finalOutstandingRow}>
+                  <Text style={styles.finalOutstandingLabel}>Final Outstanding Balance:</Text>
+                  <Text style={styles.finalOutstandingValue}>Rs. {data.finalCalculations.outstandingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</Text>
+                </View>
+              </View>
+            )}
+
+            {data.transferHistory && data.transferHistory.length > 0 && (
+              <View style={{ marginTop: 20 }} break>
+                <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", marginBottom: 10, color: "#334155" }}>Transfer History in Period</Text>
+                <View style={styles.table}>
+                  <View style={styles.tableHeader}>
+                    <Text style={[styles.tableHeaderCell, { width: "20%" }]}>Date</Text>
+                    <Text style={[styles.tableHeaderCell, { width: "40%" }]}>From Site</Text>
+                    <Text style={[styles.tableHeaderCell, { width: "40%" }]}>To Site</Text>
+                  </View>
+                  {data.transferHistory.map((t, i) => (
+                    <View key={i} style={styles.tableRow}>
+                      <Text style={[styles.tableCellDate, { width: "20%" }]}>{getFormattedDate(t.date)}</Text>
+                      <Text style={[styles.tableCellDesc, { width: "40%" }]}>{t.fromSite}</Text>
+                      <Text style={[styles.tableCellDesc, { width: "40%" }]}>{t.toSite}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {data.payments.length > 0 && (
+              <View style={{ marginTop: 30 }} break>
+                <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", marginBottom: 10, color: "#64748b" }}>Detailed Transaction List (Cycle Based)</Text>
+                
+                {data.statementPeriod?.openingBalance !== undefined && (
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 10, backgroundColor: "#f8fafc", padding: 8, borderRadius: 4, borderWidth: 1, borderColor: "#e2e8f0" }}>
+                    <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#475569" }}>Previous Pending / Advance Balance</Text>
+                    <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: data.statementPeriod.openingBalance > 0 ? "#e11d48" : "#0f172a" }}>
+                      Rs. {data.statementPeriod.openingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })} {data.statementPeriod.openingBalance > 0 ? "(Pending Due)" : data.statementPeriod.openingBalance < 0 ? "(Advance)" : "(Cleared)"}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.table}>
+                  <View style={styles.tableHeader}>
+                    <Text style={[styles.tableHeaderCell, styles.colDate]}>Date</Text>
+                    <Text style={[styles.tableHeaderCell, styles.colRef]}>Reference / Reason</Text>
+                    <Text style={[styles.tableHeaderCell, styles.colAmount]}>Amount Paid</Text>
+                  </View>
+                  {data.payments.map((p, i) => (
+                    <View key={p.id || i} style={styles.tableRow}>
+                      <Text style={[styles.tableCellDate, styles.colDate]}>{getFormattedDate(p.date)}</Text>
+                      <View style={[styles.colRef]}>
+                        <Text style={styles.tableCellDesc}>{p.reason || "Advance Payout"}</Text>
+                        {p.transactionId && (
+                          <Text style={styles.tableCellTx}>Tx ID: {p.transactionId}</Text>
+                        )}
+                      </View>
+                      <Text style={[styles.tableCellAmount, styles.colAmount]}>
+                        {p.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </View>
+        ) : (
+          <View style={styles.table}>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderCell, styles.colDate]}>Date</Text>
+              <Text style={[styles.tableHeaderCell, styles.colRef]}>Details / Ref</Text>
+              <Text style={[styles.tableHeaderCell, styles.colAmount]}>Amount Paid (Rs.)</Text>
+            </View>
+            
+            {data.payments.map((p, i) => (
+              <View key={p.id || i} style={styles.tableRow}>
+                <Text style={[styles.tableCellDate, styles.colDate]}>{getFormattedDate(p.date)}</Text>
+                <View style={[styles.colRef]}>
+                  <Text style={styles.tableCellDesc}>{p.reason || "Advance Payout"}</Text>
+                  {p.transactionId && (
+                    <Text style={styles.tableCellTx}>
+                      Tx ID: {p.transactionId}
+                    </Text>
+                  )}
+                </View>
+                <Text style={[styles.tableCellAmount, styles.colAmount]}>
+                  {p.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </Text>
+              </View>
+            ))}
+
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>TOTAL PAID:</Text>
+              <Text style={styles.totalAmount}>
+                Rs. {totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
               </Text>
             </View>
-          ))}
-
-          {/* Total Row */}
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>TOTAL PAID:</Text>
-            <Text style={styles.totalAmount}>
-              Rs. {totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-            </Text>
           </View>
-        </View>
+        )}
 
         {/* PAID Stamp (Only for Single Receipts) */}
         {!isStatement && (
