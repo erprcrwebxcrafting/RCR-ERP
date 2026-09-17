@@ -5,7 +5,7 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { PaymentForm } from "@/app/admin/labours/[id]/payment-form";
-import { getDaysInMonth } from "date-fns";
+import { getDaysInMonth, format } from "date-fns";
 import { DownloadHajariSlip } from "./download-hajari-slip";
 import Link from "next/link";
 import { ArrowLeft, User, Phone, Calendar, CreditCard, Building, WalletCards, History, TrendingUp, IndianRupee, ArrowRightLeft, FileText, AlertCircle } from "lucide-react";
@@ -17,7 +17,7 @@ import { AadharUpload } from "@/components/ui/aadhar-upload";
 import { toggleLabourActive } from "@/app/admin/labours/actions";
 import { PaymentSlipAction } from "@/components/ui/payment-slip-actions";
 
-export default async function LabourLedgerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ payoutPage?: string; transferPage?: string; attendancePage?: string; wageHistoryPage?: string }> }) {
+export default async function LabourLedgerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ payoutPage?: string; transferPage?: string; attendancePage?: string; wageHistoryPage?: string; month?: string }> }) {
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
   
@@ -96,6 +96,53 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
 
   const totalPaid = labour.payments.reduce((sum: any, p: any) => sum + p.amount, 0);
   const balance = totalEarned - totalPaid;
+
+  const monthParam = resolvedSearchParams.month;
+  const now = monthParam ? new Date(monthParam) : new Date();
+  
+  // Earned Cycle: 1st to last day of selected month
+  const earnedStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const earnedEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  
+  // Paid Cycle: 21st of selected month to 20th of next month
+  const paidStart = new Date(now.getFullYear(), now.getMonth(), 21);
+  const paidEnd = new Date(now.getFullYear(), now.getMonth() + 1, 20, 23, 59, 59, 999);
+
+  const displayMonthName = format(now, "MMM yyyy");
+
+  let thisMonthEarned = 0;
+  let thisMonthHajari = 0;
+  let previousEarned = 0;
+  for (const record of allAttendance) {
+    const d = new Date(record.date);
+    if (record.hajari > 0) {
+      const rate = record.hajariRate || dailyWage || 0;
+      if (d < earnedStart) {
+        previousEarned += record.hajari * rate;
+      } else if (d >= earnedStart && d <= earnedEnd) {
+        thisMonthEarned += record.hajari * rate;
+        thisMonthHajari += record.hajari;
+      }
+    }
+  }
+
+  let thisMonthPaid = 0;
+  let previousPaid = 0;
+  let thisMonthTxns = 0;
+  for (const payment of labour.payments || []) {
+    const d = new Date(payment.date);
+    if (d < paidStart) {
+      previousPaid += payment.amount;
+    } else if (d >= paidStart && d <= paidEnd) {
+      thisMonthPaid += payment.amount;
+      thisMonthTxns++;
+    }
+  }
+  
+  const thisMonthOpeningBalance = openingBalance + previousEarned - previousPaid;
+  const thisMonthClosingBalance = thisMonthOpeningBalance + thisMonthEarned - thisMonthPaid;
+
+  const isMonthlyCategory = labour.labourCategory.name.toLowerCase().includes("supervisor") || labour.labourCategory.name.toLowerCase().includes("foreman");
 
   const totalPayments = (labour.payments || []).length;
   const paginatedPayments = (labour.payments || []).slice((payoutPage - 1) * PAGE_SIZE, payoutPage * PAGE_SIZE);
@@ -200,7 +247,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
       </Card>
 
       {/* KPI Cards */}
-      <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900">
           <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-blue-500/10 blur-2xl transition-all duration-500 group-hover:bg-blue-500/20" />
           <CardContent className="p-6">
@@ -210,13 +257,13 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
               </div>
             </div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">
-              {labour.labourCategory.name === "Fitter Foreman" ? "Monthly Salary" : "Hajari Rate"}
+              {isMonthlyCategory ? "Monthly Salary" : "Hajari Rate"}
             </p>
             <p className="text-2xl sm:text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">
-              ₹{labour.labourCategory.name === "Fitter Foreman" ? Math.round(dailyWage * 30).toLocaleString("en-IN") : dailyWage.toLocaleString("en-IN")}
+              ₹{isMonthlyCategory ? Math.round(dailyWage * 30).toLocaleString("en-IN") : dailyWage.toLocaleString("en-IN")}
             </p>
             <p className="text-xs text-slate-400 font-medium mt-1">
-              {labour.labourCategory.name === "Fitter Foreman" ? <span id="foreman-dynamic-rate">Daily Rate (This Month): ₹{currentDynamicRate}</span> : "Per Hajari"}
+              {isMonthlyCategory ? <span id="foreman-dynamic-rate">Daily Rate (This Month): ₹{currentDynamicRate}</span> : "Per Hajari"}
             </p>
           </CardContent>
         </Card>
@@ -231,7 +278,9 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
             </div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Earned</p>
             <p className="text-2xl sm:text-3xl font-black tracking-tight text-emerald-600 dark:text-emerald-500">₹{totalEarned.toLocaleString("en-IN")}</p>
-            <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">Hajari: ₹{attendanceEarned.toLocaleString("en-IN")} + Opening: ₹{openingBalance.toLocaleString("en-IN")}</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">
+              Hajari: ₹{attendanceEarned.toLocaleString("en-IN")} ({presentDays} Days) + Opening: ₹{openingBalance.toLocaleString("en-IN")}
+            </p>
           </CardContent>
         </Card>
 
@@ -245,7 +294,43 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
             </div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Total Paid</p>
             <p className="text-2xl sm:text-3xl font-black tracking-tight text-slate-800 dark:text-slate-100">₹{totalPaid.toLocaleString("en-IN")}</p>
-            <p className="text-xs text-slate-400 font-medium mt-1">Across {labour.payments.length} transactions</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">
+              Across {labour.payments.length} transactions
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900">
+          <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-cyan-500/10 blur-2xl transition-all duration-500 group-hover:bg-cyan-500/20" />
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <TrendingUp className="h-5 w-5 text-cyan-600" />
+              </div>
+            </div>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Earned ({displayMonthName})</p>
+            <p className="text-2xl sm:text-3xl font-black tracking-tight text-cyan-600 dark:text-cyan-500">₹{thisMonthEarned.toLocaleString("en-IN")}</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">Hajari: {thisMonthHajari} Days @ ₹{dailyWage.toLocaleString("en-IN")}/day</p>
+          </CardContent>
+        </Card>
+
+        <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900">
+          <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-fuchsia-500/10 blur-2xl transition-all duration-500 group-hover:bg-fuchsia-500/20" />
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="h-10 w-10 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <History className="h-5 w-5 text-fuchsia-600" />
+              </div>
+            </div>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Paid ({displayMonthName})</p>
+            <p className="text-2xl sm:text-3xl font-black tracking-tight text-fuchsia-600 dark:text-fuchsia-500">₹{thisMonthPaid.toLocaleString("en-IN")}</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">
+              Payout: 21st {displayMonthName} - 20th Next Month
+              <br/>
+              Prev. Bal: ₹{Math.abs(thisMonthOpeningBalance).toLocaleString("en-IN")} {thisMonthOpeningBalance > 0 ? "(Pending Due)" : thisMonthOpeningBalance < 0 ? "(Advance)" : "(Cleared)"}
+              <br/>
+              Closing Bal: ₹{Math.abs(thisMonthClosingBalance).toLocaleString("en-IN")} {thisMonthClosingBalance > 0 ? "(Pending Due)" : thisMonthClosingBalance < 0 ? "(Advance)" : "(Cleared)"}
+            </p>
           </CardContent>
         </Card>
 

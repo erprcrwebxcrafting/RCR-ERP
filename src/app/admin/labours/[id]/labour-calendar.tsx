@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 type Attendance = { id: string; date: string | Date; status: string; overtimeHrs: number; hajari: number; hajariRate: number; remarks?: string | null };
 type Payment = { id: string; date: string | Date; amount: number; reason?: string | null };
@@ -11,7 +12,19 @@ type Payment = { id: string; date: string | Date; amount: number; reason?: strin
 type Transfer = { id: string; transferDate: string | Date; fromSite?: { projectName: string } | null; toSite?: { projectName: string } | null };
 
 export function LabourCalendar({ labour, attendances, payments, transfers = [] }: { labour: any, attendances: Attendance[], payments: Payment[], transfers?: Transfer[] }) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  const monthParam = searchParams.get("month");
+
+  const [currentDate, setCurrentDate] = useState(() => {
+    if (monthParam) {
+      const parsed = new Date(monthParam);
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+    return new Date();
+  });
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -19,9 +32,18 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = new Date(year, month, 1).getDay();
 
-  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
-  const goToday = () => setCurrentDate(new Date());
+  const updateDate = (newDate: Date) => {
+    setCurrentDate(newDate);
+    const params = new URLSearchParams(searchParams.toString());
+    const y = newDate.getFullYear();
+    const m = String(newDate.getMonth() + 1).padStart(2, '0');
+    params.set("month", `${y}-${m}-01`);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const prevMonth = () => updateDate(new Date(year, month - 1, 1));
+  const nextMonth = () => updateDate(new Date(year, month + 1, 1));
+  const goToday = () => updateDate(new Date());
 
   const monthName = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
 
