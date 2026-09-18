@@ -83,7 +83,8 @@ export async function calculateAttendanceCardData(
 
     attendances = await prisma.attendance.findMany({
       where: { labourId: entityId, date: { gte: fromDate, lte: toDate } },
-      orderBy: { date: "asc" }
+      orderBy: { date: "asc" },
+      include: { site: { select: { projectName: true } } }
     });
 
     payments = await prisma.labourPayment.findMany({
@@ -211,6 +212,17 @@ export async function calculateAttendanceCardData(
     dayPays.forEach(p => {
       dayAdvance += (p.amount || 0);
       if (p.reason) reasons.push(p.reason);
+    });
+
+    dayAtts.forEach(a => {
+      if (a.site && a.site.projectName && a.site.projectName !== siteName) {
+        if (!reasons.includes(`Site: ${a.site.projectName}`)) {
+          reasons.push(`Site: ${a.site.projectName}`);
+        }
+      }
+      if (a.remarks && !reasons.includes(a.remarks)) {
+        reasons.push(a.remarks);
+      }
     });
 
     const presentStr = formatPresentStr(dayHajari, dayAtts.length > 0);
