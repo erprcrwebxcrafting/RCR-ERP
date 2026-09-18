@@ -109,7 +109,8 @@ export async function generateAttendancePdf(
         id: a.labourId,
         name: a.labour?.name || "Unknown Worker",
         category: a.labour?.labourCategory?.name || "General",
-        dailyWage: a.hajariRate || a.labour?.dailyWage || 0,
+        dailyWage: a.hajariRate || a.labour?.dailyWage || a.labour?.labourCategory?.dailyWage || 0,
+        baseDailyWage: a.labour?.dailyWage || a.labour?.labourCategory?.dailyWage || 0,
         attendanceByDate: {},
         paymentsByDate: {},
         totalHajari: 0,
@@ -144,7 +145,8 @@ export async function generateAttendancePdf(
         id: l.id,
         name: l.name,
         category: l.labourCategory?.name || "General",
-        dailyWage: l.dailyWage || 0,
+        dailyWage: l.dailyWage || l.labourCategory?.dailyWage || 0,
+        baseDailyWage: l.dailyWage || l.labourCategory?.dailyWage || 0,
         attendanceByDate: {},
         paymentsByDate: {},
         totalHajari: 0,
@@ -164,7 +166,8 @@ export async function generateAttendancePdf(
         id: p.labourId,
         name: p.labour?.name || "Unknown Worker",
         category: p.labour?.labourCategory?.name || "General",
-        dailyWage: p.labour?.dailyWage || 0,
+        dailyWage: p.labour?.dailyWage || p.labour?.labourCategory?.dailyWage || 0,
+        baseDailyWage: p.labour?.dailyWage || p.labour?.labourCategory?.dailyWage || 0,
         attendanceByDate: {},
         paymentsByDate: {},
         totalHajari: 0,
@@ -189,7 +192,8 @@ export async function generateAttendancePdf(
         id: p.labourId,
         name: p.labour?.name || "Unknown Worker",
         category: p.labour?.labourCategory?.name || "General",
-        dailyWage: p.labour?.dailyWage || 0,
+        dailyWage: p.labour?.dailyWage || p.labour?.labourCategory?.dailyWage || 0,
+        baseDailyWage: p.labour?.dailyWage || p.labour?.labourCategory?.dailyWage || 0,
         attendanceByDate: {},
         paymentsByDate: {}, // Will not render in grid because date is outside range
         totalHajari: 0,
@@ -211,7 +215,15 @@ export async function generateAttendancePdf(
     const allTimePaid = worker.openingPaid + worker.totalPaid;
     const netBalance = allTimeEarned - allTimePaid;
     return { ...worker, allTimeEarned, allTimePaid, netBalance };
-  }).sort((a, b) => a.name.localeCompare(b.name));
+  }).sort((a, b) => {
+    // Workers with attendance come first, zero-attendance at the bottom
+    const aHasAttendance = (a.totalHajari || 0) > 0 ? 1 : 0;
+    const bHasAttendance = (b.totalHajari || 0) > 0 ? 1 : 0;
+    if (aHasAttendance !== bHasAttendance) {
+      return bHasAttendance - aHasAttendance;
+    }
+    return a.name.localeCompare(b.name);
+  });
 
   // Compute Grand Totals
   let grandTotalHajari = 0;
