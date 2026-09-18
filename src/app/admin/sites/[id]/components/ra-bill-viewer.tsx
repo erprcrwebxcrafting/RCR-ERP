@@ -10,6 +10,7 @@ import { formatINR, formatDate, formatRefNo, formatInvoiceNo } from "@/lib/utils
 import { generateRunningBillAction } from "../bill-actions";
 import { SiteBalanceSheet } from "./site-balance-sheet";
 import { HistoricalBillViewer } from "../bills/[billId]/historical-bill-viewer";
+import { useRcrDownload } from "@/components/rcr-download-modal";
 import {
   Receipt,
   FileSpreadsheet,
@@ -83,6 +84,7 @@ export function RABillViewer({ site }: { site: any }) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeSheetTab, setActiveSheetTab] = useState<"sheet1" | "sheet2" | "towers" | "supply" | "balance">("sheet1");
   const [selectedTowerId, setSelectedTowerId] = useState<string>(site.buildings[0]?.id || "");
+  const { downloadFile, DownloadModal } = useRcrDownload();
 
   const bills = site.bills || [];
   const latestBill = bills[0] || null;
@@ -131,11 +133,21 @@ export function RABillViewer({ site }: { site: any }) {
   const netPayable = grossBillTotal + cgst + sgst - retention - tds;
 
   const handleDownloadExcel = () => {
-    window.open(`/api/sites/${site.id}/export-excel`, "_blank");
+    downloadFile({
+      url: `/api/sites/${site.id}/export-excel`,
+      defaultFilename: `${site.projectName.replace(/\s+/g, "_")}_RA_Bill.xlsx`,
+      fileType: "excel",
+      title: "Creating Running Bill Excel...",
+    });
   };
 
   const handleDownloadPdfPackage = () => {
-    window.open(`/api/sites/${site.id}/export-pdf`, "_blank");
+    downloadFile({
+      url: `/api/sites/${site.id}/export-pdf`,
+      defaultFilename: `${site.projectName.replace(/\s+/g, "_")}_RA_Bill.pdf`,
+      fileType: "pdf",
+      title: "Generating Official Bill PDF...",
+    });
   };
 
   const handlePrintPDF = () => {
@@ -836,6 +848,9 @@ export function RABillViewer({ site }: { site: any }) {
       )}
         </>
       )}
+
+      {/* RCR Download Modal */}
+      <DownloadModal />
     </div>
   );
 }

@@ -17,6 +17,7 @@ import { LabourStatusDialog } from "@/components/ui/labour-status-dialog";
 import { AadharUpload } from "@/components/ui/aadhar-upload";
 import { toggleLabourActive } from "@/app/admin/labours/actions";
 import { PaymentSlipAction } from "@/components/ui/payment-slip-actions";
+import { AllTimeCardsButton } from "@/components/all-time-cards-button";
 
 export default async function LabourLedgerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ payoutPage?: string; transferPage?: string; attendancePage?: string; wageHistoryPage?: string; month?: string }> }) {
   const resolvedParams = await params;
@@ -191,15 +192,7 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
         
         <div className="flex w-full sm:w-auto items-center gap-2 sm:gap-3 mt-4 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-slate-800">
           <div className="flex-1 sm:flex-none flex flex-col sm:flex-row gap-2 [&>button]:w-full">
-            <Button
-              variant="outline"
-              asChild
-              className="bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400 border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:shadow"
-            >
-              <a href={`/api/attendance/export-bulk-labour?entityId=${labour.id}&entityType=LABOUR`} target="_blank" rel="noreferrer">
-                <FileText className="h-4 w-4 mr-2" /> All-Time Cards
-              </a>
-            </Button>
+            <AllTimeCardsButton entityId={labour.id} entityType="LABOUR" />
             <DownloadHajariSlip labourId={labour.id} />
           </div>
           <div className="flex-1 sm:flex-none [&>button]:w-full [&_button]:w-full">

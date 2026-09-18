@@ -31,6 +31,7 @@ import {
   FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRcrDownload } from "@/components/rcr-download-modal";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -91,6 +92,7 @@ export function SupervisorAttendanceHub({
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [siteFilter, setSiteFilter] = useState<string>("");
   const [isPending, startTransition] = useTransition();
+  const { downloadFile, DownloadModal } = useRcrDownload();
 
   // Sync state with URL params on mount/change
   useEffect(() => {
@@ -255,24 +257,38 @@ export function SupervisorAttendanceHub({
           <div className="flex flex-col items-end gap-2 shrink-0">
             <div className="flex flex-wrap items-center justify-end gap-3">
               <Button
+                type="button"
                 variant="outline"
-                asChild
                 disabled={!siteFilter}
-                className={!siteFilter ? "cursor-not-allowed pointer-events-none bg-white/20 border-white/30 text-white shadow-none font-medium h-10 rounded-xl px-5" : "border-transparent bg-white hover:bg-white/90 text-emerald-600 shadow-xl shadow-emerald-900/10 transition-all font-bold h-10 rounded-xl px-5"}
+                onClick={() => {
+                  if (!siteFilter) return;
+                  downloadFile({
+                    url: `/api/attendance/supervisor/export?format=excel&siteId=${siteFilter}&month=${selectedMonth}&year=${selectedYear}`,
+                    defaultFilename: `Supervisor_Attendance_${selectedMonth + 1}_${selectedYear}.xlsx`,
+                    fileType: "excel",
+                    title: "Creating Supervisor Excel...",
+                  });
+                }}
+                className={!siteFilter ? "cursor-not-allowed pointer-events-none bg-white/20 border-white/30 text-white shadow-none font-medium h-10 rounded-xl px-5" : "border-transparent bg-white hover:bg-white/90 text-emerald-600 shadow-xl shadow-emerald-900/10 transition-all font-bold h-10 rounded-xl px-5 active:scale-95"}
               >
-                <a href={siteFilter ? `/api/attendance/supervisor/export?format=excel&siteId=${siteFilter}&month=${selectedMonth}&year=${selectedYear}` : "#"} target="_blank" rel="noreferrer">
-                  <FileSpreadsheet className={`w-4 h-4 mr-2 ${!siteFilter ? "text-white/70" : ""}`} /> Excel
-                </a>
+                <FileSpreadsheet className={`w-4 h-4 mr-2 ${!siteFilter ? "text-white/70" : ""}`} /> Excel
               </Button>
               <Button
+                type="button"
                 variant="outline"
-                asChild
                 disabled={!siteFilter}
-                className={!siteFilter ? "cursor-not-allowed pointer-events-none bg-white/20 border-white/30 text-white shadow-none font-medium h-10 rounded-xl px-5" : "border-transparent bg-white hover:bg-white/90 text-rose-600 shadow-xl shadow-rose-900/10 transition-all font-bold h-10 rounded-xl px-5"}
+                onClick={() => {
+                  if (!siteFilter) return;
+                  downloadFile({
+                    url: `/api/attendance/supervisor/export?format=pdf&siteId=${siteFilter}&month=${selectedMonth}&year=${selectedYear}`,
+                    defaultFilename: `Supervisor_Attendance_${selectedMonth + 1}_${selectedYear}.pdf`,
+                    fileType: "pdf",
+                    title: "Creating Supervisor PDF...",
+                  });
+                }}
+                className={!siteFilter ? "cursor-not-allowed pointer-events-none bg-white/20 border-white/30 text-white shadow-none font-medium h-10 rounded-xl px-5" : "border-transparent bg-white hover:bg-white/90 text-rose-600 shadow-xl shadow-rose-900/10 transition-all font-bold h-10 rounded-xl px-5 active:scale-95"}
               >
-                <a href={siteFilter ? `/api/attendance/supervisor/export?format=pdf&siteId=${siteFilter}&month=${selectedMonth}&year=${selectedYear}` : "#"} target="_blank" rel="noreferrer">
-                  <FileText className={`w-4 h-4 mr-2 ${!siteFilter ? "text-white/70" : ""}`} /> PDF
-                </a>
+                <FileText className={`w-4 h-4 mr-2 ${!siteFilter ? "text-white/70" : ""}`} /> PDF
               </Button>
             </div>
             {!siteFilter && <span className="text-[11px] text-white/90 font-bold px-3 py-1.5 bg-black/20 rounded-full backdrop-blur-md border border-white/10 shadow-inner">Select a site to enable export</span>}
@@ -893,6 +909,9 @@ export function SupervisorAttendanceHub({
           })}
         </div>
       )}
+
+      {/* RCR Download Modal */}
+      <DownloadModal />
     </div>
   );
 }

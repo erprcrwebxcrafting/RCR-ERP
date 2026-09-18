@@ -6,6 +6,7 @@ import { formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { AttendanceCalendar } from "./attendance-calendar";
 import { PaymentSlipAction } from "@/components/ui/payment-slip-actions";
+import { AllTimeCardsButton } from "@/components/all-time-cards-button";
 import { getDaysInMonth } from "date-fns";
 import {
   ArrowLeft,
@@ -224,15 +225,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
         </div>
         <div className="flex w-full sm:w-auto items-center gap-2 sm:gap-3 mt-4 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-slate-800">
           <div className="flex-1 sm:flex-none flex flex-col sm:flex-row gap-2 [&>button]:w-full">
-            <Button
-              variant="outline"
-              asChild
-              className="bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400 border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:shadow"
-            >
-              <a href={`/api/attendance/export-bulk-labour?entityId=${sv.id}&entityType=SUPERVISOR`} target="_blank" rel="noreferrer">
-                <FileText className="h-4 w-4 mr-2" /> All-Time Cards
-              </a>
-            </Button>
+            <AllTimeCardsButton entityId={sv.id} entityType="SUPERVISOR" />
             <DownloadSalarySlip supervisorId={sv.id} />
           </div>
             <div className="flex-1 sm:flex-none [&>button]:w-full"><EditSupervisorForm supervisor={sv} allSites={allSites} /></div>

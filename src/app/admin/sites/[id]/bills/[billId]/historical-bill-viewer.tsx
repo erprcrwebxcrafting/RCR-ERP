@@ -68,12 +68,14 @@ function BillHeaderBanner({ site, bill, sheetTitle }: { site: any; bill: any; sh
 import { useRouter } from "next/navigation";
 import { undoRecentBillAction } from "../../bill-actions";
 import { RotateCcw } from "lucide-react";
+import { useRcrDownload } from "@/components/rcr-download-modal";
 
 export function HistoricalBillViewer({ bill }: { bill: any }) {
   const { site, lines = [], supplyLabourEntries = [] } = bill;
   const [activeSheetTab, setActiveSheetTab] = useState<"sheet1" | "sheet2" | "towers" | "supply" | "balance">("sheet1");
   const [selectedTowerId, setSelectedTowerId] = useState<string>(site.buildings[0]?.id || "");
   const [loading, setLoading] = useState(false);
+  const { downloadFile, DownloadModal } = useRcrDownload();
   
   const router = useRouter();
   const [timeLeft, setTimeLeft] = useState("");
@@ -294,11 +296,21 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
   const netPayable = grossBillTotal + cgst + sgst - retention - tds;
 
   const handleDownloadExcel = () => {
-    window.open(`/api/bills/${bill.id}/excel`, "_blank");
+    downloadFile({
+      url: `/api/bills/${bill.id}/excel`,
+      defaultFilename: `Bill_${bill.billNo || "RA"}.xlsx`,
+      fileType: "excel",
+      title: "Creating Running Bill Excel...",
+    });
   };
 
   const handleDownloadPdfPackage = () => {
-    window.open(`/api/bills/${bill.id}/pdf`, "_blank");
+    downloadFile({
+      url: `/api/bills/${bill.id}/pdf`,
+      defaultFilename: `Bill_${bill.billNo || "RA"}.pdf`,
+      fileType: "pdf",
+      title: "Generating Official Bill PDF...",
+    });
   };
 
   return (
@@ -810,6 +822,8 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
           <SiteBalanceSheet site={site} hidePaymentForm={true} />
         </div>
       )}
+      {/* RCR Download Modal */}
+      <DownloadModal />
     </div>
   );
 }

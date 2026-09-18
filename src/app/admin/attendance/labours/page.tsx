@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import { AttendanceFilterForm } from "./attendance-filter-form";
+import { AttendanceExportActions } from "./attendance-export-actions";
 import { unstable_cache } from "next/cache";
 
 const PAGE_SIZE = 10;
@@ -227,38 +228,11 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
           </div>
 
           <div className="flex flex-col items-end gap-3 shrink-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                asChild
-                disabled={!siteId}
-                className={!siteId ? "cursor-not-allowed pointer-events-none bg-white/20 border-white/30 text-white shadow-none font-medium h-10 rounded-xl px-5" : "border-transparent bg-white hover:bg-white/90 text-emerald-600 shadow-xl shadow-emerald-900/10 transition-all font-bold h-10 rounded-xl px-5"}
-              >
-                <a href={`/api/attendance/export?format=excel&${exportUrlParams.toString()}`} target="_blank" rel="noreferrer">
-                  <FileSpreadsheet className={`w-4 h-4 mr-2 ${!siteId ? "text-white/70" : ""}`} /> Excel Ledger
-                </a>
-              </Button>
-              <Button
-                variant="outline"
-                asChild
-                disabled={!siteId}
-                className={!siteId ? "cursor-not-allowed pointer-events-none bg-white/20 border-white/30 text-white shadow-none font-medium h-10 rounded-xl px-5" : "border-transparent bg-white hover:bg-white/90 text-rose-600 shadow-xl shadow-rose-900/10 transition-all font-bold h-10 rounded-xl px-5"}
-              >
-                <a href={`/api/attendance/export?format=pdf&${exportUrlParams.toString()}`} target="_blank" rel="noreferrer">
-                  <FileText className={`w-4 h-4 mr-2 ${!siteId ? "text-white/70" : ""}`} /> PDF Ledger
-                </a>
-              </Button>
-              <Button
-                variant="outline"
-                asChild
-                disabled={!siteId}
-                className={!siteId ? "cursor-not-allowed pointer-events-none bg-white/20 border-white/30 text-white shadow-none font-medium h-10 rounded-xl px-5" : "border-transparent bg-white hover:bg-white/90 text-indigo-600 shadow-xl shadow-indigo-900/10 transition-all font-bold h-10 rounded-xl px-5"}
-              >
-                <a href={`/api/attendance/export-bulk-site?siteId=${siteId}&month=${startDateStr}`} target="_blank" rel="noreferrer">
-                  <FileText className={`w-4 h-4 mr-2 ${!siteId ? "text-white/70" : ""}`} /> Bulk Cards (PDF)
-                </a>
-              </Button>
-            </div>
+            <AttendanceExportActions
+              siteId={siteId}
+              exportUrlParams={exportUrlParams.toString()}
+              startDateStr={startDateStr}
+            />
             {!siteId && <span className="text-[11px] text-white/90 font-bold px-3 py-1.5 bg-black/20 rounded-full backdrop-blur-md border border-white/10 shadow-inner">Select a site to enable export</span>}
           </div>
         </div>
