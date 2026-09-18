@@ -198,7 +198,7 @@ export async function GET(req: NextRequest) {
         presentStr = "A";
       } else if (dayHajari > 0) {
         const whole = Math.floor(dayHajari);
-        const frac = dayHajari % 1;
+        const frac = Math.round((dayHajari % 1) * 100) / 100;
         
         let fracStr = "";
         if (frac === 0.5) fracStr = "1/2";
