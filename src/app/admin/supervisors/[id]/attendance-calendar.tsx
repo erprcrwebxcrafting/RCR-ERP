@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ import {
   Sparkles,
   Info,
   Lock,
+  Download,
 } from "lucide-react";
 import { markSupervisorAttendanceAction, deleteSupervisorAttendanceAction } from "./actions";
 import { toast } from "sonner";
@@ -269,6 +270,15 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
+              <Button 
+                variant="default" 
+                size="sm" 
+                className="h-9 px-3 bg-pink-500 hover:bg-pink-600 text-white border-none shadow-sm rounded-xl ml-1"
+                onClick={() => window.open(`/api/attendance/export-card?entityId=${supervisor.id}&entityType=SUPERVISOR&month=${year}-${String(month + 1).padStart(2, '0')}-01&t=${Date.now()}`, "_blank")}
+              >
+                <Download className="h-4 w-4 mr-1.5" />
+                Card
+              </Button>
             </div>
           </div>
         </CardHeader>

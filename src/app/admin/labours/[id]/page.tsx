@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { PaymentForm } from "@/app/admin/labours/[id]/payment-form";
 import { getDaysInMonth, format } from "date-fns";
 import { DownloadHajariSlip } from "./download-hajari-slip";
@@ -189,7 +190,16 @@ export default async function LabourLedgerPage({ params, searchParams }: { param
         </div>
         
         <div className="flex w-full sm:w-auto items-center gap-2 sm:gap-3 mt-4 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-slate-800">
-          <div className="flex-1 sm:flex-none [&>button]:w-full">
+          <div className="flex-1 sm:flex-none flex flex-col sm:flex-row gap-2 [&>button]:w-full">
+            <Button
+              variant="outline"
+              asChild
+              className="bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400 border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:shadow"
+            >
+              <a href={`/api/attendance/export-bulk-labour?entityId=${labour.id}&entityType=LABOUR`} target="_blank" rel="noreferrer">
+                <FileText className="h-4 w-4 mr-2" /> All-Time Cards
+              </a>
+            </Button>
             <DownloadHajariSlip labourId={labour.id} />
           </div>
           <div className="flex-1 sm:flex-none [&>button]:w-full [&_button]:w-full">

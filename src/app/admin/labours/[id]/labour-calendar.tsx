@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
+import { Download } from "lucide-react";
+
 type Attendance = { id: string; date: string | Date; status: string; overtimeHrs: number; hajari: number; hajariRate: number; remarks?: string | null };
 type Payment = { id: string; date: string | Date; amount: number; reason?: string | null };
 
@@ -132,6 +134,15 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
             <div className="font-semibold min-w-[140px] text-center">{monthName}</div>
             <Button variant="outline" size="icon" onClick={nextMonth}><ChevronRight className="h-4 w-4" /></Button>
           </div>
+          <Button 
+            variant="default" 
+            size="sm" 
+            className="bg-pink-500 hover:bg-pink-600 text-white border-none shadow-sm"
+            onClick={() => window.open(`/api/attendance/export-card?entityId=${labour.id}&entityType=LABOUR&month=${year}-${String(month + 1).padStart(2, '0')}-01&t=${Date.now()}`, "_blank")}
+          >
+            <Download className="h-4 w-4 mr-1.5" />
+            Card
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="overflow-hidden">
