@@ -75,7 +75,7 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
   const [activeSheetTab, setActiveSheetTab] = useState<"sheet1" | "sheet2" | "towers" | "supply" | "balance">("sheet1");
   const [selectedTowerId, setSelectedTowerId] = useState<string>(site.buildings[0]?.id || "");
   const [loading, setLoading] = useState(false);
-  const { downloadFile, DownloadModal } = useRcrDownload();
+  const { downloadFile } = useRcrDownload();
   
   const router = useRouter();
   const [timeLeft, setTimeLeft] = useState("");
@@ -822,8 +822,6 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
           <SiteBalanceSheet site={site} hidePaymentForm={true} />
         </div>
       )}
-      {/* RCR Download Modal */}
-      <DownloadModal />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { RcrDownloadOverlay } from "@/components/rcr-download-modal";
 
 export const metadata: Metadata = {
   title: "RCR Enterprises — Construction ERP",
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen antialiased">
         {children}
         <Toaster />
+        <RcrDownloadOverlay />
       </body>
     </html>
   );

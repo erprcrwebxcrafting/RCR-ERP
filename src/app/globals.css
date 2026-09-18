@@ -60,4 +60,9 @@
     -moz-appearance: textfield !important;
     appearance: textfield !important;
   }
+
+  /* Hide Next.js dev indicator badge ([N] 1 Issue) */
+  nextjs-portal {
+    display: none !important;
+  }
 }

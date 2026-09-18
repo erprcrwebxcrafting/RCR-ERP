@@ -3,7 +3,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { FileSpreadsheet, FileText } from "lucide-react";
-import { useRcrDownload } from "@/components/rcr-download-modal";
+import { triggerRcrDownload } from "@/components/rcr-download-modal";
 
 interface AttendanceExportActionsProps {
   siteId?: string;
@@ -16,11 +16,9 @@ export function AttendanceExportActions({
   exportUrlParams,
   startDateStr,
 }: AttendanceExportActionsProps) {
-  const { downloadFile, DownloadModal } = useRcrDownload();
-
   const handleExcelExport = () => {
     if (!siteId) return;
-    downloadFile({
+    triggerRcrDownload({
       url: `/api/attendance/export?format=excel&${exportUrlParams}`,
       defaultFilename: "Attendance_Ledger.xlsx",
       fileType: "excel",
@@ -30,7 +28,7 @@ export function AttendanceExportActions({
 
   const handlePdfExport = () => {
     if (!siteId) return;
-    downloadFile({
+    triggerRcrDownload({
       url: `/api/attendance/export?format=pdf&${exportUrlParams}`,
       defaultFilename: "Attendance_Ledger.pdf",
       fileType: "pdf",
@@ -40,7 +38,7 @@ export function AttendanceExportActions({
 
   const handleBulkCardsExport = () => {
     if (!siteId) return;
-    downloadFile({
+    triggerRcrDownload({
       url: `/api/attendance/export-bulk-site?siteId=${siteId}&month=${startDateStr}`,
       defaultFilename: "Bulk_Attendance_Cards.pdf",
       fileType: "card",
@@ -49,8 +47,7 @@ export function AttendanceExportActions({
   };
 
   return (
-    <>
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"
           variant="outline"
@@ -93,8 +90,5 @@ export function AttendanceExportActions({
           <FileText className={`w-4 h-4 mr-2 ${!siteId ? "text-white/70" : ""}`} /> Bulk Cards (PDF)
         </Button>
       </div>
-
-      <DownloadModal />
-    </>
   );
 }

@@ -84,7 +84,7 @@ export function RABillViewer({ site }: { site: any }) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeSheetTab, setActiveSheetTab] = useState<"sheet1" | "sheet2" | "towers" | "supply" | "balance">("sheet1");
   const [selectedTowerId, setSelectedTowerId] = useState<string>(site.buildings[0]?.id || "");
-  const { downloadFile, DownloadModal } = useRcrDownload();
+  const { downloadFile } = useRcrDownload();
 
   const bills = site.bills || [];
   const latestBill = bills[0] || null;
@@ -848,9 +848,6 @@ export function RABillViewer({ site }: { site: any }) {
       )}
         </>
       )}
-
-      {/* RCR Download Modal */}
-      <DownloadModal />
     </div>
   );
 }

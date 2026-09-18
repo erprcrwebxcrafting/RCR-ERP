@@ -16,7 +16,7 @@ export function AllTimeCardsButton({
   entityType,
   className,
 }: AllTimeCardsButtonProps) {
-  const { downloadFile, DownloadModal } = useRcrDownload();
+  const { downloadFile } = useRcrDownload();
 
   const handleDownload = () => {
     downloadFile({
@@ -28,19 +28,16 @@ export function AllTimeCardsButton({
   };
 
   return (
-    <>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={handleDownload}
-        className={
-          className ||
-          "bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400 border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:shadow active:scale-95"
-        }
-      >
-        <FileText className="h-4 w-4 mr-2" /> All-Time Cards
-      </Button>
-      <DownloadModal />
-    </>
+    <Button
+      type="button"
+      variant="outline"
+      onClick={handleDownload}
+      className={
+        className ||
+        "bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400 border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:shadow active:scale-95"
+      }
+    >
+      <FileText className="h-4 w-4 mr-2" /> All-Time Cards
+    </Button>
   );
 }

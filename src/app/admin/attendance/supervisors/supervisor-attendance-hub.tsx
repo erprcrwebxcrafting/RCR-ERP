@@ -92,7 +92,7 @@ export function SupervisorAttendanceHub({
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [siteFilter, setSiteFilter] = useState<string>("");
   const [isPending, startTransition] = useTransition();
-  const { downloadFile, DownloadModal } = useRcrDownload();
+  const { downloadFile } = useRcrDownload();
 
   // Sync state with URL params on mount/change
   useEffect(() => {
@@ -909,9 +909,6 @@ export function SupervisorAttendanceHub({
           })}
         </div>
       )}
-
-      {/* RCR Download Modal */}
-      <DownloadModal />
     </div>
   );
 }
