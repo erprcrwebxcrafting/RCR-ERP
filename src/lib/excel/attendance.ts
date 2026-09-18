@@ -797,6 +797,9 @@ export async function generateAttendanceExcel(
   ledgerSheet.getRow(4).height = 22;
   ledgerSheet.getRow(5).height = 20;
 
+  // Freeze: Lock Name + Category columns (col 1-2) and header rows (rows 1-5)
+  ledgerSheet.views = [{ state: "frozen", ySplit: 5, xSplit: 2 }];
+
   // Merge headers
   ledgerSheet.mergeCells("A4:A5");
   ledgerSheet.mergeCells("B4:B5");
@@ -940,6 +943,9 @@ export async function generateAttendanceExcel(
     c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
     c.alignment = { horizontal: "center" };
   });
+
+  // Freeze header row
+  detailSheet.views = [{ state: "frozen", ySplit: 4, xSplit: 0 }];
 
   const detailRows: any[] = [];
 
