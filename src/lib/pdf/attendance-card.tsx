@@ -21,43 +21,57 @@ Font.register({
 
 const styles = StyleSheet.create({
   page: {
-    flexDirection: "row", // Two pages side-by-side to mimic the booklet inside
-    backgroundColor: "#ff99cc", // Pinkish theme
-    padding: 20,
+    flexDirection: "column",
+    backgroundColor: "#ff99cc",
+    padding: 15, // Reduced padding to save vertical space
     fontFamily: "Helvetica",
   },
-  halfPage: {
-    width: "50%",
-    padding: 10,
-    height: "100%",
-    border: "1px solid #000",
+  headerContainer: {
+    flexDirection: "column",
+    alignItems: "center",
+    marginBottom: 15,
   },
-  headerText: {
-    fontSize: 10,
-    fontFamily: "Helvetica-Bold",
-    textAlign: "center",
+  logo: {
+    width: 70, // Reduced from 100
+    height: 70, // Reduced from 100
+    objectFit: "contain",
     marginBottom: 5,
   },
   title: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: "Helvetica-Bold",
     textAlign: "center",
-    marginBottom: 10,
     textTransform: "uppercase",
+    borderTopWidth: 1.5,
+    borderTopColor: "#0f172a",
+    borderTopStyle: "dashed",
+    paddingTop: 10,
+    width: "100%",
+    marginTop: 5,
+  },
+  infoSection: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    border: "1px solid #000",
+    padding: 8,
+    marginBottom: 10,
+  },
+  infoCol: {
+    width: "48%",
   },
   fieldRow: {
     flexDirection: "row",
-    marginBottom: 8,
+    marginBottom: 4,
     borderBottomWidth: 1,
     borderBottomColor: "#000",
     paddingBottom: 2,
   },
   fieldLabel: {
-    fontSize: 9,
-    width: 100,
+    fontSize: 10,
+    width: 90,
   },
   fieldValue: {
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: "Helvetica-Bold",
     flex: 1,
   },
@@ -66,7 +80,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderColor: "#000",
-    marginTop: 10,
   },
   tableRow: {
     flexDirection: "row",
@@ -76,7 +89,7 @@ const styles = StyleSheet.create({
   tableColHeader: {
     borderRightWidth: 1,
     borderRightColor: "#000",
-    padding: 3,
+    padding: 4,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -86,31 +99,46 @@ const styles = StyleSheet.create({
     padding: 2,
     justifyContent: "center",
     alignItems: "center",
-    height: 14,
+    height: 14, // Reduced from 16
   },
   textSmall: {
-    fontSize: 8,
+    fontSize: 9,
   },
   textMedium: {
-    fontSize: 8,
+    fontSize: 9,
     fontFamily: "Helvetica-Bold",
     color: "#000",
+  },
+  footerSection: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 15, // Reduced from 30
+    paddingHorizontal: 20,
+  },
+  signLine: {
+    width: 150,
+    borderTopWidth: 1,
+    borderTopColor: "#000",
+    textAlign: "center",
+    paddingTop: 5,
+    fontSize: 10,
+    fontFamily: "Helvetica-Bold",
   }
 });
 
 export interface AttendanceCardData {
   factoryName: string;
   workerName: string;
-  monthName: string; // e.g. "01 July 2026"
+  monthName: string; 
   rate: number;
   days: {
     dateNum: number;
-    presentStr: string; // 'P', 'A', 'P 1/2', 'PPP'
+    presentStr: string; 
     advDateNum: number;
     advanceAmt: number | null;
     remarks: string;
   }[];
-  totalDays: number; // Sum of hajaris
+  totalDays: number;
   totalEarned: number;
   totalAdvance: number;
   deductions: number;
@@ -119,158 +147,91 @@ export interface AttendanceCardData {
 }
 
 export const AttendanceCardPages = ({ data }: { data: AttendanceCardData }) => {
-  // Split days into two halves (1-16 and 17-31) to fit in the booklet style
-  const firstHalf = data.days.slice(0, 16);
-  const secondHalf = data.days.slice(16);
-
-  // Fill second half with empty rows if it's less than 15 rows (to make layout equal)
-  const emptyRowsNeeded = 15 - secondHalf.length;
-  for (let i = 0; i < emptyRowsNeeded; i++) {
-    const nextDate = secondHalf.length > 0 ? secondHalf[secondHalf.length - 1].dateNum + 1 : 17 + i;
-    secondHalf.push({
-      dateNum: nextDate,
-      presentStr: "",
-      advDateNum: 0,
-      advanceAmt: null,
-      remarks: ""
-    });
-  }
-
   return (
-    <>
-      {/* Front and Back Page (Outer cover) */}
-      <Page size="A4" orientation="landscape" style={styles.page}>
+    <Page size="A4" orientation="portrait" style={styles.page}>
+      
+      {/* Header */}
+      <View style={styles.headerContainer}>
+        {logoBase64 ? <Image src={logoBase64} style={styles.logo} /> : null}
+        <Text style={styles.title}>WORKMAN&apos;S ATTENDANCE CARD</Text>
+      </View>
+
+      {/* Info & Summary block combined */}
+      <View style={styles.infoSection}>
+        {/* Left Column */}
+        <View style={styles.infoCol}>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Name</Text>
+            <Text style={styles.fieldValue}>{data.workerName}</Text>
+          </View>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Factory</Text>
+            <Text style={styles.fieldValue}>{data.factoryName}</Text>
+          </View>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Month</Text>
+            <Text style={styles.fieldValue}>{data.monthName}</Text>
+          </View>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Wages Rate (Rs.)</Text>
+            <Text style={styles.fieldValue}>{data.rate}</Text>
+          </View>
+        </View>
         
-        {/* Back Page (Summary) */}
-        <View style={styles.halfPage}>
-          <View style={{ marginTop: 20 }}>
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>Total Days</Text>
-              <Text style={styles.fieldValue}>{data.totalDays}</Text>
-            </View>
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>Rate Rs.</Text>
-              <Text style={styles.fieldValue}>{data.rate}</Text>
-            </View>
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>Total Amt. Rs.</Text>
-              <Text style={styles.fieldValue}>{data.totalEarned.toLocaleString("en-IN")}</Text>
-            </View>
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>Advance Rs.</Text>
-              <Text style={styles.fieldValue}>- {data.totalAdvance.toLocaleString("en-IN")}</Text>
-            </View>
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>Deduction Rs.</Text>
-              <Text style={styles.fieldValue}>- {data.deductions.toLocaleString("en-IN")}</Text>
-            </View>
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>Prev. Pending Rs.</Text>
-              <Text style={styles.fieldValue}>{(data.openingBalance && data.openingBalance > 0) ? data.openingBalance.toLocaleString("en-IN") : "0"}</Text>
-            </View>
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>Bal. Payable Rs.</Text>
-              <Text style={styles.fieldValue}>{data.balancePayable.toLocaleString("en-IN")}</Text>
-            </View>
-            
-            <View style={[styles.fieldRow, { marginTop: 40 }]}>
-              <Text style={styles.fieldLabel}>Sign</Text>
-              <Text style={styles.fieldValue}></Text>
-            </View>
+        {/* Right Column */}
+        <View style={styles.infoCol}>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Total Days</Text>
+            <Text style={styles.fieldValue}>{data.totalDays}</Text>
+          </View>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Total Amt (Rs.)</Text>
+            <Text style={styles.fieldValue}>{data.totalEarned.toLocaleString("en-IN")}</Text>
+          </View>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Total Adv (Rs.)</Text>
+            <Text style={styles.fieldValue}>- {data.totalAdvance.toLocaleString("en-IN")}</Text>
+          </View>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Prev. Pending</Text>
+            <Text style={styles.fieldValue}>{(data.openingBalance && data.openingBalance > 0) ? data.openingBalance.toLocaleString("en-IN") : "0"}</Text>
+          </View>
+          <View style={[styles.fieldRow, { borderBottomWidth: 0 }]}>
+            <Text style={[styles.fieldLabel, { fontFamily: "Helvetica-Bold" }]}>Bal. Payable</Text>
+            <Text style={styles.fieldValue}>{data.balancePayable.toLocaleString("en-IN")}</Text>
           </View>
         </View>
+      </View>
 
-        {/* Front Page */}
-        <View style={styles.halfPage}>
-          {/* Premium RCR Logo */}
-          <View style={{ flexDirection: "column", alignItems: "center", justifyContent: "center", marginBottom: 15, marginTop: 5 }}>
-            {logoBase64 ? (
-              <Image 
-                src={logoBase64} 
-                style={{ width: 120, height: 120, objectFit: "contain" }} 
-              />
-            ) : null}
-          </View>
-          
-          <View style={{ borderTopWidth: 1.5, borderTopColor: "#0f172a", borderTopStyle: "dashed", marginHorizontal: 20, marginBottom: 12 }} />
-
-          <Text style={[styles.title, { fontSize: 15, letterSpacing: 0.5, color: "#0f172a" }]}>WORKMAN&apos;S ATTENDANCE CARD</Text>
-          
-          <View style={{ marginTop: 20 }}>
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>Name of the Factory</Text>
-              <Text style={styles.fieldValue}>{data.factoryName}</Text>
-            </View>
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>Card No.</Text>
-              <Text style={styles.fieldValue}></Text>
-            </View>
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>Name</Text>
-              <Text style={styles.fieldValue}>{data.workerName}</Text>
-            </View>
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>For the Month of</Text>
-              <Text style={styles.fieldValue}>{data.monthName}</Text>
-            </View>
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>Wages at the rate of Rs.</Text>
-              <Text style={styles.fieldValue}>{data.rate}</Text>
-            </View>
-          </View>
+      {/* Single Table 1-31 */}
+      <View style={styles.table}>
+        <View style={[styles.tableRow, { backgroundColor: "#ffb6c1" }]}>
+          <View style={[styles.tableColHeader, { width: "8%" }]}><Text style={styles.textMedium}>Dt.</Text></View>
+          <View style={[styles.tableColHeader, { width: "17%" }]}><Text style={styles.textMedium}>Present</Text></View>
+          <View style={[styles.tableColHeader, { width: "10%" }]}><Text style={styles.textMedium}>Adv Dt.</Text></View>
+          <View style={[styles.tableColHeader, { width: "17%" }]}><Text style={styles.textMedium}>Advance</Text></View>
+          <View style={[styles.tableColHeader, { width: "48%", borderRightWidth: 0 }]}><Text style={styles.textMedium}>Remarks</Text></View>
         </View>
-
-      </Page>
-
-      {/* Inside Pages (Attendance grid 1-31) */}
-      <Page size="A4" orientation="landscape" style={styles.page}>
-        
-        {/* Left Side (Days 1-16) */}
-        <View style={styles.halfPage}>
-          <View style={styles.table}>
-            <View style={styles.tableRow}>
-              <View style={[styles.tableColHeader, { width: "10%" }]}><Text style={styles.textSmall}>Dt.</Text></View>
-              <View style={[styles.tableColHeader, { width: "25%" }]}><Text style={styles.textSmall}>Present</Text></View>
-              <View style={[styles.tableColHeader, { width: "15%" }]}><Text style={styles.textSmall}>Adv Dt.</Text></View>
-              <View style={[styles.tableColHeader, { width: "25%" }]}><Text style={styles.textSmall}>Advance</Text></View>
-              <View style={[styles.tableColHeader, { width: "25%", borderRightWidth: 0 }]}><Text style={styles.textSmall}>Remarks</Text></View>
+        {data.days.map((day, idx) => (
+          <View style={styles.tableRow} key={idx}>
+            <View style={[styles.tableCol, { width: "8%" }]}><Text style={styles.textSmall}>{day.dateNum > 0 && day.dateNum <= 31 ? day.dateNum : ""}</Text></View>
+            <View style={[styles.tableCol, { width: "17%" }]}><Text style={styles.textMedium}>{day.presentStr}</Text></View>
+            <View style={[styles.tableCol, { width: "10%" }]}><Text style={styles.textSmall}>{day.advDateNum > 0 ? day.advDateNum : ""}</Text></View>
+            <View style={[styles.tableCol, { width: "17%" }]}><Text style={styles.textMedium}>{day.advanceAmt ? day.advanceAmt : ""}</Text></View>
+            <View style={[styles.tableCol, { width: "48%", borderRightWidth: 0 }]}>
+              {/* No truncation needed now because width is 48% of A4 portrait! */}
+              <Text style={styles.textSmall}>{day.remarks}</Text>
             </View>
-            {firstHalf.map((day, idx) => (
-                <View style={styles.tableRow} key={idx}>
-                  <View style={[styles.tableCol, { width: "10%" }]}><Text style={styles.textSmall}>{day.dateNum}</Text></View>
-                  <View style={[styles.tableCol, { width: "25%" }]}><Text style={styles.textMedium}>{day.presentStr}</Text></View>
-                  <View style={[styles.tableCol, { width: "15%" }]}><Text style={styles.textSmall}>{day.advDateNum > 0 ? day.advDateNum : ""}</Text></View>
-                  <View style={[styles.tableCol, { width: "25%" }]}><Text style={styles.textMedium}>{day.advanceAmt ? day.advanceAmt : ""}</Text></View>
-                  <View style={[styles.tableCol, { width: "25%", borderRightWidth: 0 }]}><Text style={styles.textSmall}>{day.remarks.length > 22 ? day.remarks.substring(0, 20) + ".." : day.remarks}</Text></View>
-                </View>
-            ))}
           </View>
-        </View>
+        ))}
+      </View>
 
-        {/* Right Side (Days 17-31) */}
-        <View style={styles.halfPage}>
-          <View style={styles.table}>
-            <View style={styles.tableRow}>
-              <View style={[styles.tableColHeader, { width: "10%" }]}><Text style={styles.textSmall}>Dt.</Text></View>
-              <View style={[styles.tableColHeader, { width: "25%" }]}><Text style={styles.textSmall}>Present</Text></View>
-              <View style={[styles.tableColHeader, { width: "15%" }]}><Text style={styles.textSmall}>Adv Dt.</Text></View>
-              <View style={[styles.tableColHeader, { width: "25%" }]}><Text style={styles.textSmall}>Advance</Text></View>
-              <View style={[styles.tableColHeader, { width: "25%", borderRightWidth: 0 }]}><Text style={styles.textSmall}>Remarks</Text></View>
-            </View>
-            {secondHalf.map((day, idx) => (
-                <View style={styles.tableRow} key={idx}>
-                  <View style={[styles.tableCol, { width: "10%" }]}><Text style={styles.textSmall}>{day.dateNum > 0 && day.dateNum <= 31 ? day.dateNum : ""}</Text></View>
-                  <View style={[styles.tableCol, { width: "25%" }]}><Text style={styles.textMedium}>{day.presentStr}</Text></View>
-                  <View style={[styles.tableCol, { width: "15%" }]}><Text style={styles.textSmall}>{day.advDateNum > 0 ? day.advDateNum : ""}</Text></View>
-                  <View style={[styles.tableCol, { width: "25%" }]}><Text style={styles.textMedium}>{day.advanceAmt ? day.advanceAmt : ""}</Text></View>
-                  <View style={[styles.tableCol, { width: "25%", borderRightWidth: 0 }]}><Text style={styles.textSmall}>{day.remarks.length > 22 ? day.remarks.substring(0, 20) + ".." : day.remarks}</Text></View>
-                </View>
-            ))}
-          </View>
-        </View>
+      <View style={styles.footerSection}>
+        <Text style={styles.signLine}>Worker's Signature</Text>
+        <Text style={styles.signLine}>Manager's Signature</Text>
+      </View>
 
-      </Page>
-    </>
+    </Page>
   );
 };
 
