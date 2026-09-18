@@ -194,12 +194,24 @@ export async function GET(req: NextRequest) {
       totalAdvance += dayAdvance;
 
       let presentStr = "";
-      if (dayHajari === 1) presentStr = "P";
-      else if (dayHajari === 0.5) presentStr = "P 1/2";
-      else if (dayHajari === 0 && dayAtts.length > 0) presentStr = "A";
-      else if (dayHajari > 1) {
-        presentStr = Array(Math.floor(dayHajari)).fill("P").join("");
-        if (dayHajari % 1 !== 0) presentStr += " 1/2";
+      if (dayHajari === 0 && dayAtts.length > 0) {
+        presentStr = "A";
+      } else if (dayHajari > 0) {
+        const whole = Math.floor(dayHajari);
+        const frac = dayHajari % 1;
+        
+        let fracStr = "";
+        if (frac === 0.5) fracStr = "1/2";
+        else if (frac === 0.25) fracStr = "1/4";
+        else if (frac === 0.75) fracStr = "3/4";
+        else if (frac > 0) fracStr = frac.toString().replace("0.", "."); // fallback
+        
+        if (whole > 0) {
+          presentStr = Array(whole).fill("P").join("");
+          if (fracStr) presentStr += " " + fracStr;
+        } else {
+          presentStr = "P " + fracStr;
+        }
       }
 
       days.push({
