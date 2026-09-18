@@ -66,17 +66,20 @@ export async function calculateAttendanceCardData(
   let payments: any[] = [];
   let openingEarned = 0;
   let openingPaid = 0;
+  let initialDbBalance = 0;
 
   if (entityType === "LABOUR") {
     const labour = await prisma.labour.findUnique({
       where: { id: entityId },
-      include: { site: true }
+      include: { site: true, labourCategory: true }
     });
     if (!labour) return null;
     
     workerName = labour.name;
-    siteName = labour.site.projectName;
-    rate = labour.dailyWage || 0;
+    siteName = labour.site?.projectName || "";
+    // Full fallback chain: labour dailyWage -> category dailyWage -> 0
+    rate = labour.dailyWage || labour.labourCategory?.dailyWage || 0;
+    initialDbBalance = labour.openingBalance || 0;
 
     attendances = await prisma.attendance.findMany({
       where: { labourId: entityId, date: { gte: fromDate, lte: toDate } },
@@ -90,16 +93,23 @@ export async function calculateAttendanceCardData(
 
     if (!isFirstMonth) {
       const pastAtts = await prisma.attendance.findMany({
-        where: { labourId: entityId, date: { lt: fromDate }, hajari: { gt: 0 } }
+        where: { labourId: entityId, date: { lt: fromDate }, hajari: { gt: 0 } },
+        select: {
+          hajari: true,
+          hajariRate: true,
+          labour: { select: { dailyWage: true, labourCategory: { select: { dailyWage: true } } } }
+        }
       });
       pastAtts.forEach(a => {
-        openingEarned += (a.hajari || 0) * (a.hajariRate || rate);
+        const appliedRate = a.hajariRate || a.labour?.dailyWage || a.labour?.labourCategory?.dailyWage || rate;
+        openingEarned += (a.hajari || 0) * appliedRate;
       });
 
       const pastPays = await prisma.labourPayment.findMany({
-        where: { labourId: entityId, date: { lt: payStart } }
+        where: { labourId: entityId, date: { lt: payStart } },
+        select: { amount: true }
       });
-      pastPays.forEach(p => { openingPaid += p.amount; });
+      pastPays.forEach(p => { openingPaid += (p.amount || 0); });
     }
   } else if (entityType === "SUPERVISOR") {
     const supervisor = await prisma.user.findUnique({
@@ -110,7 +120,7 @@ export async function calculateAttendanceCardData(
     
     workerName = supervisor.name;
     siteName = supervisor.assignedSites.map(s => s.site.projectName).join(", ");
-    rate = (supervisor.monthlySalary || 0) / 30;
+    rate = supervisor.monthlySalary ? Math.round((supervisor.monthlySalary / daysInMonth) * 100) / 100 : 0;
 
     attendances = await prisma.supervisorAttendance.findMany({
       where: { supervisorId: entityId, date: { gte: fromDate, lte: toDate } },
@@ -124,19 +134,21 @@ export async function calculateAttendanceCardData(
 
     if (!isFirstMonth) {
       const pastAtts = await prisma.supervisorAttendance.findMany({
-        where: { supervisorId: entityId, date: { lt: fromDate }, status: { not: 'ABSENT' } }
+        where: { supervisorId: entityId, date: { lt: fromDate }, status: { not: 'ABSENT' } },
+        select: { status: true, dailyRate: true, earnedAmount: true }
       });
       pastAtts.forEach(a => {
-        let h = 0;
-        if (a.status === 'PRESENT') h = 1;
-        else if (a.status === 'HALF_DAY') h = 0.5;
-        openingEarned += h * rate; 
+        const earned = a.earnedAmount !== undefined && a.earnedAmount !== null
+          ? a.earnedAmount
+          : (a.dailyRate || rate) * (a.status === 'PRESENT' ? 1 : a.status === 'HALF_DAY' ? 0.5 : 0);
+        openingEarned += earned;
       });
 
       const pastPays = await prisma.supervisorPayment.findMany({
-        where: { supervisorId: entityId, date: { lt: payStart } }
+        where: { supervisorId: entityId, date: { lt: payStart } },
+        select: { amount: true }
       });
-      pastPays.forEach(p => { openingPaid += p.amount; });
+      pastPays.forEach(p => { openingPaid += (p.amount || 0); });
     }
   } else {
     throw new Error("Invalid entity type");
@@ -162,7 +174,6 @@ export async function calculateAttendanceCardData(
   const days = [];
   let totalDays = 0;
   let totalEarned = 0;
-  let totalAdvance = 0;
 
   for (let i = 1; i <= daysInMonth; i++) {
     const dayAtts = attMap.get(i) || [];
@@ -184,24 +195,23 @@ export async function calculateAttendanceCardData(
     totalDays += dayHajari;
     
     dayAtts.forEach(a => {
-      const appliedRate = a.hajariRate || rate;
       if (a.hajari !== undefined) {
+        const appliedRate = a.hajariRate || rate;
         totalEarned += (a.hajari || 0) * appliedRate;
       } else if (a.status) {
-        let h = 0;
-        if (a.status === 'PRESENT') h = 1;
-        else if (a.status === 'HALF_DAY') h = 0.5;
-        totalEarned += h * appliedRate;
+        const earned = a.earnedAmount !== undefined && a.earnedAmount !== null
+          ? a.earnedAmount
+          : (a.dailyRate || rate) * (a.status === 'PRESENT' ? 1 : a.status === 'HALF_DAY' ? 0.5 : 0);
+        totalEarned += earned;
       }
     });
 
     let dayAdvance = 0;
     let reasons: string[] = [];
     dayPays.forEach(p => {
-      dayAdvance += p.amount;
+      dayAdvance += (p.amount || 0);
       if (p.reason) reasons.push(p.reason);
     });
-    totalAdvance += dayAdvance;
 
     const presentStr = formatPresentStr(dayHajari, dayAtts.length > 0);
 
@@ -214,17 +224,15 @@ export async function calculateAttendanceCardData(
     });
   }
 
-  const openingBalance = openingEarned - openingPaid;
-  let finalDeductions = 0;
+  // 100% Exact Advance Sum: guaranteed zero payments dropped or missed
+  const totalAdvance = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+  // Exact Opening Balance (Prev Pending if positive, Excess Advance if negative)
+  const openingBalance = Math.round((openingEarned - openingPaid + initialDbBalance) * 100) / 100;
   
-  if (openingBalance < 0) {
-    finalDeductions = Math.abs(openingBalance);
-  }
-  
-  let balancePayable = totalEarned - totalAdvance - finalDeductions;
-  if (openingBalance > 0) {
-    balancePayable += openingBalance;
-  }
+  // Balance Payable = Current Earned - Current Advance + Prev Balance
+  const balancePayable = Math.round((totalEarned - totalAdvance + openingBalance) * 100) / 100;
+  const finalDeductions = openingBalance < 0 ? Math.abs(openingBalance) : 0;
 
   let finalRate = rate;
   if (totalDays > 0 && totalEarned > 0) {
@@ -237,10 +245,10 @@ export async function calculateAttendanceCardData(
     monthName,
     rate: Math.round(finalRate * 100) / 100,
     days,
-    totalDays,
-    totalEarned,
-    totalAdvance,
-    deductions: finalDeductions, 
+    totalDays: Math.round(totalDays * 100) / 100,
+    totalEarned: Math.round(totalEarned * 100) / 100,
+    totalAdvance: Math.round(totalAdvance * 100) / 100,
+    deductions: Math.round(finalDeductions * 100) / 100, 
     balancePayable,
     openingBalance 
   };

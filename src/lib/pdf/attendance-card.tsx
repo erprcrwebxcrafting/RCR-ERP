@@ -186,19 +186,29 @@ export const AttendanceCardPages = ({ data }: { data: AttendanceCardData }) => {
           </View>
           <View style={styles.fieldRow}>
             <Text style={styles.fieldLabel}>Total Amt (Rs.)</Text>
-            <Text style={styles.fieldValue}>{data.totalEarned.toLocaleString("en-IN")}</Text>
+            <Text style={styles.fieldValue}>{Math.round(data.totalEarned).toLocaleString("en-IN")}</Text>
           </View>
           <View style={styles.fieldRow}>
             <Text style={styles.fieldLabel}>Total Adv (Rs.)</Text>
-            <Text style={styles.fieldValue}>- {data.totalAdvance.toLocaleString("en-IN")}</Text>
+            <Text style={styles.fieldValue}>- {Math.round(data.totalAdvance).toLocaleString("en-IN")}</Text>
           </View>
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Prev. Pending</Text>
-            <Text style={styles.fieldValue}>{(data.openingBalance && data.openingBalance > 0) ? data.openingBalance.toLocaleString("en-IN") : "0"}</Text>
+            <Text style={styles.fieldLabel}>Prev. Balance</Text>
+            <Text style={styles.fieldValue}>
+              {!data.openingBalance || data.openingBalance === 0
+                ? "0"
+                : data.openingBalance > 0
+                ? `+ ${Math.round(data.openingBalance).toLocaleString("en-IN")}`
+                : `- ${Math.round(Math.abs(data.openingBalance)).toLocaleString("en-IN")} (Adv)`}
+            </Text>
           </View>
           <View style={[styles.fieldRow, { borderBottomWidth: 0 }]}>
             <Text style={[styles.fieldLabel, { fontFamily: "Helvetica-Bold" }]}>Bal. Payable</Text>
-            <Text style={styles.fieldValue}>{data.balancePayable.toLocaleString("en-IN")}</Text>
+            <Text style={styles.fieldValue}>
+              {data.balancePayable >= 0
+                ? `Rs. ${Math.round(data.balancePayable).toLocaleString("en-IN")}`
+                : `- Rs. ${Math.round(Math.abs(data.balancePayable)).toLocaleString("en-IN")} (Adv)`}
+            </Text>
           </View>
         </View>
       </View>
