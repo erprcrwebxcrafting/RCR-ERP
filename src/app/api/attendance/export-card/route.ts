@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateAttendanceCardBuffer, AttendanceCardData } from "@/lib/pdf/attendance-card";
+import { formatPresentStr } from "@/lib/attendance-calc";
 
 export const dynamic = "force-dynamic";
 
@@ -193,26 +194,7 @@ export async function GET(req: NextRequest) {
       });
       totalAdvance += dayAdvance;
 
-      let presentStr = "";
-      if (dayHajari === 0 && dayAtts.length > 0) {
-        presentStr = "A";
-      } else if (dayHajari > 0) {
-        const whole = Math.floor(dayHajari);
-        const frac = Math.round((dayHajari % 1) * 100) / 100;
-        
-        let fracStr = "";
-        if (frac === 0.5) fracStr = "1/2";
-        else if (frac === 0.25) fracStr = "1/4";
-        else if (frac === 0.75) fracStr = "3/4";
-        else if (frac > 0) fracStr = frac.toString().replace("0.", "."); // fallback
-        
-        if (whole > 0) {
-          presentStr = Array(whole).fill("P").join("");
-          if (fracStr) presentStr += " " + fracStr;
-        } else {
-          presentStr = "P " + fracStr;
-        }
-      }
+      const presentStr = formatPresentStr(dayHajari, dayAtts.length > 0);
 
       days.push({
         dateNum: i,
@@ -221,9 +203,6 @@ export async function GET(req: NextRequest) {
         advanceAmt: dayAdvance > 0 ? dayAdvance : null,
         remarks: reasons.join(", ")
       });
-      if (i <= 3) {
-        console.log(`Debug day ${i}: dayHajari=${dayHajari}, presentStr="${presentStr}", dayAttsLength=${dayAtts.length}`);
-      }
     }
 
     // Opening Balance calculation

@@ -1,6 +1,28 @@
 import { prisma } from "@/lib/prisma";
 import { AttendanceCardData } from "@/lib/pdf/attendance-card";
 
+export function formatPresentStr(dayHajari: number, hasAttendanceRecord: boolean = false): string {
+  if (dayHajari <= 0) {
+    return (dayHajari === 0 && hasAttendanceRecord) ? "A" : "";
+  }
+
+  const whole = Math.floor(dayHajari);
+  const frac = Math.round((dayHajari - whole) * 100) / 100;
+
+  let fracStr = "";
+  if (frac === 0.5) fracStr = "1/2";
+  else if (frac === 0.25) fracStr = "1/4";
+  else if (frac === 0.75) fracStr = "3/4";
+  else if (frac > 0) fracStr = frac.toString().replace(/^0\./, ".");
+
+  if (whole > 0) {
+    const pStr = "P".repeat(whole);
+    return fracStr ? `${pStr} ${fracStr}` : pStr;
+  } else {
+    return fracStr ? `P ${fracStr}` : "";
+  }
+}
+
 export async function calculateAttendanceCardData(
   entityId: string,
   entityType: "LABOUR" | "SUPERVISOR",
@@ -181,14 +203,7 @@ export async function calculateAttendanceCardData(
     });
     totalAdvance += dayAdvance;
 
-    let presentStr = "";
-    if (dayHajari === 1) presentStr = "P";
-    else if (dayHajari === 0.5) presentStr = "P 1/2";
-    else if (dayHajari === 0 && dayAtts.length > 0) presentStr = "A";
-    else if (dayHajari > 1) {
-      presentStr = Array(Math.floor(dayHajari)).fill("P").join("");
-      if (dayHajari % 1 !== 0) presentStr += " 1/2";
-    }
+    const presentStr = formatPresentStr(dayHajari, dayAtts.length > 0);
 
     days.push({
       dateNum: i,
