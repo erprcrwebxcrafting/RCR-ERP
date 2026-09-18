@@ -822,6 +822,13 @@ export async function generateAttendanceExcel(
     });
   });
 
+  // To calculate grand totals
+  const monthlyTotals: Record<string, { h: number; e: number; p: number; b: number }> = {};
+  allMonths.forEach(mStr => monthlyTotals[mStr] = { h: 0, e: 0, p: 0, b: 0 });
+  let ledgerGrandTotalEarned = 0;
+  let ledgerGrandTotalPaid = 0;
+  let ledgerGrandNetBalance = 0;
+
   // Render Rows
   sortedWorkers.forEach((worker, workerIdx) => {
     const rVals: any[] = [worker.name, worker.category];
@@ -835,12 +842,21 @@ export async function generateAttendanceExcel(
       const p = ledger[mStr]?.paid || 0;
       cumulativeBalance += (e - p);
 
+      monthlyTotals[mStr].h += h;
+      monthlyTotals[mStr].e += e;
+      monthlyTotals[mStr].p += p;
+      monthlyTotals[mStr].b += cumulativeBalance;
+
       rVals.push(h > 0 ? h : "—");
       rVals.push(e > 0 ? `₹${e}` : "—");
       rVals.push(p > 0 ? `₹${p}` : "—");
       rVals.push(`₹${Math.round(cumulativeBalance).toLocaleString("en-IN")}`);
     });
     
+    ledgerGrandTotalEarned += worker.allTimeEarned;
+    ledgerGrandTotalPaid += worker.allTimePaid;
+    ledgerGrandNetBalance += worker.netBalance;
+
     rVals.push(`₹${Math.round(worker.allTimeEarned).toLocaleString("en-IN")}`);
     rVals.push(worker.allTimePaid > 0 ? `₹${Math.round(worker.allTimePaid).toLocaleString("en-IN")}` : "₹0");
     rVals.push(`₹${Math.round(worker.netBalance).toLocaleString("en-IN")}`);
@@ -920,6 +936,46 @@ export async function generateAttendanceExcel(
       if (cNum === headR1.length - 1) cell.font = { bold: true, color: { argb: worker.allTimePaid > 0 ? "FFDC2626" : "FF64748B" }, size: 9 }; // Total Paid
       if (cNum === headR1.length) cell.font = { bold: true, color: { argb: worker.netBalance > 0 ? "FF047857" : (worker.netBalance < 0 ? "FFDC2626" : "FF0F172A") }, size: 9 }; // Net Balance
     });
+  });
+
+  // Render Grand Total Row
+  const ledgerTotalVals: any[] = ["TOTAL / SUMMARY", `${sortedWorkers.length} Workers`];
+  allMonths.forEach(mStr => {
+    const mt = monthlyTotals[mStr];
+    ledgerTotalVals.push(mt.h > 0 ? mt.h : "—");
+    ledgerTotalVals.push(`₹${Math.round(mt.e).toLocaleString("en-IN")}`);
+    ledgerTotalVals.push(`₹${Math.round(mt.p).toLocaleString("en-IN")}`);
+    ledgerTotalVals.push(`₹${Math.round(mt.b).toLocaleString("en-IN")}`);
+  });
+  ledgerTotalVals.push(`₹${Math.round(ledgerGrandTotalEarned).toLocaleString("en-IN")}`);
+  ledgerTotalVals.push(`₹${Math.round(ledgerGrandTotalPaid).toLocaleString("en-IN")}`);
+  ledgerTotalVals.push(`₹${Math.round(ledgerGrandNetBalance).toLocaleString("en-IN")}`);
+
+  const lTotalRow = ledgerSheet.addRow(ledgerTotalVals);
+  lTotalRow.height = 24;
+  lTotalRow.eachCell((cell, cNum) => {
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
+    cell.font = { bold: true, color: { argb: "FF0F172A" }, size: 9.5 };
+    cell.border = { top: { style: "medium", color: { argb: "FF475569" } }, bottom: { style: "double", color: { argb: "FF0F172A" } }, left: { style: "thin", color: { argb: "FFCBD5E1" } }, right: { style: "thin", color: { argb: "FFCBD5E1" } } };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
+    
+    if (cNum === 1 || cNum === 2) {
+      cell.alignment = { vertical: "middle", horizontal: "left" };
+      cell.font = { bold: true, color: { argb: "FF0B2447" }, size: 10 };
+    }
+    if (cNum > 2 && cNum <= 2 + (allMonths.length * 4)) {
+      const colType = (cNum - 3) % 4; // 0: Hajari, 1: Earned, 2: Paid, 3: Balance
+      if (colType === 0) cell.font = { bold: true, color: { argb: "FF0F172A" }, size: 9.5 };
+      if (colType === 1) cell.font = { bold: true, color: { argb: "FF1E3A8A" }, size: 9.5 };
+      if (colType === 2) cell.font = { bold: true, color: { argb: "FFDC2626" }, size: 9.5 };
+      if (colType === 3) {
+        const balVal = parseInt(String(cell.value).replace(/[^0-9-]/g, "")) || 0;
+        cell.font = { bold: true, color: { argb: balVal > 0 ? "FF047857" : (balVal < 0 ? "FFDC2626" : "FF0F172A") }, size: 9.5 };
+      }
+    }
+    if (cNum === headR1.length - 2) cell.font = { bold: true, color: { argb: "FF0B2447" }, size: 9.5 };
+    if (cNum === headR1.length - 1) cell.font = { bold: true, color: { argb: "FFDC2626" }, size: 9.5 };
+    if (cNum === headR1.length) cell.font = { bold: true, color: { argb: ledgerGrandNetBalance > 0 ? "FF047857" : (ledgerGrandNetBalance < 0 ? "FFDC2626" : "FF0F172A") }, size: 9.5 };
   });
 
   // Auto fit for ledger sheet
