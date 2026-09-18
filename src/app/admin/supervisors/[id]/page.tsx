@@ -25,6 +25,7 @@ import {
   Hash,
   Phone,
   Mail,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SupervisorPaymentForm } from "./payment-form";
@@ -222,7 +223,18 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
           </div>
         </div>
         <div className="flex w-full sm:w-auto items-center gap-2 sm:gap-3 mt-4 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-slate-800">
-            <div className="flex-1 sm:flex-none [&>button]:w-full"><DownloadSalarySlip supervisorId={sv.id} /></div>
+          <div className="flex-1 sm:flex-none flex flex-col sm:flex-row gap-2 [&>button]:w-full">
+            <Button
+              variant="outline"
+              asChild
+              className="bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400 border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:shadow"
+            >
+              <a href={`/api/attendance/export-bulk-labour?entityId=${sv.id}&entityType=SUPERVISOR`} target="_blank" rel="noreferrer">
+                <FileText className="h-4 w-4 mr-2" /> All-Time Cards
+              </a>
+            </Button>
+            <DownloadSalarySlip supervisorId={sv.id} />
+          </div>
             <div className="flex-1 sm:flex-none [&>button]:w-full"><EditSupervisorForm supervisor={sv} allSites={allSites} /></div>
         </div>
       </div>

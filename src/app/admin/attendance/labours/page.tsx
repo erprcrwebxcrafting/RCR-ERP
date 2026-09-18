@@ -248,6 +248,16 @@ export default async function AdminAttendancePage({ searchParams }: { searchPara
                   <FileText className={`w-4 h-4 mr-2 ${!siteId ? "text-white/70" : ""}`} /> PDF Ledger
                 </a>
               </Button>
+              <Button
+                variant="outline"
+                asChild
+                disabled={!siteId}
+                className={!siteId ? "cursor-not-allowed pointer-events-none bg-white/20 border-white/30 text-white shadow-none font-medium h-10 rounded-xl px-5" : "border-transparent bg-white hover:bg-white/90 text-indigo-600 shadow-xl shadow-indigo-900/10 transition-all font-bold h-10 rounded-xl px-5"}
+              >
+                <a href={`/api/attendance/export-bulk-site?siteId=${siteId}&month=${startDateStr}`} target="_blank" rel="noreferrer">
+                  <FileText className={`w-4 h-4 mr-2 ${!siteId ? "text-white/70" : ""}`} /> Bulk Cards (PDF)
+                </a>
+              </Button>
             </div>
             {!siteId && <span className="text-[11px] text-white/90 font-bold px-3 py-1.5 bg-black/20 rounded-full backdrop-blur-md border border-white/10 shadow-inner">Select a site to enable export</span>}
           </div>
