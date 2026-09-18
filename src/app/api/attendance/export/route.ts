@@ -119,6 +119,16 @@ export async function GET(request: NextRequest) {
         select: { id: true }
       });
       siteLabours.forEach(l => labourIdSet.add(l.id));
+
+      // Include inactive labours of this site ONLY IF they received a payment in this cycle
+      const paidInactiveLabours = await prisma.labourPayment.findMany({
+        where: { 
+          date: { gte: payStart, lte: payEnd },
+          labour: { siteId, active: false }
+        },
+        select: { labourId: true }
+      });
+      paidInactiveLabours.forEach(p => labourIdSet.add(p.labourId));
     }
     const allLabourIds = Array.from(labourIdSet);
 
@@ -155,7 +165,7 @@ export async function GET(request: NextRequest) {
           labourId: true,
           hajari: true,
           hajariRate: true,
-          labour: { select: { dailyWage: true } }
+          labour: { select: { dailyWage: true, labourCategory: { select: { dailyWage: true } } } }
         }
       }),
       prisma.labourPayment.findMany({
@@ -193,7 +203,7 @@ export async function GET(request: NextRequest) {
     const openingEarned: Record<string, number> = {};
     const openingPaid: Record<string, number> = {};
     for (const pa of prevAttendances) {
-      const rate = pa.hajariRate || pa.labour?.dailyWage || 0;
+      const rate = pa.hajariRate || pa.labour?.dailyWage || pa.labour?.labourCategory?.dailyWage || 0;
       openingEarned[pa.labourId] = (openingEarned[pa.labourId] || 0) + (pa.hajari * rate);
       if (pa.date) addLedgerEntry(pa.labourId, pa.date, pa.hajari, pa.hajari * rate, 0);
     }
@@ -341,7 +351,7 @@ export async function GET(request: NextRequest) {
         if ((a as any).earnedAmount !== undefined && (a as any).earnedAmount !== null) {
           earned = (a as any).earnedAmount;
         } else {
-          const rate = a.hajariRate || a.labour?.dailyWage || 0;
+          const rate = a.hajariRate || a.labour?.dailyWage || a.labour?.labourCategory?.dailyWage || 0;
           earned = (a.hajari || 0) * rate;
         }
         addLedgerEntry(a.labourId, a.date, a.hajari || 0, earned, 0);
@@ -357,6 +367,16 @@ export async function GET(request: NextRequest) {
     }
     // --- END MONTHLY LEDGER COMPUTATION ---
 
+    // --- FETCH TRANSFER HISTORY ---
+    const transferHistory = await prisma.labourTransferHistory.findMany({
+      where: { labourId: { in: allLabourIds } },
+      include: {
+        fromSite: { select: { projectName: true } },
+        toSite: { select: { projectName: true } },
+      },
+      orderBy: { transferDate: "asc" },
+    });
+
     const exportData = {
       attendances,
       payments,
@@ -365,6 +385,7 @@ export async function GET(request: NextRequest) {
       openingEarned,
       openingPaid,
       monthlyLedger,
+      transferHistory,
       siteName,
       startDateStr,
       endDateStr,

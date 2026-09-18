@@ -50,6 +50,20 @@ export async function generateAttendanceExcel(
   }
   
   const monthlyLedger = (dataOrAttendances as any).monthlyLedger || {};
+  const transferHistory: any[] = (dataOrAttendances as any).transferHistory || [];
+
+  // Build transfer notes per worker
+  const transferNotes: Record<string, string> = {};
+  for (const t of transferHistory) {
+    const note = transferNotes[t.labourId] || "";
+    const dateStr = t.transferDate ? format(new Date(t.transferDate), "dd-MMM-yyyy") : "";
+    const from = t.fromSite?.projectName || "New Joining";
+    const to = t.toSite?.projectName || "Unknown";
+    const wageChange = (t.previousDailyWage && t.newDailyWage && t.previousDailyWage !== t.newDailyWage)
+      ? ` | Wage: ₹${t.previousDailyWage} → ₹${t.newDailyWage}`
+      : "";
+    transferNotes[t.labourId] = (note ? note + "\n" : "") + `${dateStr}: ${from} → ${to}${wageChange}`;
+  }
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "RCR ERP System";
@@ -95,8 +109,8 @@ export async function generateAttendanceExcel(
         id: a.labourId,
         name: a.labour?.name || "Unknown Worker",
         category: a.labour?.labourCategory?.name || "General",
-        dailyWage: a.hajariRate || a.labour?.dailyWage || 0,
-        baseDailyWage: a.labour?.dailyWage || 0,
+        dailyWage: a.hajariRate || a.labour?.dailyWage || a.labour?.labourCategory?.dailyWage || 0,
+        baseDailyWage: a.labour?.dailyWage || a.labour?.labourCategory?.dailyWage || 0,
         attendanceByDate: {},
         paymentsByDate: {},
         totalHajari: 0,
@@ -131,7 +145,8 @@ export async function generateAttendanceExcel(
         id: l.id,
         name: l.name,
         category: l.labourCategory?.name || "General",
-        dailyWage: l.dailyWage || 0,
+        dailyWage: l.dailyWage || l.labourCategory?.dailyWage || 0,
+        baseDailyWage: l.dailyWage || l.labourCategory?.dailyWage || 0,
         attendanceByDate: {},
         paymentsByDate: {},
         totalHajari: 0,
@@ -151,7 +166,8 @@ export async function generateAttendanceExcel(
         id: p.labourId,
         name: p.labour?.name || "Unknown Worker",
         category: p.labour?.labourCategory?.name || "General",
-        dailyWage: p.labour?.dailyWage || 0,
+        dailyWage: p.labour?.dailyWage || p.labour?.labourCategory?.dailyWage || 0,
+        baseDailyWage: p.labour?.dailyWage || p.labour?.labourCategory?.dailyWage || 0,
         attendanceByDate: {},
         paymentsByDate: {},
         totalHajari: 0,
@@ -176,8 +192,8 @@ export async function generateAttendanceExcel(
         id: p.labourId,
         name: p.labour?.name || "Unknown Worker",
         category: p.labour?.labourCategory?.name || "General",
-        dailyWage: p.labour?.dailyWage || 0,
-        baseDailyWage: p.labour?.dailyWage || 0,
+        dailyWage: p.labour?.dailyWage || p.labour?.labourCategory?.dailyWage || 0,
+        baseDailyWage: p.labour?.dailyWage || p.labour?.labourCategory?.dailyWage || 0,
         attendanceByDate: {},
         paymentsByDate: {},
         totalHajari: 0,
@@ -199,7 +215,16 @@ export async function generateAttendanceExcel(
     const allTimePaid = worker.openingPaid + worker.totalPaid;
     const netBalance = allTimeEarned - allTimePaid;
     return { ...worker, allTimeEarned, allTimePaid, netBalance };
-  }).sort((a, b) => a.name.localeCompare(b.name));
+  }).sort((a, b) => {
+    const aHasAttendance = (a.totalHajari || 0) > 0 ? 1 : 0;
+    const bHasAttendance = (b.totalHajari || 0) > 0 ? 1 : 0;
+    
+    if (aHasAttendance !== bHasAttendance) {
+      return bHasAttendance - aHasAttendance;
+    }
+    
+    return a.name.localeCompare(b.name);
+  });
 
   // Compute Grand Totals
   let grandTotalHajari = 0;
@@ -211,6 +236,8 @@ export async function generateAttendanceExcel(
   let sumGrossPayable = 0;
   let sumAdvanceDeducted = 0;
   let sumNetBalance = 0;
+  let sumTotalPayable = 0;
+  let sumTotalAdvance = 0;
 
   let grandTotalEarned = 0; // All time earned (for KPI)
   let grandTotalPaid = 0; // All time paid (for KPI)
@@ -235,6 +262,8 @@ export async function generateAttendanceExcel(
     sumGrossPayable += grossPayable;
     sumAdvanceDeducted += advanceDeducted;
     sumNetBalance += w.netBalance;
+    if (w.netBalance > 0) sumTotalPayable += w.netBalance;
+    if (w.netBalance < 0) sumTotalAdvance += Math.abs(w.netBalance);
   });
 
   // Daily totals across all workers
@@ -441,8 +470,10 @@ export async function generateAttendanceExcel(
       ? `₹${Math.round(worker.baseDailyWage * 30).toLocaleString("en-IN")}/mo`
       : (worker.dailyWage > 0 ? worker.dailyWage : "—");
 
+    const workerDisplayName = transferNotes[worker.id] ? `${worker.name} (T)` : worker.name;
+
     const rowValues: any[] = [
-      worker.name,
+      workerDisplayName,
       worker.category,
       displayRate
     ];
@@ -522,6 +553,11 @@ export async function generateAttendanceExcel(
       if (colNum === 1 || colNum === 2) {
         cell.alignment = { vertical: "middle", horizontal: "left" };
         cell.font = { bold: colNum === 1, size: 9, color: { argb: "FF0F172A" } };
+        // Add transfer note on name cell
+        if (colNum === 1 && transferNotes[worker.id]) {
+          cell.note = `🔄 Transfer History:\n${transferNotes[worker.id]}`;
+          cell.font = { bold: true, size: 9, color: { argb: "FF1E40AF" } }; // Blue to indicate transfer
+        }
       }
 
       // Single values color coding for dates
@@ -605,7 +641,13 @@ export async function generateAttendanceExcel(
   grandTotalRowValues.push(`₹${Math.round(sumCurrEarned).toLocaleString("en-IN")}`);
   grandTotalRowValues.push(`₹${Math.round(sumGrossPayable).toLocaleString("en-IN")}`);
   grandTotalRowValues.push(`₹${Math.round(sumAdvanceDeducted).toLocaleString("en-IN")}`);
-  grandTotalRowValues.push(`₹${Math.round(sumNetBalance).toLocaleString("en-IN")}`);
+  grandTotalRowValues.push({
+    richText: [
+      { text: `P: ₹${Math.round(sumTotalPayable).toLocaleString("en-IN")}\n`, font: { bold: true, color: { argb: "FF047857" }, size: 9 } },
+      { text: `A: ₹${Math.round(sumTotalAdvance).toLocaleString("en-IN")}\n`, font: { bold: true, color: { argb: "FFDC2626" }, size: 9 } },
+      { text: `Net: ₹${Math.round(sumNetBalance).toLocaleString("en-IN")}`, font: { bold: true, color: { argb: sumNetBalance > 0 ? "FF047857" : (sumNetBalance < 0 ? "FFDC2626" : "FF0F172A") }, size: 9 } }
+    ]
+  });
 
   const totalRow = sheet.addRow(grandTotalRowValues);
   // Row height will auto-fit based on content
