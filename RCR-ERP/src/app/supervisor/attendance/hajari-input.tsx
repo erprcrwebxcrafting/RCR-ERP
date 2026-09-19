@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, Check } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 const HAJARI_OPTIONS = [
   { value: "", label: "-- Unmarked --" },
