@@ -1,5 +1,0 @@
--- AlterTable
-ALTER TABLE "Labour" ADD COLUMN     "openingBalance" DOUBLE PRECISION NOT NULL DEFAULT 0;
-
--- AlterTable
-ALTER TABLE "User" ADD COLUMN     "openingBalance" DOUBLE PRECISION NOT NULL DEFAULT 0;
