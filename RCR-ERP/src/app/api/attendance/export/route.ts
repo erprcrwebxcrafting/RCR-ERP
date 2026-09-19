@@ -1,0 +1,417 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+import { generateAttendanceExcel } from "@/lib/excel/attendance";
+import { generateAttendancePdf } from "@/lib/pdf/attendance";
+import { format as formatDate } from "date-fns";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session || (session.user as any).role !== "ADMIN") {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const siteId = searchParams.get("siteId");
+    const labourId = searchParams.get("labourId");
+    const startDateStr = searchParams.get("startDate");
+    const endDateStr = searchParams.get("endDate");
+    const format = searchParams.get("format");
+    const q = searchParams.get("q") || "";
+
+    if ((!siteId && !labourId) || !startDateStr || !endDateStr || !format) {
+      return new NextResponse("Missing required parameters", { status: 400 });
+    }
+
+    const startDate = new Date(startDateStr);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(endDateStr);
+    endDate.setHours(23, 59, 59, 999);
+
+    let siteName = "Unknown Site";
+    let filterSiteId = siteId;
+    
+    if (labourId) {
+      const labour = await prisma.labour.findUnique({ where: { id: labourId }, include: { site: true } });
+      if (!labour) return new NextResponse("Labour not found", { status: 404 });
+      siteName = labour.site.projectName;
+      filterSiteId = labour.siteId;
+    } else if (siteId) {
+      const site = await prisma.site.findUnique({ where: { id: siteId } });
+      if (!site) return new NextResponse("Site not found", { status: 404 });
+      siteName = site.projectName;
+    }
+
+    // --- DETERMINE 20-to-20 PAYMENT CYCLE BOUNDARIES ---
+    let isFirstMonth = false;
+    let payStart: Date;
+    let payEnd: Date;
+
+    if (filterSiteId) {
+       // Find the first attendance record for this site to determine if it's the first month
+       const firstAtt = await prisma.attendance.findFirst({
+         where: { siteId: filterSiteId },
+         orderBy: { date: "asc" }
+       });
+       
+       if (firstAtt) {
+         if (firstAtt.date.getFullYear() === startDate.getFullYear() && firstAtt.date.getMonth() === startDate.getMonth()) {
+           isFirstMonth = true;
+         }
+       } else {
+         isFirstMonth = true; // No attendance yet, treat as first month
+       }
+    }
+
+    if (isFirstMonth) {
+      // First month: Start from 1st of the month to capture initial payments/advances
+      payStart = new Date(startDate.getFullYear(), startDate.getMonth(), 1, 0, 0, 0, 0); 
+    } else {
+      // Normal month: Payment cycle starts on 21st of the CURRENT month
+      payStart = new Date(startDate.getFullYear(), startDate.getMonth(), 21, 0, 0, 0, 0);
+    }
+    
+    // Pay End is always 20th of the month AFTER the endDate's month
+    payEnd = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 20, 23, 59, 59, 999);
+
+
+    const whereClause: any = {
+      date: {
+        gte: startDate,
+        lte: endDate,
+      },
+    };
+    if (labourId) whereClause.labourId = labourId;
+    if (siteId && !labourId) whereClause.siteId = siteId;
+
+    if (q) {
+      whereClause.OR = [
+        { labour: { name: { contains: q, mode: "insensitive" } } },
+        { site: { projectName: { contains: q, mode: "insensitive" } } },
+      ];
+    }
+
+    const attendances = await prisma.attendance.findMany({
+      where: whereClause,
+      orderBy: [
+        { date: "asc" },
+        { labour: { labourCategory: { name: "asc" } } },
+        { labour: { name: "asc" } }
+      ],
+      include: {
+        labour: { include: { labourCategory: true } },
+        building: true,
+      },
+    });
+
+    // Collect all relevant labour IDs
+    const labourIdSet = new Set<string>();
+    attendances.forEach(a => labourIdSet.add(a.labourId));
+    if (labourId) {
+      labourIdSet.add(labourId);
+    } else if (siteId && !q) {
+      // Include all active labours of this site
+      const siteLabours = await prisma.labour.findMany({
+        where: { siteId, active: true },
+        select: { id: true }
+      });
+      siteLabours.forEach(l => labourIdSet.add(l.id));
+
+      // Include inactive labours of this site ONLY IF they received a payment in this cycle
+      const paidInactiveLabours = await prisma.labourPayment.findMany({
+        where: { 
+          date: { gte: payStart, lte: payEnd },
+          labour: { siteId, active: false }
+        },
+        select: { labourId: true }
+      });
+      paidInactiveLabours.forEach(p => labourIdSet.add(p.labourId));
+    }
+    const allLabourIds = Array.from(labourIdSet);
+
+    // Fetch payments in this rolling cycle period for these labours
+    const payments = await prisma.labourPayment.findMany({
+      where: {
+        labourId: { in: allLabourIds },
+        date: { gte: payStart, lte: payEnd },
+      },
+      orderBy: { date: "asc" },
+    });
+
+    // Fetch details for any labours who had payments or belong to the site but had no attendance in the period
+    const missingLabourIds = allLabourIds.filter(id => !attendances.some(a => a.labourId === id));
+    let additionalLabours: any[] = [];
+    if (missingLabourIds.length > 0) {
+      additionalLabours = await prisma.labour.findMany({
+        where: { id: { in: missingLabourIds } },
+        include: { labourCategory: true },
+      });
+    }
+
+    // Fetch prior attendance and payments before startDate to calculate opening/previous balances
+    const [prevAttendances, prevPayments] = await Promise.all([
+      prisma.attendance.findMany({
+        where: {
+          labourId: { in: allLabourIds },
+          date: { lt: startDate },
+          hajari: { gt: 0 }
+        },
+        select: {
+          id: true,
+          date: true,
+          labourId: true,
+          hajari: true,
+          hajariRate: true,
+          labour: { select: { dailyWage: true, labourCategory: { select: { dailyWage: true } } } }
+        }
+      }),
+      prisma.labourPayment.findMany({
+        where: {
+          labourId: { in: allLabourIds },
+          date: { lt: payStart } // Previous payments are strictly before the 20-to-20 payment start
+        },
+        select: {
+          id: true,
+          date: true,
+          labourId: true,
+          amount: true
+        }
+      })
+    ]);
+
+    // --- MONTHLY LEDGER INITIALIZATION ---
+    const monthlyLedger: Record<string, Record<string, { hajari: number; earned: number; paid: number; attDetails: string[]; paidDetails: string[] }>> = {};
+    const addLedgerEntry = (labourId: string, date: Date, hajari: number, earned: number, paid: number) => {
+      if (!date || isNaN(date.getTime())) return;
+      const d = new Date(date);
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!monthlyLedger[labourId]) monthlyLedger[labourId] = {};
+      if (!monthlyLedger[labourId][monthKey]) monthlyLedger[labourId][monthKey] = { hajari: 0, earned: 0, paid: 0, attDetails: [], paidDetails: [] };
+      
+      monthlyLedger[labourId][monthKey].hajari += hajari;
+      monthlyLedger[labourId][monthKey].earned += earned;
+      monthlyLedger[labourId][monthKey].paid += paid;
+
+      const dStr = formatDate(d, "dd-MMM");
+      if (hajari > 0) monthlyLedger[labourId][monthKey].attDetails.push(`${dStr}: ${hajari}`);
+      if (paid > 0) monthlyLedger[labourId][monthKey].paidDetails.push(`${dStr}: ₹${paid}`);
+    };
+
+    const openingEarned: Record<string, number> = {};
+    const openingPaid: Record<string, number> = {};
+    for (const pa of prevAttendances) {
+      const rate = pa.hajariRate || pa.labour?.dailyWage || pa.labour?.labourCategory?.dailyWage || 0;
+      openingEarned[pa.labourId] = (openingEarned[pa.labourId] || 0) + (pa.hajari * rate);
+      if (pa.date) addLedgerEntry(pa.labourId, pa.date, pa.hajari, pa.hajari * rate, 0);
+    }
+    for (const pp of prevPayments) {
+      openingPaid[pp.labourId] = (openingPaid[pp.labourId] || 0) + pp.amount;
+      if (pp.date) addLedgerEntry(pp.labourId, pp.date, 0, 0, pp.amount);
+    }
+
+    // Fetch payments made AFTER the endDate up to today (REMOVED to maintain historical ledger accuracy)
+    const postPayments: any[] = [];
+
+    // --- SUPERVISOR INTEGRATION ---
+    // Fetch all supervisors assigned to this site (if filtering by site)
+    if (siteId && !labourId) {
+      const siteSupervisors = await prisma.siteSupervisor.findMany({
+        where: { siteId },
+        include: { supervisor: true }
+      });
+      const supervisorUserIds = siteSupervisors.map(ss => ss.supervisorId);
+
+      if (supervisorUserIds.length > 0) {
+        // Fetch Supervisor Attendances in this period
+        const supAttendances = await prisma.supervisorAttendance.findMany({
+          where: { supervisorId: { in: supervisorUserIds }, date: { gte: startDate, lte: endDate } },
+          include: { supervisor: true }
+        });
+        
+        // Fetch Supervisor Payments in this rolling cycle period
+        const supPayments = await prisma.supervisorPayment.findMany({
+          where: { supervisorId: { in: supervisorUserIds }, date: { gte: payStart, lte: payEnd } }
+        });
+
+        // Fetch Supervisor Payments AFTER this period (REMOVED)
+        const postSupPayments: any[] = [];
+
+        // Fetch prior balances for Supervisors
+        const [prevSupAtt, prevSupPay] = await Promise.all([
+          prisma.supervisorAttendance.findMany({
+            where: { supervisorId: { in: supervisorUserIds }, date: { lt: startDate } }
+          }),
+          prisma.supervisorPayment.findMany({
+            where: { supervisorId: { in: supervisorUserIds }, date: { lt: payStart } } // Before 20-to-20 payment start
+          })
+        ]);
+
+        // Map Supervisor Attendances to Labour Attendance shape
+        for (const sa of supAttendances) {
+          const supLabId = `sup_${sa.supervisorId}`;
+          const isPresent = sa.status === "PRESENT";
+          const isHalf = sa.status === "HALF_DAY";
+          
+          attendances.push({
+            id: sa.id,
+            siteId: siteId,
+            buildingId: null,
+            labourId: supLabId,
+            date: sa.date,
+            status: sa.status,
+            hajari: isPresent ? 1 : (isHalf ? 0.5 : 0),
+            hajariRate: sa.dailyRate,
+            earnedAmount: sa.earnedAmount, // explicitly pass earnedAmount for correct calculation
+            overtimeHrs: 0,
+            remarks: sa.remarks,
+            markedById: sa.markedById || "",
+            createdAt: sa.createdAt,
+            building: null,
+            labour: {
+              id: supLabId,
+              siteId: siteId,
+              labourCategoryId: "cat_sup",
+              name: sa.supervisor.name,
+              phone: sa.supervisor.phone,
+              dailyWage: sa.dailyRate, // We use dailyRate as their base wage for this record
+              active: sa.supervisor.active,
+              labourCategory: {
+                id: "cat_sup",
+                siteId: siteId,
+                name: "SUPERVISOR",
+                dailyWage: 0
+              }
+            }
+          } as any);
+        }
+
+        // Add supervisors who didn't have attendance but had payments or just belong to the site
+        const activeSupIdSet = new Set(supAttendances.map(sa => `sup_${sa.supervisorId}`));
+        for (const ss of siteSupervisors) {
+          const supLabId = `sup_${ss.supervisorId}`;
+          if (!activeSupIdSet.has(supLabId)) {
+            additionalLabours.push({
+              id: supLabId,
+              name: ss.supervisor.name,
+              dailyWage: ss.supervisor.monthlySalary ? Math.round(ss.supervisor.monthlySalary / 30) : 0,
+              labourCategory: { name: "SUPERVISOR" }
+            } as any);
+          }
+        }
+
+        // Map Supervisor Payments
+        for (const sp of supPayments) {
+          payments.push({
+            id: sp.id,
+            labourId: `sup_${sp.supervisorId}`,
+            amount: sp.amount,
+            date: sp.date,
+            reason: sp.reason,
+            transactionId: sp.transactionId,
+            createdAt: sp.createdAt
+          } as any);
+        }
+
+        // Calculate Supervisor Opening Balances
+        for (const psa of prevSupAtt) {
+          const supLabId = `sup_${psa.supervisorId}`;
+          openingEarned[supLabId] = (openingEarned[supLabId] || 0) + psa.earnedAmount;
+          const hajari = psa.status === "P" ? 1 : (psa.status === "H" ? 0.5 : 0);
+          if (psa.date) addLedgerEntry(supLabId, psa.date, hajari, psa.earnedAmount || 0, 0);
+        }
+        for (const psp of prevSupPay) {
+          const supLabId = `sup_${psp.supervisorId}`;
+          openingPaid[supLabId] = (openingPaid[supLabId] || 0) + psp.amount;
+          if (psp.date) addLedgerEntry(supLabId, psp.date, 0, 0, psp.amount);
+        }
+
+        // Map Post Supervisor Payments
+        for (const psp of postSupPayments) {
+          postPayments.push({
+            id: psp.id,
+            labourId: `sup_${psp.supervisorId}`,
+            amount: psp.amount,
+            date: psp.date,
+            reason: psp.reason,
+            transactionId: psp.transactionId,
+            createdAt: psp.createdAt
+          } as any);
+        }
+      }
+    }
+    // --- END SUPERVISOR INTEGRATION ---
+
+    // 3. Process Current Attendances & Payments (including supervisors mapped into them)
+    for (const a of attendances) {
+      if (a.date) {
+        let earned = 0;
+        if ((a as any).earnedAmount !== undefined && (a as any).earnedAmount !== null) {
+          earned = (a as any).earnedAmount;
+        } else {
+          const rate = a.hajariRate || a.labour?.dailyWage || a.labour?.labourCategory?.dailyWage || 0;
+          earned = (a.hajari || 0) * rate;
+        }
+        addLedgerEntry(a.labourId, a.date, a.hajari || 0, earned, 0);
+      }
+    }
+    for (const p of payments) {
+      if (p.date) addLedgerEntry(p.labourId, p.date, 0, 0, p.amount || 0);
+    }
+
+    // 4. Process Post Payments (including mapped supervisors)
+    for (const p of postPayments) {
+      if (p.date) addLedgerEntry(p.labourId, p.date, 0, 0, p.amount || 0);
+    }
+    // --- END MONTHLY LEDGER COMPUTATION ---
+
+    // --- FETCH TRANSFER HISTORY ---
+    const transferHistory = await prisma.labourTransferHistory.findMany({
+      where: { labourId: { in: allLabourIds } },
+      include: {
+        fromSite: { select: { projectName: true } },
+        toSite: { select: { projectName: true } },
+      },
+      orderBy: { transferDate: "asc" },
+    });
+
+    const exportData = {
+      attendances,
+      payments,
+      postPayments,
+      additionalLabours,
+      openingEarned,
+      openingPaid,
+      monthlyLedger,
+      transferHistory,
+      siteName,
+      startDateStr,
+      endDateStr,
+    };
+
+    if (format === "excel") {
+      const buffer = await generateAttendanceExcel(exportData);
+      return new NextResponse(buffer as any, {
+        headers: {
+          "Content-Disposition": `attachment; filename="Attendance_${siteName.replace(/\s+/g, "_")}_${startDateStr}_to_${endDateStr}.xlsx"`,
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        },
+      });
+    } else if (format === "pdf") {
+      const buffer = await generateAttendancePdf(exportData);
+      return new NextResponse(buffer as any, {
+        headers: {
+          "Content-Disposition": `attachment; filename="Attendance_${siteName.replace(/\s+/g, "_")}_${startDateStr}_to_${endDateStr}.pdf"`,
+          "Content-Type": "application/pdf",
+        },
+      });
+    } else {
+      return new NextResponse("Invalid format", { status: 400 });
+    }
+  } catch (error) {
+    console.error("Error generating export:", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}

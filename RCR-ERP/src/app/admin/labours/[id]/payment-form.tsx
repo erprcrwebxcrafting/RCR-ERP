@@ -1,0 +1,183 @@
+"use client";
+import { useState, useTransition } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { savePayment, deleteLabourPayment } from "./actions";
+import { Plus, X, IndianRupee, Calendar, FileText, Hash, Save, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { validatePositiveNumber } from "@/lib/validations";
+
+export function PaymentForm({ labourId, initialData }: { labourId: string, initialData?: any }) {
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [paymentType, setPaymentType] = useState<"PAYOUT" | "CREDIT">("PAYOUT");
+  const isEditing = !!initialData;
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const amountStr = (formData.get("amount") as string)?.trim();
+    const dateStr = (formData.get("date") as string)?.trim();
+    let amount = Number(amountStr);
+
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount greater than 0");
+      return;
+    }
+
+    if (paymentType === "CREDIT") {
+      amount = -amount;
+    }
+
+    formData.set("amount", amount.toString());
+
+    if (!dateStr) {
+      toast.error("Please select a valid payment date.");
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        await savePayment(formData);
+        toast.success(`Labour advance payment ${isEditing ? 'updated' : 'recorded'} successfully!`, {
+          description: `₹${Number(amountStr).toLocaleString("en-IN")} advance ${isEditing ? 'updated' : 'recorded'}.`,
+        });
+        setOpen(false);
+      } catch (err: any) {
+        toast.error(`Failed to ${isEditing ? 'update' : 'record'} payment`, {
+          description: err?.message || "Please check inputs and retry.",
+        });
+      }
+    });
+  }
+
+  async function handleDelete() {
+    if (!initialData?.id || !confirm("Are you sure you want to delete this payment?")) return;
+    
+    startTransition(async () => {
+      try {
+        const res = await deleteLabourPayment(initialData.id, labourId);
+        if (res?.error) {
+          toast.error("Failed to delete payment", { description: res.error });
+          return;
+        }
+        toast.success("Payment deleted successfully!");
+        setOpen(false);
+      } catch (err: any) {
+        toast.error("Failed to delete payment", { description: err?.message || "Please try again." });
+      }
+    });
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Trigger asChild>
+        {isEditing ? (
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          </Button>
+        ) : (
+          <Button size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl">
+            <Plus className="h-4 w-4" /> Record Advance Payout
+          </Button>
+        )}
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl z-[101]">
+          <div className="mb-4 flex items-center justify-between">
+            <Dialog.Title className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <IndianRupee className="h-5 w-5 text-emerald-500" /> {isEditing ? "Edit Payout" : "Record Payout"}
+            </Dialog.Title>
+            <Dialog.Close asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <X className="h-4 w-4" />
+              </Button>
+            </Dialog.Close>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input type="hidden" name="labourId" value={labourId} />
+            {isEditing && <input type="hidden" name="id" value={initialData.id} />}
+            
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Transaction Type</Label>
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setPaymentType("PAYOUT")}
+                  className={`flex-1 text-sm font-bold py-2 rounded-lg transition-all ${paymentType === "PAYOUT" ? "bg-white dark:bg-slate-700 shadow-sm text-rose-600" : "text-slate-500 hover:text-slate-700"}`}
+                >
+                  Payout (You Paid)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentType("CREDIT")}
+                  className={`flex-1 text-sm font-bold py-2 rounded-lg transition-all ${paymentType === "CREDIT" ? "bg-white dark:bg-slate-700 shadow-sm text-emerald-600" : "text-slate-500 hover:text-slate-700"}`}
+                >
+                  Credit (Pending Dues)
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="date" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Date *
+                </Label>
+                <div className="relative">
+                  <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                  <Input
+                    id="date"
+                    name="date"
+                    type="date"
+                    required
+                    defaultValue={initialData?.date ? new Date(initialData.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}
+                    className="pl-8 h-10 rounded-lg cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="amount" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Amount (₹) *
+                </Label>
+                <div className="relative">
+                  <IndianRupee className={`absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${paymentType === "CREDIT" ? "text-emerald-500" : "text-rose-500"}`} />
+                  <Input id="amount" name="amount" type="number" step="0.01" required defaultValue={initialData ? Math.abs(initialData.amount) : ""} placeholder="e.g. 3000" className={`pl-8 h-10 rounded-lg font-mono font-bold ${paymentType === "CREDIT" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`} />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="reason" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Reason / Remarks
+              </Label>
+              <Input id="reason" name="reason" defaultValue={initialData?.reason || ""} placeholder={paymentType === "CREDIT" ? "e.g. Previous pending balance" : "e.g. Weekly Advance, Festival Bonus"} className="h-10 rounded-lg" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="transactionId" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Transaction / Ref ID
+              </Label>
+              <Input id="transactionId" name="transactionId" defaultValue={initialData?.transactionId || ""} placeholder="UPI Ref / Cash Voucher #" className="h-10 rounded-lg font-mono text-sm" />
+            </div>
+
+            <div className="flex gap-2 mt-2">
+              <Button type="submit" disabled={isPending} className="flex-1 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md gap-2">
+                <Save className="h-4 w-4" />
+                {isPending ? "Saving..." : "Save"}
+              </Button>
+              {isEditing && (
+                <Button type="button" variant="destructive" disabled={isPending} onClick={handleDelete} className="h-10 rounded-lg font-bold gap-2 px-4 shadow-md" title="Delete Payment">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
