@@ -44,7 +44,6 @@ export default async function SupervisorLaboursPage({ searchParams }: { searchPa
     where: { 
       siteId: { in: siteIds }, 
       ...(showInactive ? {} : { active: true }),
-      ...(q ? { name: { contains: q, mode: 'insensitive' } } : {}),
       ...dateFilter
     },
     include: { labourCategory: true },
@@ -135,7 +134,7 @@ export default async function SupervisorLaboursPage({ searchParams }: { searchPa
                 const colorClass = colors[l.name.charCodeAt(0) % colors.length];
 
                 return (
-                  <TR key={l.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <TR key={l.id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors labour-row" data-name={l.name.toLowerCase()}>
                     <TD className="py-4 px-6">
                       <div className="flex items-center gap-4">
                         <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-xs ${colorClass} border dark:bg-slate-800 dark:border-slate-700 shadow-sm group-hover:scale-110 transition-transform`}>
@@ -187,17 +186,16 @@ export default async function SupervisorLaboursPage({ searchParams }: { searchPa
                   </TR>
                 );
               })}
-              {labours.length === 0 && (
-                <TR>
-                  <TD colSpan={4} className="h-64 text-center">
-                    <div className="flex flex-col items-center justify-center text-slate-500">
-                      <Users className="h-12 w-12 mb-4 text-slate-300 dark:text-slate-700" />
-                      <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 mb-1">No Labourers Found</h3>
-                      <p className="font-medium text-sm">No active labourers found in your assigned sites.</p>
-                    </div>
-                  </TD>
-                </TR>
-              )}
+              {/* Client-side empty state */}
+              <TR id="empty-labour-row" style={{ display: labours.length > 0 ? 'none' : '' }}>
+                <TD colSpan={6} className="h-64 text-center">
+                  <div className="flex flex-col items-center justify-center text-slate-500">
+                    <Users className="h-12 w-12 mb-4 text-slate-300 dark:text-slate-700" />
+                    <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 mb-1">No Labourers Found</h3>
+                    <p className="font-medium text-sm">No labourers match your search criteria.</p>
+                  </div>
+                </TD>
+              </TR>
             </TBody>
           </Table>
         </div>
