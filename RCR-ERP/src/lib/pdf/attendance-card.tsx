@@ -133,8 +133,10 @@ export interface AttendanceCardData {
   rate: number;
   days: {
     dateNum: number;
+    fullDateStr?: string;
     presentStr: string; 
     advDateNum: number;
+    advFullDateStr?: string;
     advanceAmt: number | null;
     remarks: string;
   }[];
@@ -216,20 +218,20 @@ export const AttendanceCardPages = ({ data }: { data: AttendanceCardData }) => {
       {/* Single Table 1-31 */}
       <View style={styles.table}>
         <View style={[styles.tableRow, { backgroundColor: "#ffb6c1" }]}>
-          <View style={[styles.tableColHeader, { width: "8%" }]}><Text style={styles.textMedium}>Dt.</Text></View>
-          <View style={[styles.tableColHeader, { width: "17%" }]}><Text style={styles.textMedium}>Present</Text></View>
-          <View style={[styles.tableColHeader, { width: "10%" }]}><Text style={styles.textMedium}>Adv Dt.</Text></View>
-          <View style={[styles.tableColHeader, { width: "17%" }]}><Text style={styles.textMedium}>Advance</Text></View>
-          <View style={[styles.tableColHeader, { width: "48%", borderRightWidth: 0 }]}><Text style={styles.textMedium}>Remarks</Text></View>
+          <View style={[styles.tableColHeader, { width: "14%" }]}><Text style={styles.textMedium}>Dt.</Text></View>
+          <View style={[styles.tableColHeader, { width: "14%" }]}><Text style={styles.textMedium}>Present</Text></View>
+          <View style={[styles.tableColHeader, { width: "14%" }]}><Text style={styles.textMedium}>Adv Dt.</Text></View>
+          <View style={[styles.tableColHeader, { width: "14%" }]}><Text style={styles.textMedium}>Advance</Text></View>
+          <View style={[styles.tableColHeader, { width: "44%", borderRightWidth: 0 }]}><Text style={styles.textMedium}>Remarks</Text></View>
         </View>
         {data.days.map((day, idx) => (
           <View style={styles.tableRow} key={idx}>
-            <View style={[styles.tableCol, { width: "8%" }]}><Text style={styles.textSmall}>{day.dateNum > 0 && day.dateNum <= 31 ? day.dateNum : ""}</Text></View>
-            <View style={[styles.tableCol, { width: "17%" }]}><Text style={styles.textMedium}>{day.presentStr}</Text></View>
-            <View style={[styles.tableCol, { width: "10%" }]}><Text style={styles.textSmall}>{day.advDateNum > 0 ? day.advDateNum : ""}</Text></View>
-            <View style={[styles.tableCol, { width: "17%" }]}><Text style={styles.textMedium}>{day.advanceAmt ? day.advanceAmt : ""}</Text></View>
-            <View style={[styles.tableCol, { width: "48%", borderRightWidth: 0 }]}>
-              {/* No truncation needed now because width is 48% of A4 portrait! */}
+            <View style={[styles.tableCol, { width: "14%" }]}><Text style={styles.textSmall}>{day.fullDateStr || (day.dateNum > 0 && day.dateNum <= 31 ? day.dateNum : "")}</Text></View>
+            <View style={[styles.tableCol, { width: "14%" }]}><Text style={styles.textMedium}>{day.presentStr}</Text></View>
+            <View style={[styles.tableCol, { width: "14%" }]}><Text style={styles.textSmall}>{day.advFullDateStr || (day.advDateNum > 0 ? day.advDateNum : "")}</Text></View>
+            <View style={[styles.tableCol, { width: "14%" }]}><Text style={styles.textMedium}>{day.advanceAmt ? day.advanceAmt : ""}</Text></View>
+            <View style={[styles.tableCol, { width: "44%", borderRightWidth: 0 }]}>
+              {/* No truncation needed now because width is 44% of A4 portrait! */}
               <Text style={styles.textSmall}>{day.remarks}</Text>
             </View>
           </View>

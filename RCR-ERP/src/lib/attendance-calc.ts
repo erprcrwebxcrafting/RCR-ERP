@@ -227,10 +227,26 @@ export async function calculateAttendanceCardData(
 
     const presentStr = formatPresentStr(dayHajari, dayAtts.length > 0);
 
+    const fullDateStr = `${i}/${(month + 1).toString().padStart(2, '0')}/${year}`;
+    
+    let advMonth = month;
+    let advYear = year;
+    let advDateNumRaw = 20 + i;
+    if (advDateNumRaw > daysInMonth) {
+      advMonth += 1;
+      if (advMonth > 11) {
+         advMonth = 0;
+         advYear += 1;
+      }
+    }
+    const advFullDateStr = `${advDateNum}/${(advMonth + 1).toString().padStart(2, '0')}/${advYear}`;
+
     days.push({
       dateNum: i,
+      fullDateStr,
       presentStr: presentStr,
       advDateNum: advDateNum,
+      advFullDateStr,
       advanceAmt: dayAdvance > 0 ? dayAdvance : null,
       remarks: reasons.join(", ")
     });
