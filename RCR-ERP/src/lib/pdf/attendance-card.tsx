@@ -25,6 +25,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#ff99cc",
     padding: 15, // Reduced padding to save vertical space
     fontFamily: "Helvetica",
+    position: "relative",
+  },
+  watermark: {
+    position: "absolute",
+    top: "30%",
+    left: "15%",
+    transform: "rotate(-30deg)",
+    opacity: 0.05,
+    width: "70%",
   },
   headerContainer: {
     flexDirection: "column",
@@ -151,6 +160,8 @@ export interface AttendanceCardData {
 export const AttendanceCardPages = ({ data }: { data: AttendanceCardData }) => {
   return (
     <Page size="A4" orientation="portrait" style={styles.page}>
+      {/* Watermark Logo */}
+      {logoBase64 ? <Image src={logoBase64} style={styles.watermark} /> : null}
       
       {/* Header */}
       <View style={styles.headerContainer}>
