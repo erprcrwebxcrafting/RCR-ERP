@@ -4,6 +4,8 @@ import { generatePaymentSlipPdfBuffer, PaymentSlipData } from "@/lib/pdf/payment
 import fs from "fs";
 import path from "path";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
