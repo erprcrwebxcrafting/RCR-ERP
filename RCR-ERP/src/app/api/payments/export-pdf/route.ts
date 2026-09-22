@@ -84,13 +84,32 @@ export async function GET(req: NextRequest) {
 
         statementPeriod = { from, to };
         
-        // Fetch ALL records up to the end date to calculate accurate running balances
+        // Optimize by fetching only records within the date range
+        // And aggregate past records for the period opening balance
+        const pastPayments = await prisma.labourPayment.aggregate({
+          where: { labourId: entityId, date: { lt: from } },
+          _sum: { amount: true }
+        });
+        const pastAttendances = await prisma.attendance.findMany({
+          where: { labourId: entityId, date: { lt: from }, hajari: { gt: 0 } },
+          select: { hajari: true, hajariRate: true }
+        });
+        
+        let earnedBeforeFrom = 0;
+        pastAttendances.forEach(a => {
+          earnedBeforeFrom += (a.hajari || 0) * (a.hajariRate || baseDailyWage);
+        });
+        const paidBeforeFrom = pastPayments._sum.amount || 0;
+        
+        // This will be the actual cash balance right before the 'from' date
+        periodOpeningBalance = openingBalance + earnedBeforeFrom - paidBeforeFrom;
+
         payments = await prisma.labourPayment.findMany({
-          where: { labourId: entityId, date: { lte: to } },
+          where: { labourId: entityId, date: { gte: from, lte: to } },
           orderBy: { date: "asc" }
         });
         attendances = await prisma.attendance.findMany({
-          where: { labourId: entityId, date: { lte: to } },
+          where: { labourId: entityId, date: { gte: from, lte: to } },
           orderBy: { date: "asc" }
         });
       }
@@ -141,12 +160,32 @@ export async function GET(req: NextRequest) {
         to.setHours(23, 59, 59, 999);
 
         statementPeriod = { from, to };
+        const pastPayments = await prisma.supervisorPayment.aggregate({
+          where: { supervisorId: entityId, date: { lt: from } },
+          _sum: { amount: true }
+        });
+        const pastAttendances = await prisma.supervisorAttendance.findMany({
+          where: { supervisorId: entityId, date: { lt: from }, status: { not: "ABSENT" } },
+          select: { status: true, dailyRate: true, earnedAmount: true }
+        });
+        
+        let earnedBeforeFrom = 0;
+        pastAttendances.forEach(a => {
+          const earned = a.earnedAmount !== undefined && a.earnedAmount !== null
+            ? a.earnedAmount
+            : (a.dailyRate || baseDailyWage) * (a.status === 'PRESENT' ? 1 : a.status === 'HALF_DAY' ? 0.5 : 0);
+          earnedBeforeFrom += earned;
+        });
+        const paidBeforeFrom = pastPayments._sum.amount || 0;
+        
+        periodOpeningBalance = openingBalance + earnedBeforeFrom - paidBeforeFrom;
+
         payments = await prisma.supervisorPayment.findMany({
-          where: { supervisorId: entityId, date: { lte: to } },
+          where: { supervisorId: entityId, date: { gte: from, lte: to } },
           orderBy: { date: "asc" }
         });
         attendances = await prisma.supervisorAttendance.findMany({
-          where: { supervisorId: entityId, date: { lte: to } },
+          where: { supervisorId: entityId, date: { gte: from, lte: to } },
           orderBy: { date: "asc" }
         });
       }
@@ -217,7 +256,7 @@ export async function GET(req: NextRequest) {
       });
 
       // Now convert to array, sort chronologically, and calculate rolling balance
-      let rollingBalance = openingBalance;
+      let rollingBalance = periodOpeningBalance;
       const sortedMonths = Array.from(monthMap.values()).sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
       
       sortedMonths.forEach(m => {
@@ -226,33 +265,9 @@ export async function GET(req: NextRequest) {
         m.closingBalance = rollingBalance;
       });
 
-      // Finally, filter the array to only include months that intersect with statementPeriod
-      // Calculate period opening balance (balance before the first month of the statement)
-      const fromKey = getMonthKey(statementPeriod.from);
-      const toKey = getMonthKey(statementPeriod.to);
+      monthlyBreakdown = sortedMonths;
       
-      const firstMonthIndex = sortedMonths.findIndex(m => {
-        const k = getMonthKey(m.dateObj);
-        return k >= fromKey;
-      });
-      
-      if (firstMonthIndex > 0) {
-        periodOpeningBalance = sortedMonths[firstMonthIndex - 1].closingBalance;
-      }
 
-      monthlyBreakdown = sortedMonths.filter(m => {
-        const k = getMonthKey(m.dateObj);
-        return k >= fromKey && k <= toKey;
-      });
-      
-      // Option 2: Filter payments to match the Payout Cycle of the selected date range
-      // e.g. If range is 1 Aug to 31 Aug, payments shown are 21 Aug to 20 Sept.
-      payments = payments.filter(p => {
-        const d = new Date(p.date);
-        const cycleStart = new Date(statementPeriod!.from.getFullYear(), statementPeriod!.from.getMonth(), 21);
-        const cycleEnd = new Date(statementPeriod!.to.getFullYear(), statementPeriod!.to.getMonth() + 1, 20, 23, 59, 59, 999);
-        return d >= cycleStart && d <= cycleEnd;
-      });
       
       allTransfers = allTransfers.filter(t => {
         const d = new Date(t.date);
