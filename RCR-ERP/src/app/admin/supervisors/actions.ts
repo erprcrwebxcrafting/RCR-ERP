@@ -82,7 +82,7 @@ export async function createSupervisor(formData: FormData) {
   const passwordHash = await hashPassword(password);
   const supervisor = await prisma.user.create({ 
     data: { 
-      name, 
+      name: name.toUpperCase(), 
       email, 
       phone: phone || null, 
       passwordHash, 
@@ -208,7 +208,7 @@ export async function updateSupervisor(id: string, formData: FormData) {
   }
 
   const data: any = {
-    name,
+    name: name.toUpperCase(),
     email,
     phone: phone || null,
     monthlySalary,

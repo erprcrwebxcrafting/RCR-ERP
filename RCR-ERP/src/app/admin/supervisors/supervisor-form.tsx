@@ -158,7 +158,7 @@ export function SupervisorForm({ allSites = [] }: { allSites?: SiteOption[] }) {
                 <Label className={labelClass}>
                   <User className="h-3.5 w-3.5 text-blue-500" /> Name *
                 </Label>
-                <Input name="name" required placeholder="Full Name" className={inputClass} />
+                <Input name="name" required placeholder="Full Name" className={`${inputClass} uppercase`} onChange={(e) => e.target.value = e.target.value.toUpperCase()} />
               </div>
 
               <div className="space-y-1.5">

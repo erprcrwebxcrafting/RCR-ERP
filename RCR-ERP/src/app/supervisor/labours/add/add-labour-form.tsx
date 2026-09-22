@@ -136,7 +136,8 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
                   name="name"
                   required
                   placeholder="e.g. Ramesh Kumar"
-                  className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-indigo-500/20 shadow-sm"
+                  onChange={(e) => e.target.value = e.target.value.toUpperCase()}
+                  className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-indigo-500 focus:ring-indigo-500/20 shadow-sm uppercase"
                 />
               </div>
               <div className="space-y-2">

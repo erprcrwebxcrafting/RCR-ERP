@@ -183,7 +183,7 @@ export function LabourForm({
                   <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Full Name <span className="text-rose-500">*</span></Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    <Input name="name" required defaultValue={labour?.name} placeholder="e.g. Ramesh Kumar" className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-medium" />
+                    <Input name="name" required defaultValue={labour?.name} placeholder="e.g. Ramesh Kumar" className="pl-10 h-12 rounded-xl bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-medium uppercase" onChange={(e) => e.target.value = e.target.value.toUpperCase()} />
                   </div>
                 </div>
                 <div className="space-y-2">

@@ -102,7 +102,7 @@ export async function saveLabour(formData: FormData) {
     }
 
     const data = {
-      name: parsed.name,
+      name: parsed.name.trim().toUpperCase(),
       phone: parsed.phone || null,
       address: parsed.address || null,
       siteId: parsed.siteId,
