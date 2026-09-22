@@ -40,23 +40,7 @@ export async function calculateAttendanceCardData(
   const fromDate = new Date(year, month, 1);
   const toDate = new Date(year, month, daysInMonth, 23, 59, 59, 999);
 
-  // Find if it's the very first month of work
-  const firstAtt = entityType === "LABOUR"
-    ? await prisma.attendance.findFirst({
-        where: { labourId: entityId },
-        orderBy: { date: 'asc' }
-      })
-    : await prisma.supervisorAttendance.findFirst({
-        where: { supervisorId: entityId },
-        orderBy: { date: 'asc' }
-      });
-  
-  let isFirstMonth = false;
-  if (!firstAtt || (firstAtt.date.getFullYear() === year && firstAtt.date.getMonth() === month)) {
-    isFirstMonth = true;
-  }
-
-  const payStart = isFirstMonth ? new Date(year, month, 1, 0, 0, 0, 0) : new Date(year, month, 21, 0, 0, 0, 0);
+  const payStart = new Date(year, month, 21, 0, 0, 0, 0);
   const payEnd = new Date(year, month + 1, 20, 23, 59, 59, 999);
 
   let workerName = "";
@@ -92,26 +76,24 @@ export async function calculateAttendanceCardData(
       orderBy: { date: "asc" }
     });
 
-    if (!isFirstMonth) {
-      const pastAtts = await prisma.attendance.findMany({
-        where: { labourId: entityId, date: { lt: fromDate }, hajari: { gt: 0 } },
-        select: {
-          hajari: true,
-          hajariRate: true,
-          labour: { select: { dailyWage: true, labourCategory: { select: { dailyWage: true } } } }
-        }
-      });
-      pastAtts.forEach(a => {
-        const appliedRate = a.hajariRate || a.labour?.dailyWage || a.labour?.labourCategory?.dailyWage || rate;
-        openingEarned += (a.hajari || 0) * appliedRate;
-      });
+    const pastAtts = await prisma.attendance.findMany({
+      where: { labourId: entityId, date: { lt: fromDate }, hajari: { gt: 0 } },
+      select: {
+        hajari: true,
+        hajariRate: true,
+        labour: { select: { dailyWage: true, labourCategory: { select: { dailyWage: true } } } }
+      }
+    });
+    pastAtts.forEach(a => {
+      const appliedRate = a.hajariRate || a.labour?.dailyWage || a.labour?.labourCategory?.dailyWage || rate;
+      openingEarned += (a.hajari || 0) * appliedRate;
+    });
 
-      const pastPays = await prisma.labourPayment.findMany({
-        where: { labourId: entityId, date: { lt: payStart } },
-        select: { amount: true }
-      });
-      pastPays.forEach(p => { openingPaid += (p.amount || 0); });
-    }
+    const pastPays = await prisma.labourPayment.findMany({
+      where: { labourId: entityId, date: { lt: payStart } },
+      select: { amount: true }
+    });
+    pastPays.forEach(p => { openingPaid += (p.amount || 0); });
   } else if (entityType === "SUPERVISOR") {
     const supervisor = await prisma.user.findUnique({
       where: { id: entityId },
@@ -133,24 +115,22 @@ export async function calculateAttendanceCardData(
       orderBy: { date: "asc" }
     });
 
-    if (!isFirstMonth) {
-      const pastAtts = await prisma.supervisorAttendance.findMany({
-        where: { supervisorId: entityId, date: { lt: fromDate }, status: { not: 'ABSENT' } },
-        select: { status: true, dailyRate: true, earnedAmount: true }
-      });
-      pastAtts.forEach(a => {
-        const earned = a.earnedAmount !== undefined && a.earnedAmount !== null
-          ? a.earnedAmount
-          : (a.dailyRate || rate) * (a.status === 'PRESENT' ? 1 : a.status === 'HALF_DAY' ? 0.5 : 0);
-        openingEarned += earned;
-      });
+    const pastAtts = await prisma.supervisorAttendance.findMany({
+      where: { supervisorId: entityId, date: { lt: fromDate }, status: { not: 'ABSENT' } },
+      select: { status: true, dailyRate: true, earnedAmount: true }
+    });
+    pastAtts.forEach(a => {
+      const earned = a.earnedAmount !== undefined && a.earnedAmount !== null
+        ? a.earnedAmount
+        : (a.dailyRate || rate) * (a.status === 'PRESENT' ? 1 : a.status === 'HALF_DAY' ? 0.5 : 0);
+      openingEarned += earned;
+    });
 
-      const pastPays = await prisma.supervisorPayment.findMany({
-        where: { supervisorId: entityId, date: { lt: payStart } },
-        select: { amount: true }
-      });
-      pastPays.forEach(p => { openingPaid += (p.amount || 0); });
-    }
+    const pastPays = await prisma.supervisorPayment.findMany({
+      where: { supervisorId: entityId, date: { lt: payStart } },
+      select: { amount: true }
+    });
+    pastPays.forEach(p => { openingPaid += (p.amount || 0); });
   } else {
     throw new Error("Invalid entity type");
   }
@@ -158,18 +138,20 @@ export async function calculateAttendanceCardData(
   const factoryName = `R.C.R Enterprises ${siteName}`;
   const monthName = dateParam.toLocaleString('default', { month: 'long', year: 'numeric' });
 
-  const attMap = new Map<number, any[]>();
+  const attMap = new Map<string, any[]>();
   attendances.forEach(a => {
-    const d = new Date(a.date).getDate();
-    if (!attMap.has(d)) attMap.set(d, []);
-    attMap.get(d)!.push(a);
+    const d = new Date(a.date);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (!attMap.has(key)) attMap.set(key, []);
+    attMap.get(key)!.push(a);
   });
 
-  const payMap = new Map<number, any[]>();
+  const payMap = new Map<string, any[]>();
   payments.forEach(p => {
-    const d = new Date(p.date).getDate();
-    if (!payMap.has(d)) payMap.set(d, []);
-    payMap.get(d)!.push(p);
+    const d = new Date(p.date);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (!payMap.has(key)) payMap.set(key, []);
+    payMap.get(key)!.push(p);
   });
 
   const days = [];
@@ -177,12 +159,24 @@ export async function calculateAttendanceCardData(
   let totalEarned = 0;
 
   for (let i = 1; i <= daysInMonth; i++) {
-    const dayAtts = attMap.get(i) || [];
+    const attKey = `${year}-${month}-${i}`;
+    const dayAtts = attMap.get(attKey) || [];
     
-    let advDateNum = 20 + i;
-    if (advDateNum > daysInMonth) advDateNum -= daysInMonth;
+    let advMonth = month;
+    let advYear = year;
+    let advDateNumRaw = 20 + i;
+    let advDateNum = advDateNumRaw;
+    if (advDateNumRaw > daysInMonth) {
+      advMonth += 1;
+      if (advMonth > 11) {
+         advMonth = 0;
+         advYear += 1;
+      }
+      advDateNum -= daysInMonth;
+    }
     
-    const dayPays = payMap.get(advDateNum) || [];
+    const payKey = `${advYear}-${advMonth}-${advDateNum}`;
+    const dayPays = payMap.get(payKey) || [];
 
     let dayHajari = 0;
     dayAtts.forEach(a => { 
@@ -229,16 +223,6 @@ export async function calculateAttendanceCardData(
 
     const fullDateStr = `${i}/${(month + 1).toString().padStart(2, '0')}/${year}`;
     
-    let advMonth = month;
-    let advYear = year;
-    let advDateNumRaw = 20 + i;
-    if (advDateNumRaw > daysInMonth) {
-      advMonth += 1;
-      if (advMonth > 11) {
-         advMonth = 0;
-         advYear += 1;
-      }
-    }
     const advFullDateStr = `${advDateNum}/${(advMonth + 1).toString().padStart(2, '0')}/${advYear}`;
 
     days.push({
