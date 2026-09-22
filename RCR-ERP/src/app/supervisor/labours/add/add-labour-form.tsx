@@ -229,6 +229,7 @@ export function AddLabourForm({ availableSites }: AddLabourFormProps) {
                   name="ifscCode"
                   maxLength={11}
                   placeholder="e.g. SBIN0001234"
+                  onChange={(e) => e.target.value = e.target.value.toUpperCase()}
                   className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-emerald-500/20 shadow-sm uppercase font-mono"
                 />
               </div>

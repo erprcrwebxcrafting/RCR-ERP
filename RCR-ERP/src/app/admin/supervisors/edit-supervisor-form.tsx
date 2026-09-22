@@ -258,7 +258,7 @@ export function EditSupervisorForm({ supervisor, allSites = [] }: { supervisor: 
                   <Label className={labelClass}>
                     <Hash className="h-3.5 w-3.5 text-indigo-500" /> IFSC Code (11 Chars)
                   </Label>
-                  <Input name="ifscCode" maxLength={11} defaultValue={supervisor.ifscCode || ""} placeholder="e.g. ICIC0001234" className={`${inputClass} font-mono uppercase`} />
+                  <Input name="ifscCode" maxLength={11} defaultValue={supervisor.ifscCode || ""} placeholder="e.g. ICIC0001234" className={`${inputClass} font-mono uppercase`} onChange={(e) => e.target.value = e.target.value.toUpperCase()} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

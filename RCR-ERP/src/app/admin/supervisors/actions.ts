@@ -59,11 +59,13 @@ export async function createSupervisor(formData: FormData) {
     return { error: "Aadhar card number must be exactly 12 digits." };
   }
 
+  let finalIfscCode = ifscCode;
   if (ifscCode) {
     const cleanedIFSC = ifscCode.trim().toUpperCase();
     if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanedIFSC)) {
       return { error: "Invalid IFSC Code format (e.g. ICIC0001234)." };
     }
+    finalIfscCode = cleanedIFSC;
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -92,7 +94,7 @@ export async function createSupervisor(formData: FormData) {
       aadharCardUrl,
       dateOfJoining,
       accountNumber,
-      ifscCode,
+      ifscCode: finalIfscCode,
       bankName,
       bankBranch,
     } 
@@ -191,11 +193,13 @@ export async function updateSupervisor(id: string, formData: FormData) {
     throw new Error("Aadhar card number must be exactly 12 digits.");
   }
 
+  let finalIfscCode = ifscCode;
   if (ifscCode) {
     const cleanedIFSC = ifscCode.trim().toUpperCase();
     if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanedIFSC)) {
       throw new Error("Invalid IFSC Code format (e.g. ICIC0001234).");
     }
+    finalIfscCode = cleanedIFSC;
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -214,7 +218,7 @@ export async function updateSupervisor(id: string, formData: FormData) {
     aadharCardUrl,
     dateOfJoining,
     accountNumber,
-    ifscCode,
+    ifscCode: finalIfscCode,
     bankName,
     bankBranch,
   };

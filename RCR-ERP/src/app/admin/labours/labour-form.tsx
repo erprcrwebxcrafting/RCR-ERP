@@ -266,7 +266,7 @@ export function LabourForm({
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">IFSC Code (11 Chars)</Label>
-                    <Input name="ifscCode" maxLength={11} defaultValue={labour?.ifscCode} placeholder="e.g. SBIN0001234" className="h-11 rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-mono uppercase" />
+                    <Input name="ifscCode" maxLength={11} defaultValue={labour?.ifscCode} placeholder="e.g. SBIN0001234" className="h-11 rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-mono uppercase" onChange={(e) => e.target.value = e.target.value.toUpperCase()} />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Bank Branch</Label>

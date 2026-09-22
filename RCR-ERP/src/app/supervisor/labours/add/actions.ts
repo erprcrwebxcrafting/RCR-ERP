@@ -65,6 +65,14 @@ export async function saveSupervisorLabour(formData: FormData) {
     throw new Error(`Aadhar number already exists for another labourer (${existingLabour.name}) who is assigned to site: "${existingLabour.site.projectName}".`);
   }
 
+  if (parsed.ifscCode && parsed.ifscCode.trim()) {
+    const cleanedIFSC = parsed.ifscCode.trim().toUpperCase();
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanedIFSC)) {
+      throw new Error("Invalid IFSC Code format (e.g. ICIC0000884).");
+    }
+    parsed.ifscCode = cleanedIFSC;
+  }
+
   parsed.aadharNumber = cleanedAadhar;
 
   // Verify that the supervisor is actually assigned to this site

@@ -98,6 +98,7 @@ export async function saveLabour(formData: FormData) {
       if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanedIFSC)) {
         return { error: "Invalid IFSC Code format (e.g. ICIC0000884)." };
       }
+      parsed.ifscCode = cleanedIFSC;
     }
 
     const data = {
