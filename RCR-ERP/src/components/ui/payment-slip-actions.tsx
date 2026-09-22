@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Share2, Loader2, CalendarRange, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
@@ -30,6 +31,7 @@ export function PaymentSlipAction({ entityId, entityType, paymentId, variant = "
 
   const handleAction = async (actionType: "download" | "share", isStatement = false) => {
     setGeneratingAction(actionType);
+    const toastId = toast.loading(`Generating ${isStatement ? "Payment Statement" : "Payment Receipt"}... Please wait.`);
     try {
       const type = isStatement ? "STATEMENT" : "SINGLE";
       let url = `/api/payments/export-pdf?entityId=${entityId}&entityType=${entityType}&type=${type}`;
@@ -52,6 +54,7 @@ export function PaymentSlipAction({ entityId, entityType, paymentId, variant = "
       if (actionType === "share") {
         const file = new File([blob], filename, { type: "application/pdf" });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          toast.dismiss(toastId);
           await navigator.share({
             files: [file],
             title: isStatement ? "Payment Statement" : "Payment Receipt",
@@ -60,15 +63,17 @@ export function PaymentSlipAction({ entityId, entityType, paymentId, variant = "
         } else {
           // Fallback to download if share is not supported
           downloadBlob(blob, filename);
+          toast.success("Downloaded successfully", { id: toastId });
         }
       } else {
         downloadBlob(blob, filename);
+        toast.success("Downloaded successfully", { id: toastId });
       }
       
       setIsOpen(false);
     } catch (error) {
       console.error("Action failed:", error);
-      alert(error instanceof Error ? error.message : "Failed to generate slip");
+      toast.error(error instanceof Error ? error.message : "Failed to generate slip", { id: toastId });
     } finally {
       setGeneratingAction(null);
     }
