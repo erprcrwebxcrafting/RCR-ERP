@@ -78,22 +78,18 @@ export async function calculateAttendanceCardData(
 
     const pastAtts = await prisma.attendance.findMany({
       where: { labourId: entityId, date: { lt: fromDate }, hajari: { gt: 0 } },
-      select: {
-        hajari: true,
-        hajariRate: true,
-        labour: { select: { dailyWage: true, labourCategory: { select: { dailyWage: true } } } }
-      }
+      select: { hajari: true, hajariRate: true }
     });
     pastAtts.forEach(a => {
-      const appliedRate = a.hajariRate || a.labour?.dailyWage || a.labour?.labourCategory?.dailyWage || rate;
+      const appliedRate = a.hajariRate || rate;
       openingEarned += (a.hajari || 0) * appliedRate;
     });
 
-    const pastPays = await prisma.labourPayment.findMany({
+    const pastPays = await prisma.labourPayment.aggregate({
       where: { labourId: entityId, date: { lt: payStart } },
-      select: { amount: true }
+      _sum: { amount: true }
     });
-    pastPays.forEach(p => { openingPaid += (p.amount || 0); });
+    openingPaid += (pastPays._sum.amount || 0);
   } else if (entityType === "SUPERVISOR") {
     const supervisor = await prisma.user.findUnique({
       where: { id: entityId },
@@ -126,11 +122,11 @@ export async function calculateAttendanceCardData(
       openingEarned += earned;
     });
 
-    const pastPays = await prisma.supervisorPayment.findMany({
+    const pastPays = await prisma.supervisorPayment.aggregate({
       where: { supervisorId: entityId, date: { lt: payStart } },
-      select: { amount: true }
+      _sum: { amount: true }
     });
-    pastPays.forEach(p => { openingPaid += (p.amount || 0); });
+    openingPaid += (pastPays._sum.amount || 0);
   } else {
     throw new Error("Invalid entity type");
   }
