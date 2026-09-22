@@ -34,8 +34,15 @@ export async function GET(req: NextRequest) {
     let attendances: any[] = [];
     let statementPeriod: { from: Date; to: Date } | undefined;
     let openingBalance = 0;
+    let periodOpeningBalance = 0;
     let baseDailyWage = 0;
     let isMonthlyCategory = false;
+    let monthlyBreakdown: any[] = [];
+    let finalCalculations = {
+      totalEarned: 0,
+      totalPaid: 0,
+      outstandingBalance: 0
+    };
 
     if (entityType === "LABOUR") {
       const labour = await prisma.labour.findUnique({
@@ -63,6 +70,8 @@ export async function GET(req: NextRequest) {
         toSite: t.toSite?.projectName || "Unknown"
       }));
       openingBalance = labour.openingBalance || 0;
+      periodOpeningBalance = openingBalance;
+      finalCalculations.outstandingBalance = openingBalance;
       baseDailyWage = labour.dailyWage || 0;
       isMonthlyCategory = labour.labourCategory.name.toLowerCase().includes("supervisor") || labour.labourCategory.name.toLowerCase().includes("foreman");
 
@@ -140,6 +149,8 @@ export async function GET(req: NextRequest) {
         toSite: t.toSite?.projectName || "Unknown"
       }));
       openingBalance = supervisor.openingBalance || 0;
+      periodOpeningBalance = openingBalance;
+      finalCalculations.outstandingBalance = openingBalance;
       baseDailyWage = (supervisor.monthlySalary || 0) / 30;
       isMonthlyCategory = true;
 
@@ -197,14 +208,7 @@ export async function GET(req: NextRequest) {
       return new NextResponse("No data found for the given criteria", { status: 404 });
     }
 
-    // Process month-by-month breakdown if it's a STATEMENT
-    let monthlyBreakdown: any[] = [];
-    let finalCalculations = {
-      totalEarned: 0,
-      totalPaid: 0,
-      outstandingBalance: openingBalance
-    };
-    let periodOpeningBalance = openingBalance;
+
 
     if (type === "STATEMENT" && statementPeriod) {
       const monthMap = new Map<string, any>();
