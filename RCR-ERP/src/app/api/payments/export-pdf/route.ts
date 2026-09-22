@@ -283,6 +283,7 @@ export async function GET(req: NextRequest) {
 
     let logoStr = null;
     let stampStr = null;
+    /* Temporarily bypass images to fix Vercel FUNCTION_INVOCATION_TIMEOUT
     try {
       const logoPath = path.join(process.cwd(), "public", "rcr-logo.png");
       if (fs.existsSync(logoPath)) {
@@ -298,6 +299,7 @@ export async function GET(req: NextRequest) {
     } catch (e) {
       console.warn("Could not load images for payment slip");
     }
+    */
 
     const pdfData: PaymentSlipData = {
       companyName,
