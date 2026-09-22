@@ -99,40 +99,57 @@ export function PaymentSlipAction({ entityId, entityType, paymentId, variant = "
             Statement
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Generate Payment Statement</DialogTitle>
+        <DialogContent className="sm:max-w-[425px] border-indigo-100 dark:border-indigo-900/50 shadow-xl shadow-indigo-500/10 dark:bg-slate-950 p-6">
+          <DialogHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-indigo-950 dark:text-indigo-100">
+              <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
+                <FileText className="h-5 w-5" />
+              </div>
+              Payment Statement
+            </DialogTitle>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+              Select a date range to generate a detailed ledger of hajari, earnings, and payments.
+            </p>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="from" className="text-right">From</Label>
+          <div className="flex flex-col gap-5 py-6">
+            <div className="space-y-2">
+              <Label htmlFor="from" className="text-sm font-semibold text-slate-700 dark:text-slate-300">From Date</Label>
               <Input
                 id="from"
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className="col-span-3"
+                className="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-indigo-500 h-11"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="to" className="text-right">To</Label>
+            <div className="space-y-2">
+              <Label htmlFor="to" className="text-sm font-semibold text-slate-700 dark:text-slate-300">To Date</Label>
               <Input
                 id="to"
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
-                className="col-span-3"
+                className="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-indigo-500 h-11"
               />
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => handleAction("download", true)} disabled={!!generatingAction}>
-              {generatingAction === "download" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-              Download
+          <div className="flex justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <Button 
+              variant="outline" 
+              onClick={() => handleAction("download", true)} 
+              disabled={!!generatingAction}
+              className="flex-1 h-11 hover:bg-slate-50 dark:hover:bg-slate-900 dark:text-slate-200 dark:border-slate-700 font-medium"
+            >
+              {generatingAction === "download" ? <Loader2 className="h-4 w-4 mr-2 animate-spin text-slate-500" /> : <Download className="h-4 w-4 mr-2 text-slate-500" />}
+              Download PDF
             </Button>
-            <Button onClick={() => handleAction("share", true)} disabled={!!generatingAction}>
+            <Button 
+              onClick={() => handleAction("share", true)} 
+              disabled={!!generatingAction}
+              className="flex-1 h-11 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20 transition-all font-medium"
+            >
               {generatingAction === "share" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Share2 className="h-4 w-4 mr-2" />}
-              Share
+              Share Link
             </Button>
           </div>
         </DialogContent>
