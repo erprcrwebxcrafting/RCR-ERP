@@ -18,6 +18,7 @@ import {
   Info,
   Lock,
   Download,
+  Loader2,
 } from "lucide-react";
 import { markSupervisorAttendanceAction, deleteSupervisorAttendanceAction } from "./actions";
 import { toast } from "sonner";
@@ -49,6 +50,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isPending, startTransition] = useTransition();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const monthlySalary = supervisor.monthlySalary || 0;
   const currentMonthDays = getDaysInMonth(currentDate);
@@ -274,9 +276,31 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
                 variant="default" 
                 size="sm" 
                 className="h-9 px-3 bg-pink-500 hover:bg-pink-600 text-white border-none shadow-sm rounded-xl ml-1"
-                onClick={() => window.open(`/api/attendance/export-card?entityId=${supervisor.id}&entityType=SUPERVISOR&month=${year}-${String(month + 1).padStart(2, '0')}-01&t=${Date.now()}`, "_blank")}
+                disabled={isDownloading}
+                onClick={async () => {
+                  try {
+                    setIsDownloading(true);
+                    const url = `/api/attendance/export-card?entityId=${supervisor.id}&entityType=SUPERVISOR&month=${year}-${String(month + 1).padStart(2, '0')}-01&t=${Date.now()}`;
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error("Failed to generate card");
+                    const blob = await response.blob();
+                    const objUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = objUrl;
+                    a.download = `${supervisor.name.replace(/[^a-zA-Z0-9]/g, "_")}_Attendance_Card_${monthNames[month]}_${year}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(objUrl);
+                  } catch (e) {
+                    console.error(e);
+                    toast.error("Failed to download attendance card");
+                  } finally {
+                    setIsDownloading(false);
+                  }
+                }}
               >
-                <Download className="h-4 w-4 mr-1.5" />
+                {isDownloading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Download className="h-4 w-4 mr-1.5" />}
                 Card
               </Button>
             </div>

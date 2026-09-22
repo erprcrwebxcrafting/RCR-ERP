@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 type Attendance = { id: string; date: string | Date; status: string; overtimeHrs: number; hajari: number; hajariRate: number; remarks?: string | null };
 type Payment = { id: string; date: string | Date; amount: number; reason?: string | null };
@@ -19,6 +20,7 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
   const pathname = usePathname();
 
   const monthParam = searchParams.get("month");
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const [currentDate, setCurrentDate] = useState(() => {
     if (monthParam) {
@@ -138,9 +140,31 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
             variant="default" 
             size="sm" 
             className="bg-pink-500 hover:bg-pink-600 text-white border-none shadow-sm"
-            onClick={() => window.open(`/api/attendance/export-card?entityId=${labour.id}&entityType=LABOUR&month=${year}-${String(month + 1).padStart(2, '0')}-01&t=${Date.now()}`, "_blank")}
+            disabled={isDownloading}
+            onClick={async () => {
+              try {
+                setIsDownloading(true);
+                const url = `/api/attendance/export-card?entityId=${labour.id}&entityType=LABOUR&month=${year}-${String(month + 1).padStart(2, '0')}-01&t=${Date.now()}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Failed to generate card");
+                const blob = await response.blob();
+                const objUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = objUrl;
+                a.download = `${labour.name.replace(/[^a-zA-Z0-9]/g, "_")}_Attendance_Card_${monthName.replace(/\s+/g, "_")}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(objUrl);
+              } catch (e) {
+                console.error(e);
+                toast.error("Failed to download attendance card");
+              } finally {
+                setIsDownloading(false);
+              }
+            }}
           >
-            <Download className="h-4 w-4 mr-1.5" />
+            {isDownloading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Download className="h-4 w-4 mr-1.5" />}
             Card
           </Button>
         </div>
