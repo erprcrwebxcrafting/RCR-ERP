@@ -153,7 +153,11 @@ export function HajariInput({
       <div 
         ref={buttonRef}
         className={selectClassName} 
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          const fieldset = e.currentTarget.closest('fieldset');
+          if (fieldset && fieldset.disabled) return;
+          setIsOpen(!isOpen);
+        }}
       >
         <span className="truncate">{selectedLabel}</span>
         <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
