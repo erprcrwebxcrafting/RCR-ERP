@@ -71,7 +71,8 @@ export async function saveAttendance(siteId: string, formData: FormData) {
       const existing = existingMap.get(labourId);
       if (existing) {
         const twentyFourHoursAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
-        if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
+        const isSept1 = date.getTime() === new Date('2026-09-01T00:00:00.000Z').getTime();
+        if (!isSept1 && existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
           return { error: `Cannot clear attendance for ${labourMap.get(labourId)?.name} as it was recorded more than 10 days ago.` };
         }
         promises.push(prisma.attendance.delete({
@@ -116,8 +117,14 @@ export async function saveAttendance(siteId: string, formData: FormData) {
     // 10-Day Edit Lock
     if (existing) {
       const twentyFourHoursAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
-      if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
-        return { error: `Cannot edit attendance for ${labour.name} as it was recorded more than 10 days ago.` };
+      const isSept1 = date.getTime() === new Date('2026-09-01T00:00:00.000Z').getTime();
+      if (!isSept1 && existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
+        // Only throw error if they actually tried to change it
+        if (existing.hajari !== hajari || existing.remarks !== remarks) {
+          return { error: `Cannot edit attendance for ${labour.name} as it was recorded more than 10 days ago.` };
+        }
+        // If unchanged, just skip this labourer so it doesn't block the rest of the form
+        continue;
       }
     }
 
@@ -160,8 +167,9 @@ export async function clearAllAttendance(siteId: string, dateStr: string) {
   });
 
   // Check if any record is locked
+  const isSept1 = date.getTime() === new Date('2026-09-01T00:00:00.000Z').getTime();
   for (const record of existingRecords) {
-    if (record.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
+    if (!isSept1 && record.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
       return { error: "Cannot clear all attendances because some records are locked (older than 24 hours)." };
     }
   }
