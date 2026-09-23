@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateAttendanceCardBuffer } from "@/lib/pdf/attendance-card";
 import { calculateAttendanceCardData } from "@/lib/attendance-calc";
+import path from "path";
+import fs from "fs";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +22,21 @@ export async function GET(req: NextRequest) {
       return new NextResponse("Entity or attendance data not found", { status: 404 });
     }
 
-    const pdfBuffer = await generateAttendanceCardBuffer(data);
+    try {
+      const imageBuffer = fs.readFileSync(path.join(process.cwd(), "public", "rcr-logo.png"));
+      (data as any).logoStr = `data:image/png;base64,${imageBuffer.toString("base64")}`;
+    } catch (e) {
+      console.error("Failed to load logo", e);
+    }
+
     const filename = `${data.workerName.replace(/[^a-zA-Z0-9]/g, "_")}_Card_${data.monthName.replace(/ /g, "_")}.pdf`;
+
+    const format = searchParams.get("format");
+    if (format === "json") {
+      return NextResponse.json({ pdfData: data, filename });
+    }
+
+    const pdfBuffer = await generateAttendanceCardBuffer(data);
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,

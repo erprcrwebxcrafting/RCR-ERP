@@ -34,7 +34,7 @@ export function PaymentSlipAction({ entityId, entityType, paymentId, variant = "
     const toastId = toast.loading(`Generating ${isStatement ? "Payment Statement" : "Payment Receipt"}... Please wait.`);
     try {
       const type = isStatement ? "STATEMENT" : "SINGLE";
-      let url = `/api/payments/export-pdf?entityId=${entityId}&entityType=${entityType}&type=${type}`;
+      let url = `/api/payments/export-pdf?entityId=${entityId}&entityType=${entityType}&type=${type}&format=json`;
       
       if (isStatement) {
         url += `&from=${fromDate}&to=${toDate}`;
@@ -45,11 +45,17 @@ export function PaymentSlipAction({ entityId, entityType, paymentId, variant = "
       const response = await fetch(url);
       if (!response.ok) {
         const err = await response.text();
-        throw new Error(err || "Failed to generate slip");
+        throw new Error(err || "Failed to generate slip data");
       }
 
-      const blob = await response.blob();
-      const filename = isStatement ? "Payment_Statement.pdf" : "Payment_Receipt.pdf";
+      const json = await response.json();
+      const { pdfData, filename } = json;
+
+      // Dynamically import @react-pdf/renderer and the document template to save bundle size
+      const { pdf } = await import("@react-pdf/renderer");
+      const PaymentSlipDocument = (await import("@/lib/pdf/payment-slip")).default;
+
+      const blob = await pdf(<PaymentSlipDocument data={pdfData} />).toBlob();
 
       if (actionType === "share") {
         const file = new File([blob], filename, { type: "application/pdf" });

@@ -26,14 +26,16 @@ export function DownloadHajariSlip({ labourId }: { labourId: string }) {
     try {
       let url = "";
       let isExcel = false;
+      let isGridPdf = false;
       
       if (actionType === "slip" || actionType === "share") {
-        url = `/api/labours/${labourId}/export-hajari-pdf?from=${fromDate}&to=${toDate}`;
+        url = `/api/labours/${labourId}/export-hajari-pdf?from=${fromDate}&to=${toDate}&format=json`;
       } else if (actionType === "grid-excel") {
         url = `/api/attendance/export?format=excel&labourId=${labourId}&startDate=${fromDate}&endDate=${toDate}`;
         isExcel = true;
       } else if (actionType === "grid-pdf") {
         url = `/api/attendance/export?format=pdf&labourId=${labourId}&startDate=${fromDate}&endDate=${toDate}`;
+        isGridPdf = true;
       }
       
       const response = await fetch(url);
@@ -42,10 +44,24 @@ export function DownloadHajariSlip({ labourId }: { labourId: string }) {
         throw new Error(err || "Failed to generate report");
       }
 
-      const blob = await response.blob();
-      let filename = "Hajari_Statement.pdf";
-      if (isExcel) filename = "Attendance_Grid.xlsx";
-      else if (actionType === "grid-pdf") filename = "Attendance_Grid.pdf";
+      let blob: Blob;
+      let filename = "";
+
+      if (actionType === "slip" || actionType === "share") {
+        const json = await response.json();
+        const { pdfData, filename: serverFilename } = json;
+        filename = serverFilename || "Hajari_Statement.pdf";
+        
+        // Dynamically import @react-pdf/renderer and template
+        const { pdf } = await import("@react-pdf/renderer");
+        const HajariSlipDocument = (await import("@/lib/pdf/hajari-slip")).default;
+        
+        blob = await pdf(<HajariSlipDocument data={pdfData} />).toBlob();
+      } else {
+        blob = await response.blob();
+        if (isExcel) filename = "Attendance_Grid.xlsx";
+        else if (isGridPdf) filename = "Attendance_Grid.pdf";
+      }
 
       if (actionType === "share") {
         const file = new File([blob], filename, { type: "application/pdf" });

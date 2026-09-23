@@ -144,14 +144,22 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
             onClick={async () => {
               try {
                 setIsDownloading(true);
-                const url = `/api/attendance/export-card?entityId=${labour.id}&entityType=LABOUR&month=${year}-${String(month + 1).padStart(2, '0')}-01&t=${Date.now()}`;
+                const url = `/api/attendance/export-card?entityId=${labour.id}&entityType=LABOUR&month=${year}-${String(month + 1).padStart(2, '0')}-01&t=${Date.now()}&format=json`;
                 const response = await fetch(url);
-                if (!response.ok) throw new Error("Failed to generate card");
-                const blob = await response.blob();
+                if (!response.ok) throw new Error("Failed to generate card data");
+                
+                const json = await response.json();
+                const { pdfData, filename: serverFilename } = json;
+                const filename = serverFilename || `${labour.name.replace(/[^a-zA-Z0-9]/g, "_")}_Attendance_Card_${monthName.replace(/\s+/g, "_")}.pdf`;
+
+                const { pdf } = await import("@react-pdf/renderer");
+                const AttendanceCard = (await import("@/lib/pdf/attendance-card")).default;
+                
+                const blob = await pdf(<AttendanceCard data={pdfData} />).toBlob();
                 const objUrl = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = objUrl;
-                a.download = `${labour.name.replace(/[^a-zA-Z0-9]/g, "_")}_Attendance_Card_${monthName.replace(/\s+/g, "_")}.pdf`;
+                a.download = filename;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();

@@ -1,15 +1,5 @@
 import { Document, Page, View, Text, StyleSheet, Font, Image } from "@react-pdf/renderer";
 import { renderToBuffer } from "@react-pdf/renderer";
-import path from "path";
-import fs from "fs";
-
-let logoBase64 = "";
-try {
-  const imageBuffer = fs.readFileSync(path.join(process.cwd(), "public", "rcr-logo.png"));
-  logoBase64 = `data:image/png;base64,${imageBuffer.toString("base64")}`;
-} catch (e) {
-  console.error("Failed to load logo", e);
-}
 
 Font.register({
   family: "Helvetica",
@@ -155,17 +145,18 @@ export interface AttendanceCardData {
   deductions: number;
   balancePayable: number;
   openingBalance?: number;
+  logoStr?: string;
 }
 
 export const AttendanceCardPages = ({ data }: { data: AttendanceCardData }) => {
   return (
     <Page size="A4" orientation="portrait" style={styles.page}>
       {/* Watermark Logo */}
-      {logoBase64 ? <Image src={logoBase64} style={styles.watermark} /> : null}
+      {data.logoStr ? <Image src={data.logoStr} style={styles.watermark} /> : null}
       
       {/* Header */}
       <View style={styles.headerContainer}>
-        {logoBase64 ? <Image src={logoBase64} style={styles.logo} /> : null}
+        {data.logoStr ? <Image src={data.logoStr} style={styles.logo} /> : null}
         <Text style={styles.title}>WORKMAN&apos;S ATTENDANCE CARD</Text>
       </View>
 
@@ -263,6 +254,8 @@ export const AttendanceCard = ({ data }: { data: AttendanceCardData }) => (
     <AttendanceCardPages data={data} />
   </Document>
 );
+
+export default AttendanceCard;
 
 export const BulkAttendanceCard = ({ dataArray }: { dataArray: AttendanceCardData[] }) => (
   <Document>

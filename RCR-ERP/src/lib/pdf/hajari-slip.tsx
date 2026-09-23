@@ -504,6 +504,8 @@ const HajariSlipDocument: React.FC<{ data: HajariSlipData }> = ({ data }) => {
   );
 };
 
+export default HajariSlipDocument;
+
 export async function generateHajariSlipPdfBuffer(data: HajariSlipData): Promise<Uint8Array> {
   return renderToBuffer(<HajariSlipDocument data={data} />);
 }

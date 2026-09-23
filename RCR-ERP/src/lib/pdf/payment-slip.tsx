@@ -612,6 +612,8 @@ const PaymentSlipDocument: React.FC<{ data: PaymentSlipData }> = ({ data }) => {
   );
 };
 
+export default PaymentSlipDocument;
+
 export async function generatePaymentSlipPdfBuffer(data: PaymentSlipData): Promise<Uint8Array> {
   return renderToBuffer(<PaymentSlipDocument data={data} />);
 }

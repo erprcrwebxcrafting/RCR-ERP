@@ -324,10 +324,15 @@ export async function GET(req: NextRequest) {
       stampStr
     };
 
-    const pdfBuffer = await generatePaymentSlipPdfBuffer(pdfData);
-
     const docName = type === "SINGLE" ? "Payment_Receipt" : "Payment_Statement";
     const filename = `${entityName.replace(/[^a-zA-Z0-9]/g, "_")}_${docName}.pdf`;
+
+    const format = searchParams.get("format");
+    if (format === "json") {
+      return NextResponse.json({ pdfData, filename });
+    }
+
+    const pdfBuffer = await generatePaymentSlipPdfBuffer(pdfData);
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,

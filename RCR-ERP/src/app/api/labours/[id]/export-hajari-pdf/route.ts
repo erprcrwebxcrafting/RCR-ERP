@@ -152,9 +152,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       stampStr
     };
 
-    const pdfBuffer = await generateHajariSlipPdfBuffer(pdfData);
-
     const filename = `${labour.name.replace(/[^a-zA-Z0-9]/g, "_")}_Hajari_Statement.pdf`;
+
+    const format = searchParams.get("format");
+    if (format === "json") {
+      return NextResponse.json({ pdfData, filename });
+    }
+
+    const pdfBuffer = await generateHajariSlipPdfBuffer(pdfData);
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
