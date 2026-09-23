@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ChevronDown } from "lucide-react";
 
 const HAJARI_OPTIONS = [
-  { value: "", label: "-- Unmarked --" },
+  { value: "", label: "❌ Clear (Remove Attendance)" },
   { value: "0", label: "Absent (0 Hajari)" },
   { value: "0.5", label: "0.5 Hajari (Half Day)" },
   { value: "1", label: "1.0 Hajari (Full Day)" },
