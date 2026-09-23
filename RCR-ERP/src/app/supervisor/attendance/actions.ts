@@ -45,6 +45,24 @@ export async function saveAttendance(siteId: string, formData: FormData) {
   const rateMap = new Map(currentLabours.map(l => [l.id, l.dailyWage || l.labourCategory.dailyWage]));
   const labourMap = new Map(currentLabours.map(l => [l.id, l]));
 
+  // Batch fetch status histories for all labourers
+  const allStatuses = await prisma.labourStatusHistory.findMany({
+    where: {
+      labourId: { in: labourIds },
+      effectiveDate: { lte: targetDate }
+    },
+    orderBy: { effectiveDate: 'desc' }
+  });
+
+  const statusMap = new Map();
+  for (const status of allStatuses) {
+    if (!statusMap.has(status.labourId)) {
+      statusMap.set(status.labourId, status); // takes the latest because of desc order
+    }
+  }
+
+  const promises = [];
+
   for (const labourId of labourIds) {
     const hajariInput = formData.get(`hajari__${labourId}`) as string;
     if (hajariInput === null) continue;
@@ -54,11 +72,11 @@ export async function saveAttendance(siteId: string, formData: FormData) {
       if (existing) {
         const twentyFourHoursAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
         if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
-          return { error: `Cannot clear attendance for ${labourMap.get(labourId)?.name} as it was recorded more than 24 hours ago.` };
+          return { error: `Cannot clear attendance for ${labourMap.get(labourId)?.name} as it was recorded more than 10 days ago.` };
         }
-        await prisma.attendance.delete({
+        promises.push(prisma.attendance.delete({
           where: { labourId_date: { labourId, date } }
-        });
+        }));
       }
       continue;
     }
@@ -79,39 +97,31 @@ export async function saveAttendance(siteId: string, formData: FormData) {
       return { error: `Validation Error: Fitter Foreman (${labour.name}) cannot have more than 1 hajari per day.` };
     }
 
-    // Status History Validation (Cannot mark attendance if inactive on that date)
-    const lastStatus = await prisma.labourStatusHistory.findFirst({
-      where: {
-        labourId,
-        effectiveDate: { lte: targetDate }
-      },
-      orderBy: { effectiveDate: 'desc' }
-    });
+    // Status History Validation
+    const lastStatus = statusMap.get(labourId);
 
     if (lastStatus && lastStatus.status === "INACTIVE") {
       return { error: `Cannot mark attendance for ${labour.name}. They were marked as INACTIVE on ${lastStatus.effectiveDate.toLocaleDateString()} (Reason: ${lastStatus.reason || 'None provided'}).` };
     } else if (!lastStatus && !labour.active) {
-      // Fallback if no history exists but currently inactive
       return { error: `Cannot mark attendance for ${labour.name} as they are currently inactive.` };
     }
 
-    // 2. Joining Date Validation (Cannot mark attendance before joining date)
+    // Joining Date Validation
     const joiningDate = new Date(labour.joiningDate || labour.createdAt);
     joiningDate.setHours(0, 0, 0, 0);
     if (targetDate.getTime() < joiningDate.getTime()) {
       return { error: `Cannot mark attendance for ${labour.name} before their joining date (${joiningDate.toLocaleDateString()}).` };
     }
 
-    // 3. 24-Hour Edit Lock (Cannot edit an EXISTING record if it was recorded more than 24 hours ago)
+    // 10-Day Edit Lock
     if (existing) {
       const twentyFourHoursAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
       if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
-        return { error: `Cannot edit attendance for ${labour.name} as it was recorded more than 24 hours ago.` };
+        return { error: `Cannot edit attendance for ${labour.name} as it was recorded more than 10 days ago.` };
       }
     }
 
-    // 4. Rate Snapshot Protection
-    // If it's an existing record, keep its original saved rate. Otherwise use the current rate.
+    // Rate Snapshot Protection
     let appliedRate = existing ? existing.hajariRate : (rateMap.get(labourId) || 0);
     
     if (!existing && labour.labourCategory?.name === "Fitter Foreman") {
@@ -120,11 +130,16 @@ export async function saveAttendance(siteId: string, formData: FormData) {
       appliedRate = monthlySalary / daysInMonth;
     }
 
-    await prisma.attendance.upsert({
+    promises.push(prisma.attendance.upsert({
       where: { labourId_date: { labourId, date } },
       create: { siteId, buildingId, labourId, date, status, hajari, hajariRate: appliedRate, remarks, markedById },
       update: { buildingId, status, hajari, hajariRate: appliedRate, remarks },
-    });
+    }));
+  }
+
+  // Execute all DB operations concurrently
+  if (promises.length > 0) {
+    await Promise.all(promises);
   }
 
   revalidatePath("/supervisor/attendance");
