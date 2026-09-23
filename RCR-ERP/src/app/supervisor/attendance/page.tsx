@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DateSelector } from "./date-selector";
 import { AttendanceForm } from "./attendance-form";
 import { HajariInput } from "./hajari-input";
+import { AttendanceSearch } from "./attendance-search";
 import { Lock, Building2, Calendar, MapPin, CheckCircle2, Save, Users, Clock, MessageSquare, Edit, ClipboardCheck, AlertTriangle, Eye } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
@@ -151,7 +152,9 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         allLocked={allLocked} 
         hasExisting={hasExisting}
         headerControls={
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:w-auto">
+          <div className="flex flex-col xl:flex-row items-stretch gap-3 w-full xl:w-auto">
+            <AttendanceSearch />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full xl:w-auto">
             <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900/60 rounded-xl p-1.5 border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:border-blue-400/50">
               <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm text-blue-600 dark:text-blue-400 shrink-0">
                 <Calendar className="h-4 w-4" />
@@ -169,6 +172,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                 <option value="" className="bg-white dark:bg-slate-900">All Buildings (General)</option>
                 {site.buildings.map((b: any) => <option key={b.id} value={b.id} className="bg-white dark:bg-slate-900">{b.name}</option>)}
               </select>
+            </div>
             </div>
           </div>
         }
@@ -197,7 +201,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                   return (
                     <React.Fragment key={cat.id}>
                       {/* Category Header */}
-                      <tr>
+                      <tr className="category-header" data-category={cat.id}>
                         <td colSpan={3} className="px-4 sm:px-6 py-3 sm:py-4 bg-slate-50/80 dark:bg-slate-900/30 border-b border-slate-100 dark:border-slate-800/40">
                           <span className="inline-flex items-center rounded-lg bg-indigo-50 dark:bg-indigo-500/10 px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-500/20 shadow-sm uppercase tracking-widest">
                             <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-indigo-500 mr-2"></span>
@@ -213,7 +217,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                         const colorClass = colors[p.name.charCodeAt(0) % colors.length];
                         
                         return (
-                          <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                          <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group labour-row" data-category={cat.id} data-search={p.name}>
                             <td className="px-6 py-4">
                               <input type="hidden" name="labourId[]" value={p.id} />
                               <div className="flex items-center gap-4">
