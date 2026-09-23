@@ -85,7 +85,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
     0
   );
 
-  const twentyFourHoursAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const allLocked = false; // The form should never be globally locked. Individual rows are locked.
 
   return (

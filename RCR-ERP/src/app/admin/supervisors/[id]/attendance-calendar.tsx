@@ -383,7 +383,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
               let isLocked = false;
               if (att && att.createdAt) {
                 const createdAtTime = new Date(att.createdAt).getTime();
-                const twentyFourHoursAgo = Date.now() - 10 * 24 * 60 * 60 * 1000;
+                const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
                 isLocked = createdAtTime < twentyFourHoursAgo;
               }
 

@@ -66,7 +66,7 @@ export async function markIndividualLabourAttendance(
 
   // 24-Hour Edit Lock
   if (existing) {
-    const twentyFourHoursAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
       throw new Error(`Cannot edit attendance for ${labour.name} as it was recorded more than 24 hours ago.`);
     }
@@ -150,7 +150,7 @@ export async function clearIndividualLabourAttendance(labourId: string, dateStr:
 
   if (!existing) return { success: true };
 
-  const twentyFourHoursAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
     throw new Error(`Cannot clear attendance as it was recorded more than 24 hours ago.`);
   }

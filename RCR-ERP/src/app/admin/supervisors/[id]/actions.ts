@@ -40,7 +40,7 @@ export async function recordSupervisorPayment(formData: FormData) {
   if (paymentId) {
     const existing = await prisma.supervisorPayment.findUnique({ where: { id: paymentId } });
     if (!existing) throw new Error("Payment record not found.");
-    const timeLimit = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+    const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000);
     if (existing.createdAt.getTime() < timeLimit.getTime()) {
       throw new Error("Payment editing is disabled. It was recorded more than 24 hours ago and is now locked.");
     }
@@ -76,7 +76,7 @@ export async function deleteSupervisorPayment(paymentId: string, supervisorId: s
   if (!existing) {
     return { error: "Payment record not found." };
   }
-  const timeLimit = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+  const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000);
   if (existing.createdAt.getTime() < timeLimit.getTime()) {
     return { error: "Payment deletion is disabled. It was recorded more than 24 hours ago and is now locked." };
   }
@@ -148,7 +148,7 @@ export async function markSupervisorAttendanceAction(
   });
 
   if (existing) {
-    const twentyFourHoursAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
       return { error: "Attendance cannot be edited. It was recorded more than 24 hours ago and is now locked." };
     }
@@ -233,7 +233,7 @@ export async function deleteSupervisorAttendanceAction(attendanceId: string, sup
     return { error: "Attendance record not found." };
   }
 
-  const twentyFourHoursAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
     return { error: "Attendance deletion is disabled. It was recorded more than 24 hours ago and is now locked." };
   }
