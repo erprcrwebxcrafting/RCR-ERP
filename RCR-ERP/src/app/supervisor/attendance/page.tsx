@@ -146,6 +146,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
       )}
 
       <AttendanceForm 
+        key={targetDate.toISOString()}
         siteId={siteId} 
         allLocked={allLocked} 
         hasExisting={hasExisting}

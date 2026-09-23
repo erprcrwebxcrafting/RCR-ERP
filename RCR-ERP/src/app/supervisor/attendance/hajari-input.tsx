@@ -56,6 +56,14 @@ export function HajariInput({
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
   useEffect(() => {
+    const defaultVal = defaultValue !== undefined ? defaultValue : "";
+    setCurrentValue(defaultVal);
+    
+    const options = HAJARI_OPTIONS.filter(o => o.value === "" || parseFloat(o.value) <= maxLimit);
+    setIsCustom(!options.some((o) => o.value === defaultVal));
+  }, [defaultValue, maxLimit]);
+
+  useEffect(() => {
     if (isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       
