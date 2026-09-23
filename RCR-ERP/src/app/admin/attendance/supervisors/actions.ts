@@ -66,7 +66,7 @@ export async function markSupervisorAttendanceUniversal(
   });
 
   if (existing) {
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
     if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
       throw new Error("Attendance cannot be edited for dates older than 24 hours from creation.");
     }

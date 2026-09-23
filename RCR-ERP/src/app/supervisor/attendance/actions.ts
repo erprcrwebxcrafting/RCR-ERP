@@ -52,7 +52,7 @@ export async function saveAttendance(siteId: string, formData: FormData) {
     if (hajariInput === "") {
       const existing = existingMap.get(labourId);
       if (existing) {
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const twentyFourHoursAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
         if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
           return { error: `Cannot clear attendance for ${labourMap.get(labourId)?.name} as it was recorded more than 24 hours ago.` };
         }
@@ -104,7 +104,7 @@ export async function saveAttendance(siteId: string, formData: FormData) {
 
     // 3. 24-Hour Edit Lock (Cannot edit an EXISTING record if it was recorded more than 24 hours ago)
     if (existing) {
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const twentyFourHoursAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
       if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
         return { error: `Cannot edit attendance for ${labour.name} as it was recorded more than 24 hours ago.` };
       }
@@ -138,7 +138,7 @@ export async function clearAllAttendance(siteId: string, dateStr: string) {
   const date = new Date(dateStr);
   
   // Only allow clearing if within 24 hours
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const twentyFourHoursAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
   
   const existingRecords = await prisma.attendance.findMany({
     where: { siteId, date }

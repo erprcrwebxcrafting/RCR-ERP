@@ -47,7 +47,7 @@ export async function savePayment(formData: FormData) {
   if (parsed.id) {
     const existing = await (prisma as any).labourPayment.findUnique({ where: { id: parsed.id } });
     if (!existing) throw new Error("Payment record not found.");
-    const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const timeLimit = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
     if (existing.createdAt.getTime() < timeLimit.getTime()) {
       throw new Error("Payment editing is disabled. It was recorded more than 24 hours ago and is now locked.");
     }
@@ -83,7 +83,7 @@ export async function deleteLabourPayment(paymentId: string, labourId: string) {
   if (!existing) {
     return { error: "Payment record not found." };
   }
-  const timeLimit = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const timeLimit = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
   if (existing.createdAt.getTime() < timeLimit.getTime()) {
     return { error: "Payment deletion is disabled. It was recorded more than 24 hours ago and is now locked." };
   }
