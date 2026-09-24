@@ -152,27 +152,29 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         allLocked={allLocked} 
         hasExisting={hasExisting}
         headerControls={
-          <div className="flex flex-col xl:flex-row items-stretch gap-3 w-full xl:w-auto">
-            <AttendanceSearch />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full xl:w-auto">
-            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900/60 rounded-xl p-1.5 border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:border-blue-400/50">
-              <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm text-blue-600 dark:text-blue-400 shrink-0">
-                <Calendar className="h-4 w-4" />
-              </div>
-              <div className="px-2 w-full">
-                <DateSelector defaultDate={selectedDateStr} />
-              </div>
+          <div className="flex flex-col lg:flex-row items-center gap-3 w-full flex-1">
+            <div className="w-full lg:w-1/3 min-w-[220px]">
+              <AttendanceSearch />
             </div>
-            
-            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900/60 rounded-xl p-1.5 border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:border-indigo-400/50">
-              <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm text-indigo-600 dark:text-indigo-400 shrink-0">
-                <Building2 className="h-4 w-4" />
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto shrink-0">
+              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900/60 rounded-xl p-1.5 border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:border-blue-400/50 w-full sm:w-[170px] shrink-0">
+                <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm text-blue-600 dark:text-blue-400 shrink-0">
+                  <Calendar className="h-4 w-4" />
+                </div>
+                <div className="px-1 w-full flex-1">
+                  <DateSelector defaultDate={selectedDateStr} />
+                </div>
               </div>
-              <select name="buildingId" className="h-9 w-full rounded-md border-0 bg-transparent px-2 text-sm font-bold focus:ring-0 cursor-pointer outline-none text-slate-700 dark:text-slate-200">
-                <option value="" className="bg-white dark:bg-slate-900">All Buildings (General)</option>
-                {site.buildings.map((b: any) => <option key={b.id} value={b.id} className="bg-white dark:bg-slate-900">{b.name}</option>)}
-              </select>
-            </div>
+              
+              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900/60 rounded-xl p-1.5 border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:border-indigo-400/50 w-full sm:w-[240px] shrink-0">
+                <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm text-indigo-600 dark:text-indigo-400 shrink-0">
+                  <Building2 className="h-4 w-4" />
+                </div>
+                <select name="buildingId" className="h-9 w-full rounded-md border-0 bg-transparent px-1 text-sm font-bold focus:ring-0 cursor-pointer outline-none text-slate-700 dark:text-slate-200 truncate">
+                  <option value="" className="bg-white dark:bg-slate-900">All Buildings (General)</option>
+                  {site.buildings.map((b: any) => <option key={b.id} value={b.id} className="bg-white dark:bg-slate-900">{b.name}</option>)}
+                </select>
+              </div>
             </div>
           </div>
         }
