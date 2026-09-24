@@ -18,19 +18,6 @@ export function DateSelector({ defaultDate }: { defaultDate: string }) {
 
   return (
     <div className="relative w-full flex-1 flex items-center">
-      <style dangerouslySetInnerHTML={{__html: `
-        input[type="date"]::-webkit-calendar-picker-indicator {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          width: 100%;
-          height: 100%;
-          opacity: 0;
-          cursor: pointer;
-        }
-      `}} />
       <input 
         ref={inputRef}
         type="date" 

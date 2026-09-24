@@ -157,7 +157,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
               <AttendanceSearch />
             </div>
             <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto shrink-0">
-              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900/60 rounded-xl p-1.5 border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:border-blue-400/50 w-full sm:w-[170px] shrink-0">
+              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900/60 rounded-xl p-1.5 border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:border-blue-400/50 w-full sm:w-[200px] shrink-0">
                 <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm text-blue-600 dark:text-blue-400 shrink-0">
                   <Calendar className="h-4 w-4" />
                 </div>
