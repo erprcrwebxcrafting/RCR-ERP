@@ -100,6 +100,18 @@ export async function GET(req: NextRequest) {
       return new NextResponse("Failed to calculate attendance data", { status: 500 });
     }
 
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      const imageBuffer = fs.readFileSync(path.join(process.cwd(), "public", "rcr-logo.png"));
+      const logoStr = `data:image/png;base64,${imageBuffer.toString("base64")}`;
+      allCardsData.forEach(card => {
+        card.logoStr = logoStr;
+      });
+    } catch (e) {
+      console.error("Failed to load logo for bulk cards", e);
+    }
+
     const pdfBuffer = await generateBulkAttendanceCardBuffer(allCardsData);
     
     const filename = `${workerName.replace(/[^a-zA-Z0-9]/g, "_")}_AllTime_Cards.pdf`;
