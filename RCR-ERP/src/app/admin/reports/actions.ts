@@ -5,8 +5,8 @@ import { getFinancialYearDates } from "@/lib/get-fy";
 import { getDaysInMonth } from "date-fns";
 import { unstable_cache } from "next/cache";
 
-async function fetchReportsDataCore(range: string, siteId: string, customStartDate?: string, customEndDate?: string) {
-  const { startDate: fyStart, endDate: fyEnd } = await getFinancialYearDates();
+async function fetchReportsDataCore(range: string, siteId: string, fyDates: { startDate: Date, endDate: Date }, customStartDate?: string, customEndDate?: string) {
+  const { startDate: fyStart, endDate: fyEnd } = fyDates;
   
   let effectiveStartDate: Date | undefined;
   let effectiveEndDate: Date | undefined;
@@ -348,9 +348,11 @@ async function fetchReportsDataCore(range: string, siteId: string, customStartDa
 }
 
 export async function fetchReportsDataAction(range: string, siteId: string, customStartDate?: string, customEndDate?: string) {
+  const fyDates = await getFinancialYearDates();
+
   const getCachedData = unstable_cache(
-    () => fetchReportsDataCore(range, siteId, customStartDate, customEndDate),
-    ['admin-reports-dashboard-v1', range, siteId, customStartDate || 'none', customEndDate || 'none'],
+    () => fetchReportsDataCore(range, siteId, fyDates, customStartDate, customEndDate),
+    ['admin-reports-dashboard-v2', range, siteId, customStartDate || 'none', customEndDate || 'none', fyDates.startDate.toISOString(), fyDates.endDate.toISOString()],
     { revalidate: false, tags: ['reports-data'] }
   );
   
