@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,8 +43,18 @@ type Props = {
 export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isPending, startTransition] = useTransition();
+  const [updatingDays, setUpdatingDays] = useState<Record<number, boolean>>({});
+  const [mounted, setMounted] = useState(false);
 
-  const standardDailyRate = labour.dailyWage || 0;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const standardDailyRate = typeof labour.dailyWage === 'string' ? parseFloat(labour.dailyWage) : (labour.dailyWage || 0);
+
+  if (!mounted) {
+    return <div className="animate-pulse space-y-6 min-h-[500px] bg-slate-50 dark:bg-slate-800 rounded-xl" />;
+  }
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -107,12 +117,15 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
     if (val === "clear") {
+      setUpdatingDays(prev => ({ ...prev, [day]: true }));
       startTransition(async () => {
         try {
           await clearIndividualLabourAttendance(labour.id, dateStr);
           toast.success(`Cleared attendance for ${labour.name}`);
         } catch (err: any) {
           toast.error(err.message || "Failed to clear attendance");
+        } finally {
+          setUpdatingDays(prev => ({ ...prev, [day]: false }));
         }
       });
       return;
@@ -132,12 +145,15 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
       hajari = parsed;
     }
 
+    setUpdatingDays(prev => ({ ...prev, [day]: true }));
     startTransition(async () => {
       try {
         await markIndividualLabourAttendance(labour.id, dateStr, hajari);
         toast.success(`Marked ${hajari} Hajari for ${labour.name}`);
       } catch (err: any) {
         toast.error(err.message || "Failed to mark attendance");
+      } finally {
+        setUpdatingDays(prev => ({ ...prev, [day]: false }));
       }
     });
   };
@@ -311,8 +327,8 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
                         </div>
                       ) : (
                         <select
-                          disabled={isPending}
-                          className="w-full text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-slate-700 dark:text-slate-300 focus:outline-none focus:border-blue-500 cursor-pointer"
+                          disabled={updatingDays[day] || false}
+                          className={`w-full text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-slate-700 dark:text-slate-300 focus:outline-none focus:border-blue-500 cursor-pointer ${updatingDays[day] ? 'opacity-50' : ''}`}
                           value={att ? att.hajari.toString() : ""}
                           onChange={(e) => handleMarkHajari(day, e.target.value)}
                         >
