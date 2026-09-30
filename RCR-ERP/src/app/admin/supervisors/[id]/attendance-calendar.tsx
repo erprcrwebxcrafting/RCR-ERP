@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,10 +51,20 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
   const [isPending, startTransition] = useTransition();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [updatingDays, setUpdatingDays] = useState<Record<number, boolean>>({});
+  const [mounted, setMounted] = useState(false);
 
-  const monthlySalary = supervisor.monthlySalary || 0;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const monthlySalary = typeof supervisor.monthlySalary === 'string' ? parseFloat(supervisor.monthlySalary) : (supervisor.monthlySalary || 0);
   const currentMonthDays = getDaysInMonth(currentDate);
   const standardDailyRate = Math.round((monthlySalary / currentMonthDays) * 100) / 100;
+
+  if (!mounted) {
+    return <div className="animate-pulse space-y-6 min-h-[500px] bg-slate-50 dark:bg-slate-800 rounded-xl" />;
+  }
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth(); // 0-indexed
@@ -121,6 +131,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
 
   const handleMarkStatus = (day: number, status: "PRESENT" | "HALF_DAY" | "ABSENT") => {
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    setUpdatingDays(prev => ({ ...prev, [day]: true }));
     startTransition(async () => {
       try {
         const res = await markSupervisorAttendanceAction(supervisor.id, dateStr, status);
@@ -131,6 +142,8 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
         toast.success(`Attendance marked as ${status} for ${dateStr}`);
       } catch (err: any) {
         toast.error(err.message || "Failed to mark attendance");
+      } finally {
+        setUpdatingDays(prev => ({ ...prev, [day]: false }));
       }
     });
   };
@@ -139,6 +152,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const att = attendanceMap.get(dateStr);
     if (att) {
+      setUpdatingDays(prev => ({ ...prev, [day]: true }));
       startTransition(async () => {
         try {
           const res = await deleteSupervisorAttendanceAction(att.id, supervisor.id);
@@ -149,6 +163,8 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
           toast.success(`Cleared attendance for day ${day}`);
         } catch (err: any) {
           toast.error(err.message || "Failed to clear attendance");
+        } finally {
+          setUpdatingDays(prev => ({ ...prev, [day]: false }));
         }
       });
     }
@@ -445,38 +461,38 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
                     <div className="flex items-center gap-1 pt-1 border-t border-slate-100 dark:border-slate-800/60 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         type="button"
-                        disabled={isPending}
+                        disabled={updatingDays[day] || false}
                         onClick={() => handleMarkStatus(day, "PRESENT")}
                         title="Mark Present (Full Day)"
-                        className="flex-1 py-1 text-[10px] font-bold rounded bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
+                        className={`flex-1 py-1 text-[10px] font-bold rounded bg-emerald-500 hover:bg-emerald-600 text-white transition-colors ${updatingDays[day] ? 'opacity-50' : ''}`}
                       >
                         P
                       </button>
                       <button
                         type="button"
-                        disabled={isPending}
+                        disabled={updatingDays[day] || false}
                         onClick={() => handleMarkStatus(day, "HALF_DAY")}
                         title="Mark Half Day (0.5x Pay)"
-                        className="flex-1 py-1 text-[10px] font-bold rounded bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+                        className={`flex-1 py-1 text-[10px] font-bold rounded bg-amber-500 hover:bg-amber-600 text-white transition-colors ${updatingDays[day] ? 'opacity-50' : ''}`}
                       >
                         HD
                       </button>
                       <button
                         type="button"
-                        disabled={isPending}
+                        disabled={updatingDays[day] || false}
                         onClick={() => handleMarkStatus(day, "ABSENT")}
                         title="Mark Absent (₹0 Pay)"
-                        className="flex-1 py-1 text-[10px] font-bold rounded bg-rose-500 hover:bg-rose-600 text-white transition-colors"
+                        className={`flex-1 py-1 text-[10px] font-bold rounded bg-rose-500 hover:bg-rose-600 text-white transition-colors ${updatingDays[day] ? 'opacity-50' : ''}`}
                       >
                         A
                       </button>
                       {att && (
                         <button
                           type="button"
-                          disabled={isPending}
+                          disabled={updatingDays[day] || false}
                           onClick={() => handleClear(day)}
                           title="Clear Attendance"
-                          className="py-1 px-1.5 text-[10px] font-bold rounded bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                          className={`py-1 px-1.5 text-[10px] font-bold rounded bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors ${updatingDays[day] ? 'opacity-50' : ''}`}
                         >
                           ×
                         </button>
