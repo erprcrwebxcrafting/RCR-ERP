@@ -56,8 +56,9 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
           bankBranch: true,
           siteId: true,
           supervisorId: true,
-          labourCategory: { select: { id: true, name: true } },
+          labourCategory: { select: { id: true, name: true, dailyWage: true } },
           supervisor: { select: { id: true, name: true } },
+          createdAt: true,
         },
         where: q ? {
           OR: [
