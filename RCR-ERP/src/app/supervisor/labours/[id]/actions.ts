@@ -64,11 +64,11 @@ export async function markIndividualLabourAttendance(
     where: { labourId_date: { labourId, date } }
   });
 
-  // 24-Hour Edit Lock
+  // 1-Month Edit Lock
   if (existing) {
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
-      throw new Error(`Cannot edit attendance for ${labour.name} as it was recorded more than 24 hours ago.`);
+    const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    if (existing.createdAt.getTime() < oneMonthAgo.getTime()) {
+      throw new Error(`Cannot edit attendance for ${labour.name} as it was recorded more than 1 month ago.`);
     }
   }
 
@@ -150,9 +150,9 @@ export async function clearIndividualLabourAttendance(labourId: string, dateStr:
 
   if (!existing) return { success: true };
 
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
-    throw new Error(`Cannot clear attendance as it was recorded more than 24 hours ago.`);
+  const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  if (existing.createdAt.getTime() < oneMonthAgo.getTime()) {
+    throw new Error(`Cannot clear attendance as it was recorded more than 1 month ago.`);
   }
 
   await prisma.attendance.delete({

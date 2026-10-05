@@ -277,8 +277,8 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
 
               let isLocked = false;
               if (att && att.createdAt) {
-                const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-                isLocked = new Date(att.createdAt).getTime() < twentyFourHoursAgo.getTime();
+                const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+                isLocked = new Date(att.createdAt).getTime() < oneMonthAgo.getTime();
               }
               const now = new Date();
               const isFuture = new Date(year, month, day).getTime() > new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
