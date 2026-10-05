@@ -86,7 +86,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
     0
   );
 
-  const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const allLocked = false; // The form should never be globally locked. Individual rows are locked.
 
   return (
@@ -213,7 +213,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                       </tr>
                       {cat.labours.map((p: any) => {
                         const existing = existingMap.get(p.id);
-                        const isLocked = !!existing && existing.createdAt.getTime() < oneMonthAgo.getTime();
+                        const isLocked = !!existing && existing.createdAt.getTime() < twentyFourHoursAgo.getTime();
                         
                         const colors = ['bg-blue-50 text-blue-600 border-blue-200', 'bg-emerald-50 text-emerald-600 border-emerald-200', 'bg-purple-50 text-purple-600 border-purple-200', 'bg-amber-50 text-amber-600 border-amber-200', 'bg-rose-50 text-rose-600 border-rose-200'];
                         const colorClass = colors[p.name.charCodeAt(0) % colors.length];

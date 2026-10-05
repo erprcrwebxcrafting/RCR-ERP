@@ -534,8 +534,8 @@ export function SupervisorAttendanceHub({
 
                   let isLocked = false;
                   if (currentAtt && currentAtt.createdAt) {
-                    const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-                    isLocked = new Date(currentAtt.createdAt).getTime() < oneMonthAgo.getTime();
+                    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                    isLocked = new Date(currentAtt.createdAt).getTime() < twentyFourHoursAgo.getTime();
                   }
 
 

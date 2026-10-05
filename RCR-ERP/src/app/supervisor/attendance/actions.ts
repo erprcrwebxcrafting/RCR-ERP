@@ -70,10 +70,10 @@ export async function saveAttendance(siteId: string, formData: FormData) {
     if (hajariInput === "") {
       const existing = existingMap.get(labourId);
       if (existing) {
-        const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const isSept1 = date.getTime() === new Date('2026-09-01T00:00:00.000Z').getTime();
-        if (!isSept1 && existing.createdAt.getTime() < oneMonthAgo.getTime()) {
-          return { error: `Cannot clear attendance for ${labourMap.get(labourId)?.name} as it was recorded more than 1 month ago.` };
+        if (!isSept1 && existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
+          return { error: `Cannot clear attendance for ${labourMap.get(labourId)?.name} as it was recorded more than 24 hours ago.` };
         }
         promises.push(prisma.attendance.delete({
           where: { labourId_date: { labourId, date } }
@@ -114,14 +114,14 @@ export async function saveAttendance(siteId: string, formData: FormData) {
       return { error: `Cannot mark attendance for ${labour.name} before their joining date (${joiningDate.toLocaleDateString()}).` };
     }
 
-    // 1-Month Edit Lock
+    // 10-Day Edit Lock
     if (existing) {
-      const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const isSept1 = date.getTime() === new Date('2026-09-01T00:00:00.000Z').getTime();
-      if (!isSept1 && existing.createdAt.getTime() < oneMonthAgo.getTime()) {
+      if (!isSept1 && existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
         // Only throw error if they actually tried to change it
         if (existing.hajari !== hajari || existing.remarks !== remarks) {
-          return { error: `Cannot edit attendance for ${labour.name} as it was recorded more than 1 month ago.` };
+          return { error: `Cannot edit attendance for ${labour.name} as it was recorded more than 24 hours ago.` };
         }
         // If unchanged, just skip this labourer so it doesn't block the rest of the form
         continue;
@@ -159,8 +159,8 @@ export async function clearAllAttendance(siteId: string, dateStr: string) {
 
   const date = new Date(dateStr);
   
-  // Only allow clearing if within 1 month
-  const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  // Only allow clearing if within 24 hours
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   
   const existingRecords = await prisma.attendance.findMany({
     where: { siteId, date }
@@ -169,8 +169,8 @@ export async function clearAllAttendance(siteId: string, dateStr: string) {
   // Check if any record is locked
   const isSept1 = date.getTime() === new Date('2026-09-01T00:00:00.000Z').getTime();
   for (const record of existingRecords) {
-    if (!isSept1 && record.createdAt.getTime() < oneMonthAgo.getTime()) {
-      return { error: "Cannot clear all attendances because some records are locked (older than 1 month)." };
+    if (!isSept1 && record.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
+      return { error: "Cannot clear all attendances because some records are locked (older than 24 hours)." };
     }
   }
 

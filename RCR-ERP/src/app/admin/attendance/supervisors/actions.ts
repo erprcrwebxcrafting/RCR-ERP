@@ -66,9 +66,9 @@ export async function markSupervisorAttendanceUniversal(
   });
 
   if (existing) {
-    const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    if (existing.createdAt.getTime() < oneMonthAgo.getTime()) {
-      throw new Error("Attendance cannot be edited for dates older than 1 month from creation.");
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
+      throw new Error("Attendance cannot be edited for dates older than 24 hours from creation.");
     }
   }
 
@@ -145,7 +145,7 @@ export async function markAllSupervisorsAttendanceUniversal(
   }
 
   const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 30);
+  yesterday.setDate(yesterday.getDate() - 1);
 
   const existingRecords = await prisma.supervisorAttendance.findMany({ where: { date } });
   const existingMap = new Map(existingRecords.map(r => [r.supervisorId, r]));
@@ -180,7 +180,7 @@ export async function markAllSupervisorsAttendanceUniversal(
 
     const existing = existingMap.get(sup.id);
 
-    // Skip editing if older than 1 month
+    // Skip editing if older than 24h
     if (existing && targetDate.getTime() < yesterday.getTime()) {
       continue; 
     }
@@ -247,10 +247,10 @@ export async function clearSupervisorAttendanceUniversal(
   targetDate.setHours(0, 0, 0, 0);
 
   const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 30);
+  yesterday.setDate(yesterday.getDate() - 1);
 
   if (targetDate.getTime() < yesterday.getTime()) {
-    throw new Error("Attendance cannot be deleted for dates older than 1 month.");
+    throw new Error("Attendance cannot be deleted for dates older than 24 hours (yesterday).");
   }
 
   const existing = await prisma.supervisorAttendance.findUnique({
