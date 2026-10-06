@@ -228,16 +228,28 @@ export async function GET(req: NextRequest) {
       // Helper to aggregate based on cycle rules
       // Earned: 1st to End of Month
       attendances.forEach(a => {
-        if (!a.hajari) return;
+        let hajariValue = 0;
+        let val = 0;
+
+        if ('hajari' in a) {
+          hajariValue = a.hajari;
+          if (!hajariValue) return;
+          const rate = a.hajariRate || baseDailyWage || 0;
+          val = hajariValue * rate;
+        } else {
+          hajariValue = a.status === 'PRESENT' ? 1 : a.status === 'HALF_DAY' ? 0.5 : 0;
+          if (!hajariValue) return;
+          val = a.earnedAmount !== undefined && a.earnedAmount !== null 
+            ? a.earnedAmount 
+            : hajariValue * (a.dailyRate || baseDailyWage || 0);
+        }
+
         const d = new Date(a.date);
         const key = getMonthKey(d);
         if (!monthMap.has(key)) monthMap.set(key, { monthStr: formatMonth(d), earned: 0, paid: 0, hajari: 0, dateObj: new Date(d.getFullYear(), d.getMonth(), 1) });
         
-        const rate = a.hajariRate || baseDailyWage || 0;
-        const val = a.hajari * rate;
-        
         monthMap.get(key).earned += val;
-        monthMap.get(key).hajari += a.hajari;
+        monthMap.get(key).hajari += hajariValue;
         finalCalculations.totalEarned += val;
         finalCalculations.outstandingBalance += val;
       });
