@@ -61,11 +61,21 @@ export function PaymentSlipAction({ entityId, entityType, paymentId, variant = "
         const file = new File([blob], filename, { type: "application/pdf" });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           toast.dismiss(toastId);
-          await navigator.share({
-            files: [file],
-            title: isStatement ? "Payment Statement" : "Payment Receipt",
-            text: "Please find the payment slip attached.",
-          });
+          try {
+            await navigator.share({
+              files: [file],
+              title: isStatement ? "Payment Statement" : "Payment Receipt",
+              text: "Please find the payment slip attached.",
+            });
+          } catch (shareErr: any) {
+            if (shareErr.name === "AbortError") {
+              // User dismissed the share sheet
+              return;
+            }
+            console.warn("Share failed (likely due to async delay), falling back to download:", shareErr);
+            downloadBlob(blob, filename);
+            toast.success("Downloaded successfully (Share unavailable)", { id: toastId });
+          }
         } else {
           // Fallback to download if share is not supported
           downloadBlob(blob, filename);
