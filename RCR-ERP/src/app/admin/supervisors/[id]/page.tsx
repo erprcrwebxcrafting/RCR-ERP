@@ -463,7 +463,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
       )}
 
       <div className="min-w-0 w-full">
-        <AttendanceCalendar supervisor={sv} initialAttendances={attendances} />
+        <AttendanceCalendar supervisor={sv} initialAttendances={attendances} payments={sv.supervisorPayments} />
       </div>
 
       <div className="grid gap-6 sm:gap-8 grid-cols-1 md:grid-cols-2 min-w-0">

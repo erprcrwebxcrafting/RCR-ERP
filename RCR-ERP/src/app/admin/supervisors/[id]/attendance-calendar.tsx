@@ -45,9 +45,10 @@ type Props = {
     statusHistory?: any[];
   };
   initialAttendances: AttendanceRecord[];
+  payments?: { id: string; date: string | Date; amount: number; reason?: string | null }[];
 };
 
-export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
+export function AttendanceCalendar({ supervisor, initialAttendances, payments = [] }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -433,6 +434,15 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
                 isLocked = createdAtTime < twentyFourHoursAgo;
               }
 
+              const dayPayments = payments.filter((p) => {
+                const pDate = new Date(p.date);
+                return (
+                  pDate.getDate() === day &&
+                  pDate.getMonth() === month &&
+                  pDate.getFullYear() === year
+                );
+              });
+
               return (
                 <div
                   key={`day-${year}-${month}-${day}`}
@@ -484,6 +494,12 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
                         Not marked
                       </div>
                     )}
+                    {dayPayments.map(p => (
+                      <div key={p.id} className="text-[10px] text-rose-600 bg-rose-50 dark:bg-rose-950/40 px-1 py-0.5 mt-1 rounded w-fit border border-rose-100 dark:border-rose-900/50">
+                        <span className="font-bold">-₹{p.amount.toLocaleString("en-IN")}</span>
+                        {p.reason && <span className="block text-[9px] leading-tight text-rose-500/80 mt-0.5 truncate max-w-[100px]" title={p.reason}>{p.reason}</span>}
+                      </div>
+                    ))}
                   </div>
 
                   {/* Quick Action Buttons on Hover */}
