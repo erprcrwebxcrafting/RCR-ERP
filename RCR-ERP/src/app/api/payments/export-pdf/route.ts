@@ -293,25 +293,8 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    let logoStr = null;
-    let stampStr = null;
-    /* Temporarily bypass images to fix Vercel FUNCTION_INVOCATION_TIMEOUT
-    try {
-      const logoPath = path.join(process.cwd(), "public", "rcr-logo.png");
-      if (fs.existsSync(logoPath)) {
-        const logoBuffer = fs.readFileSync(logoPath);
-        logoStr = `data:image/png;base64,${logoBuffer.toString("base64")}`;
-      }
-      
-      const stampPath = path.join(process.cwd(), "public", "sign&logo.png");
-      if (fs.existsSync(stampPath)) {
-        const stampBuffer = fs.readFileSync(stampPath);
-        stampStr = `data:image/png;base64,${stampBuffer.toString("base64")}`;
-      }
-    } catch (e) {
-      console.warn("Could not load images for payment slip");
-    }
-    */
+    let logoStr: string | null = "/rcr-logo.png";
+    let stampStr: string | null = "/sign&logo.png";
 
     const pdfData: PaymentSlipData = {
       companyName,
