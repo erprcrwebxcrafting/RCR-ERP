@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -21,6 +21,7 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
 
   const monthParam = searchParams.get("month");
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const [currentDate, setCurrentDate] = useState(() => {
     if (monthParam) {
@@ -42,7 +43,9 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
     const y = newDate.getFullYear();
     const m = String(newDate.getMonth() + 1).padStart(2, '0');
     params.set("month", `${y}-${m}-01`);
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    startTransition(() => {
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    });
   };
 
   const prevMonth = () => updateDate(new Date(year, month - 1, 1));
@@ -128,13 +131,16 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
   return (
     <Card className="mb-6">
       <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
-        <CardTitle className="text-lg font-medium">Calendar Overview</CardTitle>
+        <CardTitle className="text-lg font-medium flex items-center gap-2">
+          Calendar Overview
+          {isPending && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+        </CardTitle>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={goToday}>Today</Button>
+          <Button variant="outline" size="sm" onClick={goToday} disabled={isPending}>Today</Button>
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="icon" onClick={prevMonth}><ChevronLeft className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" onClick={prevMonth} disabled={isPending}><ChevronLeft className="h-4 w-4" /></Button>
             <div className="font-semibold min-w-[140px] text-center">{monthName}</div>
-            <Button variant="outline" size="icon" onClick={nextMonth}><ChevronRight className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" onClick={nextMonth} disabled={isPending}><ChevronRight className="h-4 w-4" /></Button>
           </div>
           <Button 
             variant="default" 

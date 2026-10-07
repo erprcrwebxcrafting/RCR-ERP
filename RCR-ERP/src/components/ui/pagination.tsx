@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "./button";
+import { useTransition } from "react";
 
 interface PaginationProps {
   currentPage: number;
@@ -16,6 +17,8 @@ interface PaginationProps {
 export function Pagination({ currentPage, totalPages, totalItems, pageSize = 10, pageParam = "page" }: PaginationProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   if (totalItems <= pageSize) {
     return null;
@@ -27,35 +30,40 @@ export function Pagination({ currentPage, totalPages, totalItems, pageSize = 10,
     return `${pathname}?${params.toString()}`;
   };
 
+  const handleNavigate = (url: string) => {
+    startTransition(() => {
+      router.push(url, { scroll: false });
+    });
+  };
+
   return (
     <div className="mt-8 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-6">
-      <div className="text-sm text-slate-500 font-medium">
-        Showing <span className="font-bold text-slate-900 dark:text-white">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-bold text-slate-900 dark:text-white">{Math.min(currentPage * pageSize, totalItems)}</span> of <span className="font-bold text-slate-900 dark:text-white">{totalItems}</span> results
+      <div className="text-sm text-slate-500 font-medium flex items-center gap-2">
+        <span>
+          Showing <span className="font-bold text-slate-900 dark:text-white">{(currentPage - 1) * pageSize + 1}</span> to <span className="font-bold text-slate-900 dark:text-white">{Math.min(currentPage * pageSize, totalItems)}</span> of <span className="font-bold text-slate-900 dark:text-white">{totalItems}</span> results
+        </span>
+        {isPending && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
       </div>
       <div className="flex items-center space-x-2">
         <Button
           variant="outline"
           size="sm"
-          asChild
-          disabled={currentPage <= 1}
-          className={currentPage <= 1 ? "opacity-50 pointer-events-none" : ""}
+          onClick={() => handleNavigate(createPageURL(currentPage - 1))}
+          disabled={currentPage <= 1 || isPending}
+          className={currentPage <= 1 ? "opacity-50 cursor-not-allowed" : ""}
         >
-          <Link href={createPageURL(currentPage - 1)}>
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
-          </Link>
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Previous
         </Button>
         <Button
           variant="outline"
           size="sm"
-          asChild
-          disabled={currentPage >= totalPages}
-          className={currentPage >= totalPages ? "opacity-50 pointer-events-none" : ""}
+          onClick={() => handleNavigate(createPageURL(currentPage + 1))}
+          disabled={currentPage >= totalPages || isPending}
+          className={currentPage >= totalPages ? "opacity-50 cursor-not-allowed" : ""}
         >
-          <Link href={createPageURL(currentPage + 1)}>
-            Next
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Link>
+          Next
+          <ChevronRight className="h-4 w-4 ml-1" />
         </Button>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useRef, useEffect } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +48,12 @@ type Props = {
 };
 
 export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const monthParam = searchParams.get("month");
+  
+  const [currentDate, setCurrentDate] = useState(monthParam ? new Date(monthParam) : new Date());
   const [isPending, startTransition] = useTransition();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -70,9 +76,29 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
   const month = currentDate.getMonth(); // 0-indexed
 
   // Month navigation
-  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
-  const goToToday = () => setCurrentDate(new Date());
+  const updateUrl = (d: Date) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("month", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`);
+    startTransition(() => {
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  };
+
+  const prevMonth = () => {
+    const d = new Date(year, month - 1, 1);
+    setCurrentDate(d);
+    updateUrl(d);
+  };
+  const nextMonth = () => {
+    const d = new Date(year, month + 1, 1);
+    setCurrentDate(d);
+    updateUrl(d);
+  };
+  const goToToday = () => {
+    const d = new Date();
+    setCurrentDate(d);
+    updateUrl(d);
+  };
 
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -254,6 +280,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
               <div>
                 <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                   {monthNames[month]} {year}
+                  {isPending && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
                 </CardTitle>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Click any day to mark attendance (Present, Half Day, Absent) & view daily earnings.
@@ -266,6 +293,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
                 variant="outline"
                 size="sm"
                 onClick={goToToday}
+                disabled={isPending}
                 className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-700 font-semibold"
               >
                 Today
@@ -275,6 +303,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
                   variant="ghost"
                   size="icon"
                   onClick={prevMonth}
+                  disabled={isPending}
                   className="h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -283,6 +312,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances }: Props) {
                   variant="ghost"
                   size="icon"
                   onClick={nextMonth}
+                  disabled={isPending}
                   className="h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
                 >
                   <ChevronRight className="h-4 w-4" />
