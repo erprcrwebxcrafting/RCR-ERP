@@ -232,7 +232,7 @@ function PageHeader({ title, site, bill, logoStr, settings }: { title: string; s
           {logoStr && <Image src={logoStr} style={styles.logoContainer} />}
           <View style={styles.headerTextContainer}>
             <Text style={styles.companyName}>{settings?.companyName || "RCR ENTERPRISES"}</Text>
-            <Text style={styles.companySubtext}>GST NO: {site?.gstNo || "27AAJFN6629D1Z5"} | CONCRETE & REINFORCEMENT WORK</Text>
+            <Text style={styles.companySubtext}>GST NO: {settings?.gstNo || "27CIMPR8276H1ZF"} | CONCRETE & REINFORCEMENT WORK</Text>
             <Text style={{ fontSize: 6.5, color: "#4f46e5", marginTop: 1, fontFamily: "Helvetica-Bold" }}>
               {[
                 settings?.phone && `Ph: ${settings.phone}`,
