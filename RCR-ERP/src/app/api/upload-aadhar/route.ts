@@ -100,7 +100,16 @@ export async function POST(req: NextRequest) {
     // Persist URL to DB
     if (!id.startsWith("temp-") && id !== "new") {
       if (type === "labour") {
+        const oldLabour = await prisma.labour.findUnique({ where: { id }, select: { active: true } });
         await prisma.labour.update({ where: { id }, data: { aadharCardUrl: uploadResult.secure_url } });
+        await prisma.labourStatusHistory.create({
+          data: {
+            labourId: id,
+            status: oldLabour?.active ? "ACTIVE" : "INACTIVE",
+            effectiveDate: new Date(),
+            reason: "Aadhar card uploaded",
+          }
+        });
       } else {
         await prisma.user.update({ where: { id }, data: { aadharCardUrl: uploadResult.secure_url } });
       }

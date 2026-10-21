@@ -94,12 +94,19 @@ export async function markIndividualLabourAttendance(
     update: { 
       status, 
       hajari, 
-      hajariRate: appliedRate 
+      hajariRate: appliedRate,
+      createdAt: new Date(),
     },
+  });
+
+  await (prisma.labour as any).update({
+    where: { id: labourId },
+    data: { updatedAt: new Date() }
   });
 
   revalidatePath(`/supervisor/labours/${labourId}`);
   revalidatePath("/supervisor/labours");
+  revalidatePath("/admin/labours");
 
   return { success: true };
 }
@@ -131,6 +138,7 @@ export async function toggleLabourActiveSupervisor(labourId: string, active: boo
 
   revalidatePath("/supervisor/labours");
   revalidatePath(`/supervisor/labours/${labourId}`);
+  revalidatePath("/admin/labours");
 }
 
 export async function clearIndividualLabourAttendance(labourId: string, dateStr: string) {
@@ -159,7 +167,13 @@ export async function clearIndividualLabourAttendance(labourId: string, dateStr:
     where: { labourId_date: { labourId, date } }
   });
 
+  await (prisma.labour as any).update({
+    where: { id: labourId },
+    data: { updatedAt: new Date() }
+  });
+
   revalidatePath(`/supervisor/labours/${labourId}`);
   revalidatePath("/supervisor/labours");
+  revalidatePath("/admin/labours");
   return { success: true };
 }

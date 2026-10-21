@@ -183,6 +183,7 @@ model Labour {
   overtimeRate     Float?
   active           Boolean                 @default(true)
   createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @default(now()) @updatedAt
   bankName         String?
   attendances      Attendance[]
   labourCategory   LabourCategory          @relation(fields: [labourCategoryId], references: [id], onDelete: Cascade)

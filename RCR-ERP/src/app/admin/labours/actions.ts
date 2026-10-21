@@ -123,6 +123,16 @@ export async function saveLabour(formData: FormData) {
       const oldLabour = await prisma.labour.findUnique({ where: { id: parsed.id }, include: { labourCategory: true } });
       await prisma.labour.update({ where: { id: parsed.id }, data });
 
+      // Record activity in status history so this labour immediately jumps to the top of the labours list
+      await prisma.labourStatusHistory.create({
+        data: {
+          labourId: parsed.id,
+          status: oldLabour?.active ? "ACTIVE" : "INACTIVE",
+          effectiveDate: new Date(),
+          reason: "Labour details updated",
+        }
+      });
+
       // Handle retroactive wage updates if effectiveDate is provided and wage changed
       if (
         parsed.effectiveDate && 

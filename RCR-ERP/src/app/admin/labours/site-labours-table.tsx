@@ -29,7 +29,7 @@ export function SiteLaboursTable({ site, allSites, allSupervisors }: { site: any
     
     const matchesMonth = joinDate.getTime() < endDate.getTime();
     return matchesSearch && matchesMonth;
-  });
+  }).sort((a: any, b: any) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
 
   return (
     <div className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-in slide-in-from-top-2">
