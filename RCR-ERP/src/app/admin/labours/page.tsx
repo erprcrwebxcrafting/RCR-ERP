@@ -59,6 +59,7 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
           labourCategory: { select: { id: true, name: true, dailyWage: true } },
           supervisor: { select: { id: true, name: true } },
           createdAt: true,
+          ...({ updatedAt: true } as any),
         },
         where: q ? {
           OR: [
@@ -66,7 +67,7 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
             { phone: { contains: q, mode: "insensitive" } },
           ]
         } : (showInactive ? undefined : { active: true }),
-        orderBy: { createdAt: "desc" }
+        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }] as any
       }
     },
     orderBy: { projectName: "asc" },

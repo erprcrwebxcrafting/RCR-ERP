@@ -58,6 +58,7 @@ export async function savePayment(formData: FormData) {
         date: new Date(parsed.date),
         reason: parsed.reason || null,
         transactionId: parsed.transactionId || null,
+        createdAt: new Date(),
       }
     });
   } else {
@@ -68,10 +69,17 @@ export async function savePayment(formData: FormData) {
         date: new Date(parsed.date),
         reason: parsed.reason || null,
         transactionId: parsed.transactionId || null,
+        createdAt: new Date(),
       }
     });
   }
 
+  await (prisma.labour as any).update({
+    where: { id: parsed.labourId },
+    data: { updatedAt: new Date() }
+  });
+
+  revalidatePath("/admin/labours");
   revalidatePath(`/admin/labours/${parsed.labourId}`);
   revalidateTag("site-detail");
 }
@@ -91,7 +99,13 @@ export async function deleteLabourPayment(paymentId: string, labourId: string) {
   await (prisma as any).labourPayment.delete({
     where: { id: paymentId }
   });
-  
+
+  await (prisma.labour as any).update({
+    where: { id: labourId },
+    data: { updatedAt: new Date() }
+  });
+
+  revalidatePath("/admin/labours");
   revalidatePath(`/admin/labours/${labourId}`);
   revalidateTag("site-detail");
   return { success: true };

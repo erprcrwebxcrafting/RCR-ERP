@@ -116,10 +116,20 @@ export async function saveSupervisorLabour(formData: FormData) {
   };
 
   if (parsed.id) {
+    const oldLabour = await prisma.labour.findUnique({ where: { id: parsed.id }, select: { active: true } });
     await prisma.labour.update({ where: { id: parsed.id, supervisorId }, data });
+    await prisma.labourStatusHistory.create({
+      data: {
+        labourId: parsed.id,
+        status: oldLabour?.active ? "ACTIVE" : "INACTIVE",
+        effectiveDate: new Date(),
+        reason: "Labour details updated by supervisor",
+      }
+    });
   } else {
     await prisma.labour.create({ data });
   }
   
   revalidatePath("/supervisor/labours");
+  revalidatePath("/admin/labours");
 }

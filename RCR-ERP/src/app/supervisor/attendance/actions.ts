@@ -140,16 +140,21 @@ export async function saveAttendance(siteId: string, formData: FormData) {
     promises.push(prisma.attendance.upsert({
       where: { labourId_date: { labourId, date } },
       create: { siteId, buildingId, labourId, date, status, hajari, hajariRate: appliedRate, remarks, markedById },
-      update: { buildingId, status, hajari, hajariRate: appliedRate, remarks },
+      update: { buildingId, status, hajari, hajariRate: appliedRate, remarks, createdAt: new Date() },
     }));
   }
 
   // Execute all DB operations concurrently
   if (promises.length > 0) {
     await Promise.all(promises);
+    await (prisma.labour as any).updateMany({
+      where: { id: { in: labourIds } },
+      data: { updatedAt: new Date() }
+    });
   }
 
   revalidatePath("/supervisor/attendance");
+  revalidatePath("/admin/labours");
   return { success: true };
 }
 
@@ -174,10 +179,19 @@ export async function clearAllAttendance(siteId: string, dateStr: string) {
     }
   }
 
+  const affectedLabours = existingRecords.map(r => r.labourId);
   await prisma.attendance.deleteMany({
     where: { siteId, date }
   });
 
+  if (affectedLabours.length > 0) {
+    await (prisma.labour as any).updateMany({
+      where: { id: { in: affectedLabours } },
+      data: { updatedAt: new Date() }
+    });
+  }
+
   revalidatePath("/supervisor/attendance");
+  revalidatePath("/admin/labours");
   return { success: true };
 }
