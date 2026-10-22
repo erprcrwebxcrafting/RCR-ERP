@@ -154,6 +154,7 @@ export async function saveAttendance(siteId: string, formData: FormData) {
   }
 
   revalidatePath("/supervisor/attendance");
+  revalidatePath("/supervisor/labours");
   revalidatePath("/admin/labours");
   return { success: true };
 }
