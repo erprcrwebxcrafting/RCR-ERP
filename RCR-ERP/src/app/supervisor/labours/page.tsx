@@ -47,7 +47,7 @@ export default async function SupervisorLaboursPage({ searchParams }: { searchPa
       ...dateFilter
     },
     include: { labourCategory: true },
-    orderBy: { name: "asc" },
+    orderBy: { updatedAt: "desc" },
   });
 
   const queryParams = new URLSearchParams();
