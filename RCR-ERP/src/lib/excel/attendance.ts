@@ -320,7 +320,7 @@ export async function generateAttendanceExcel(
   // Calculate Totals for KPIs
   const kpiValues = [
     `${sortedWorkers.length}`,
-    `${grandTotalHajari.toFixed(1)}`,
+    `${Number.isInteger(grandTotalHajari) ? grandTotalHajari.toString() : parseFloat(grandTotalHajari.toFixed(2)).toString()}`,
     `${grandTotalOT.toFixed(1)} hrs`,
     `₹${Math.round(grandTotalEarned).toLocaleString("en-IN")}`,
     `₹${Math.round(grandTotalPaid).toLocaleString("en-IN")}`,

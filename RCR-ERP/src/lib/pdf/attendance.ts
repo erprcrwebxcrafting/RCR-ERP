@@ -225,10 +225,14 @@ export async function generateAttendancePdf(
     return a.name.localeCompare(b.name);
   });
 
-  // Compute Grand Totals
+  // Compute Grand Totals across all workers
   let grandTotalHajari = 0;
   let grandTotalOT = 0;
+  let grandPrevAdvance = 0;
+  let grandPrevPending = 0;
   let grandCurrEarned = 0;
+  let grandGrossPayable = 0;
+  let grandAdvanceDeducted = 0;
   let grandTotalEarned = 0;
   let grandTotalPaid = 0;
   let grandTotalBalance = 0;
@@ -236,10 +240,24 @@ export async function generateAttendancePdf(
   sortedWorkers.forEach(w => {
     grandTotalHajari += w.totalHajari;
     grandTotalOT += w.totalOT;
-    grandCurrEarned += w.totalEarned;
     grandTotalEarned += w.allTimeEarned;
     grandTotalPaid += w.allTimePaid;
     grandTotalBalance += w.netBalance;
+
+    const openingBalance = w.openingEarned - w.openingPaid;
+    const prevAdvance = openingBalance < 0 ? Math.abs(openingBalance) : 0;
+    const prevPending = openingBalance > 0 ? openingBalance : 0;
+    const currEarned = w.totalEarned;
+    const paidInPeriod = w.totalPaid;
+    
+    const grossPayable = prevPending + currEarned;
+    const advanceDeducted = prevAdvance + paidInPeriod;
+
+    grandPrevAdvance += prevAdvance;
+    grandPrevPending += prevPending;
+    grandCurrEarned += currEarned;
+    grandGrossPayable += grossPayable;
+    grandAdvanceDeducted += advanceDeducted;
   });
 
   // Daily totals across all workers
@@ -298,10 +316,10 @@ export async function generateAttendancePdf(
 
   const kpis = [
     { label: "TOTAL LABOURS", val: `${sortedWorkers.length}`, color: navy },
-    { label: "TOTAL HAJARIS", val: `${grandTotalHajari.toFixed(1)}`, color: green },
+    { label: "TOTAL HAJARIS", val: `${Number.isInteger(grandTotalHajari) ? grandTotalHajari.toString() : parseFloat(grandTotalHajari.toFixed(2)).toString()}`, color: green },
     { label: "WAGES EARNED (ALL TIME)", val: `Rs ${Math.round(grandTotalEarned).toLocaleString("en-IN")}`, color: primary },
     { label: "ADVANCE PAID (ALL TIME)", val: `Rs ${Math.round(grandTotalPaid).toLocaleString("en-IN")}`, color: red },
-    { label: "NET BALANCE DUE", val: `Rs ${Math.round(grandTotalBalance).toLocaleString("en-IN")}`, color: green }
+    { label: "NET BALANCE DUE", val: `Rs ${Math.round(grandTotalBalance).toLocaleString("en-IN")}`, color: grandTotalBalance >= 0 ? green : red }
   ];
 
   kpis.forEach((kpi, idx) => {
@@ -716,7 +734,7 @@ export async function generateAttendancePdf(
   });
 
   // Grand Total Hajari
-  const gHajText = `${grandTotalHajari.toFixed(1)}`;
+  const gHajText = Number.isInteger(grandTotalHajari) ? grandTotalHajari.toString() : parseFloat(grandTotalHajari.toFixed(2)).toString();
   const gHajW = bold.widthOfTextAtSize(gHajText, 7.5);
   page.drawText(gHajText, {
     x: colX[3 + dates.length] + (hajariWidth - gHajW) / 2,
@@ -725,14 +743,6 @@ export async function generateAttendancePdf(
     font: bold,
     color: green
   });
-
-  let grandPrevBalance = 0;
-  sortedWorkers.forEach(w => grandPrevBalance += (w.openingEarned - w.openingPaid));
-
-  const grandPrevAdvance = grandPrevBalance < 0 ? Math.abs(grandPrevBalance) : 0;
-  const grandPrevPending = grandPrevBalance > 0 ? grandPrevBalance : 0;
-  const grandGrossPayable = grandPrevPending + grandCurrEarned;
-  const grandAdvanceDeducted = grandPrevAdvance + grandTotalPaid;
 
   // Grand Prev Advance
   const gPAdvText = grandPrevAdvance > 0 ? `${Math.round(grandPrevAdvance).toLocaleString("en-IN")}` : "—";
