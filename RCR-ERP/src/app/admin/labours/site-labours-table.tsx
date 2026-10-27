@@ -44,13 +44,29 @@ export function SiteLaboursTable({ site, allSites, allSupervisors }: { site: any
             className="h-9 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-9 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50" 
           />
         </div>
-        <div className="w-full sm:w-auto">
+        <div className="w-full sm:w-auto flex items-center gap-3">
           <input 
             type="month" 
             value={month} 
             onChange={(e) => setMonth(e.target.value)} 
             className="h-9 w-full sm:w-48 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50" 
           />
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            className="h-9 rounded-md border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 font-semibold shrink-0"
+          >
+            <a
+              href={`/api/sites/${site.id}/labours-pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Download Labour List PDF"
+            >
+              <FileDown className="h-4 w-4 mr-1.5 text-blue-600 dark:text-blue-400" />
+              Download List (PDF)
+            </a>
+          </Button>
         </div>
       </div>
 

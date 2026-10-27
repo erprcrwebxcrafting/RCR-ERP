@@ -22,7 +22,7 @@ import { RABillViewer } from "./components/ra-bill-viewer";
 import { SiteBalanceSheet } from "./components/site-balance-sheet";
 import { SiteExpensesTracker } from "./components/site-expenses-tracker";
 import { 
-  Building2, Hammer, Users, Banknote, UserCheck, Receipt, FileText, 
+  Building2, Hammer, Users, Banknote, UserCheck, Receipt, FileText, FileDown,
   MapPin, Percent, FileCheck, CircleDollarSign, CalendarDays, Contact2, Trash2, HardHat, Edit2
 } from "lucide-react";
 
@@ -296,6 +296,12 @@ export function SiteTabs({ site, allSupervisors }: { site: any; allSupervisors: 
                 View all labours on this site along with their total attendance and rates.
               </p>
             </div>
+            <Button variant="outline" size="sm" asChild className="gap-2 shrink-0">
+              <a href={`/api/sites/${site.id}/labours-pdf`} target="_blank" rel="noopener noreferrer">
+                <FileDown className="h-4 w-4 text-blue-600" />
+                Download PDF List
+              </a>
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="rounded-md border border-slate-200 dark:border-slate-800">

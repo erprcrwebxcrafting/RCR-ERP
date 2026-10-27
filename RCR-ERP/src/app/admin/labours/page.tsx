@@ -158,8 +158,25 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
                 </div>
               </div>
               <div className="flex items-center gap-3 shrink-0 ml-11 sm:ml-0 border-t sm:border-0 pt-4 sm:pt-0 border-slate-200 dark:border-slate-800">
-                {/* Supervisor Ledger Buttons */}
-                <div className="flex flex-wrap gap-2">
+                {/* Labour List PDF & Supervisor Ledger Buttons */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    asChild 
+                    className="h-8 rounded-lg border-blue-200 dark:border-blue-900/50 bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 font-semibold text-xs transition-colors"
+                  >
+                    <a 
+                      href={`/api/sites/${site.id}/labours-pdf`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      title="Download clean Labour List in PDF"
+                    >
+                      <FileDown className="h-3.5 w-3.5 mr-1.5 text-blue-600 dark:text-blue-400" />
+                      Labour List (PDF)
+                    </a>
+                  </Button>
+
                   {site.supervisors.map((s: any) => (
                     <Button key={s.supervisor.id} variant="outline" size="sm" asChild className="h-8 rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
                       <a href={`/admin/supervisors/${s.supervisor.id}`}>
