@@ -23,6 +23,12 @@ export async function GET(req: NextRequest) {
       if (!labour) return new NextResponse("Labour not found", { status: 404 });
       workerName = labour.name;
 
+      if (labour.joiningDate) {
+        const jYear = labour.joiningDate.getFullYear();
+        const jMonth = String(labour.joiningDate.getMonth() + 1).padStart(2, '0');
+        uniqueMonths.add(`${jYear}-${jMonth}-01`);
+      }
+
       // Get all attendances to find unique months
       const attendances = await prisma.attendance.findMany({
         where: { labourId: entityId },
@@ -42,16 +48,30 @@ export async function GET(req: NextRequest) {
         select: { date: true }
       });
       payments.forEach(p => {
-        const year = p.date.getFullYear();
-        const month = String(p.date.getMonth() + 1).padStart(2, '0');
-        // Payments are often given for the previous month's work if made between 1st-20th.
-        // To be safe, we just add the month of the payment itself.
-        uniqueMonths.add(`${year}-${month}-01`);
+        // Attendance card advance cycle runs from 21st of month M to 20th of month M+1.
+        // Therefore, payments made on or before the 20th belong to the previous month's card (M - 1).
+        const cardDate = new Date(p.date);
+        if (p.date.getDate() <= 20) {
+          cardDate.setMonth(cardDate.getMonth() - 1);
+        }
+        const cardYear = cardDate.getFullYear();
+        const cardMonth = String(cardDate.getMonth() + 1).padStart(2, '0');
+        uniqueMonths.add(`${cardYear}-${cardMonth}-01`);
+
+        const calYear = p.date.getFullYear();
+        const calMonth = String(p.date.getMonth() + 1).padStart(2, '0');
+        uniqueMonths.add(`${calYear}-${calMonth}-01`);
       });
     } else if (entityType === "SUPERVISOR") {
       const supervisor = await prisma.user.findUnique({ where: { id: entityId } });
       if (!supervisor) return new NextResponse("Supervisor not found", { status: 404 });
       workerName = supervisor.name;
+
+      if (supervisor.dateOfJoining) {
+        const jYear = supervisor.dateOfJoining.getFullYear();
+        const jMonth = String(supervisor.dateOfJoining.getMonth() + 1).padStart(2, '0');
+        uniqueMonths.add(`${jYear}-${jMonth}-01`);
+      }
 
       const attendances = await prisma.supervisorAttendance.findMany({
         where: { supervisorId: entityId },
@@ -70,18 +90,41 @@ export async function GET(req: NextRequest) {
         select: { date: true }
       });
       payments.forEach(p => {
-        const year = p.date.getFullYear();
-        const month = String(p.date.getMonth() + 1).padStart(2, '0');
-        uniqueMonths.add(`${year}-${month}-01`);
+        const cardDate = new Date(p.date);
+        if (p.date.getDate() <= 20) {
+          cardDate.setMonth(cardDate.getMonth() - 1);
+        }
+        const cardYear = cardDate.getFullYear();
+        const cardMonth = String(cardDate.getMonth() + 1).padStart(2, '0');
+        uniqueMonths.add(`${cardYear}-${cardMonth}-01`);
+
+        const calYear = p.date.getFullYear();
+        const calMonth = String(p.date.getMonth() + 1).padStart(2, '0');
+        uniqueMonths.add(`${calYear}-${calMonth}-01`);
       });
     } else {
       return new NextResponse("Invalid entity type", { status: 400 });
     }
 
-    const monthsArray = Array.from(uniqueMonths).sort(); // Sort chronologically
+    const rawMonths = Array.from(uniqueMonths).sort(); // Sort chronologically
 
-    if (monthsArray.length === 0) {
+    if (rawMonths.length === 0) {
       return new NextResponse("No data found for this entity", { status: 404 });
+    }
+
+    // Fill continuous sequence of months from earliest to latest so all cards link seamlessly
+    const startMonthDate = new Date(rawMonths[0]);
+    const endMonthDate = new Date(rawMonths[rawMonths.length - 1]);
+
+    const monthsArray: string[] = [];
+    const current = new Date(startMonthDate.getFullYear(), startMonthDate.getMonth(), 1);
+    const targetEnd = new Date(endMonthDate.getFullYear(), endMonthDate.getMonth(), 1);
+
+    while (current <= targetEnd) {
+      const year = current.getFullYear();
+      const month = String(current.getMonth() + 1).padStart(2, '0');
+      monthsArray.push(`${year}-${month}-01`);
+      current.setMonth(current.getMonth() + 1);
     }
 
     const allCardsData: AttendanceCardData[] = [];

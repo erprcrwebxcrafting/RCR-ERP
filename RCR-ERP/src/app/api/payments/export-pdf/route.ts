@@ -73,7 +73,6 @@ export async function GET(req: NextRequest) {
       }));
       openingBalance = labour.openingBalance || 0;
       periodOpeningBalance = openingBalance;
-      finalCalculations.outstandingBalance = openingBalance;
       baseDailyWage = labour.dailyWage || 0;
       isMonthlyCategory = labour.labourCategory.name.toLowerCase().includes("supervisor") || labour.labourCategory.name.toLowerCase().includes("foreman");
 
@@ -84,19 +83,25 @@ export async function GET(req: NextRequest) {
         if (!p) return new NextResponse("Payment not found", { status: 404 });
         payments = [p];
       } else {
+        const isAllTime = searchParams.get("allTime") === "true";
         const fromStr = searchParams.get("from");
         const toStr = searchParams.get("to");
-        if (!fromStr || !toStr) return new NextResponse("Missing date range", { status: 400 });
+        if (!isAllTime && (!fromStr || !toStr)) return new NextResponse("Missing date range", { status: 400 });
         
-        const from = new Date(fromStr);
-        from.setHours(0, 0, 0, 0);
-        const to = new Date(toStr);
-        to.setHours(23, 59, 59, 999);
+        let from: Date;
+        let to: Date;
 
-        statementPeriod = { from, to };
-        
-        // Optimize by fetching only records within the date range
-        // And aggregate past records for the period opening balance
+        if (isAllTime) {
+          from = new Date(0);
+          to = toStr ? new Date(toStr) : new Date();
+          to.setHours(23, 59, 59, 999);
+        } else {
+          from = new Date(fromStr!);
+          from.setHours(0, 0, 0, 0);
+          to = new Date(toStr!);
+          to.setHours(23, 59, 59, 999);
+        }
+
         const pastPayments = await prisma.labourPayment.aggregate({
           where: { labourId: entityId, date: { lt: from } },
           _sum: { amount: true }
@@ -112,7 +117,6 @@ export async function GET(req: NextRequest) {
         });
         const paidBeforeFrom = pastPayments._sum.amount || 0;
         
-        // This will be the actual cash balance right before the 'from' date
         periodOpeningBalance = openingBalance + earnedBeforeFrom - paidBeforeFrom;
 
         payments = await prisma.labourPayment.findMany({
@@ -123,6 +127,11 @@ export async function GET(req: NextRequest) {
           where: { labourId: entityId, date: { gte: from, lte: to } },
           orderBy: { date: "asc" }
         });
+
+        const effectiveFrom = isAllTime 
+          ? (entityJoiningDate || payments[0]?.date || attendances[0]?.date || new Date())
+          : from;
+        statementPeriod = { from: effectiveFrom, to };
       }
     } else if (entityType === "SUPERVISOR") {
       const supervisor = await prisma.user.findUnique({
@@ -152,7 +161,6 @@ export async function GET(req: NextRequest) {
       }));
       openingBalance = supervisor.openingBalance || 0;
       periodOpeningBalance = openingBalance;
-      finalCalculations.outstandingBalance = openingBalance;
       baseDailyWage = (supervisor.monthlySalary || 0) / 30;
       isMonthlyCategory = true;
 
@@ -163,16 +171,25 @@ export async function GET(req: NextRequest) {
         if (!p) return new NextResponse("Payment not found", { status: 404 });
         payments = [p];
       } else {
+        const isAllTime = searchParams.get("allTime") === "true";
         const fromStr = searchParams.get("from");
         const toStr = searchParams.get("to");
-        if (!fromStr || !toStr) return new NextResponse("Missing date range", { status: 400 });
+        if (!isAllTime && (!fromStr || !toStr)) return new NextResponse("Missing date range", { status: 400 });
         
-        const from = new Date(fromStr);
-        from.setHours(0, 0, 0, 0);
-        const to = new Date(toStr);
-        to.setHours(23, 59, 59, 999);
+        let from: Date;
+        let to: Date;
 
-        statementPeriod = { from, to };
+        if (isAllTime) {
+          from = new Date(0);
+          to = toStr ? new Date(toStr) : new Date();
+          to.setHours(23, 59, 59, 999);
+        } else {
+          from = new Date(fromStr!);
+          from.setHours(0, 0, 0, 0);
+          to = new Date(toStr!);
+          to.setHours(23, 59, 59, 999);
+        }
+
         const pastPayments = await prisma.supervisorPayment.aggregate({
           where: { supervisorId: entityId, date: { lt: from } },
           _sum: { amount: true }
@@ -201,22 +218,22 @@ export async function GET(req: NextRequest) {
           where: { supervisorId: entityId, date: { gte: from, lte: to } },
           orderBy: { date: "asc" }
         });
+
+        const effectiveFrom = isAllTime 
+          ? (entityJoiningDate || payments[0]?.date || attendances[0]?.date || new Date())
+          : from;
+        statementPeriod = { from: effectiveFrom, to };
       }
     } else {
       return new NextResponse("Invalid entity type", { status: 400 });
     }
 
-    if (payments.length === 0 && attendances.length === 0) {
+    if (payments.length === 0 && attendances.length === 0 && periodOpeningBalance === 0) {
       return new NextResponse("No data found for the given criteria", { status: 404 });
     }
 
-
-
     if (type === "STATEMENT" && statementPeriod) {
       const monthMap = new Map<string, any>();
-      
-      // We will iterate from the earliest record (or opening balance) up to the 'to' date
-      // We only care about displaying months that fall on or after 'from' date
       
       const formatMonth = (d: Date) => {
         const m = d.toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -225,8 +242,34 @@ export async function GET(req: NextRequest) {
 
       const getMonthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
-      // Helper to aggregate based on cycle rules
-      // Earned: 1st to End of Month
+      // Pre-populate all calendar months in the period to guarantee continuous chronological order
+      const startYear = statementPeriod.from.getFullYear();
+      const startMonth = statementPeriod.from.getMonth();
+      const endYear = statementPeriod.to.getFullYear();
+      const endMonth = statementPeriod.to.getMonth();
+
+      let curYear = startYear;
+      let curMonth = startMonth;
+      while (curYear < endYear || (curYear === endYear && curMonth <= endMonth)) {
+        const d = new Date(curYear, curMonth, 1);
+        const key = getMonthKey(d);
+        if (!monthMap.has(key)) {
+          monthMap.set(key, {
+            monthStr: formatMonth(d),
+            earned: 0,
+            paid: 0,
+            hajari: 0,
+            dateObj: d,
+          });
+        }
+        curMonth++;
+        if (curMonth > 11) {
+          curMonth = 0;
+          curYear++;
+        }
+      }
+
+      // Aggregate Attendances into calendar month
       attendances.forEach(a => {
         let hajariValue = 0;
         let val = 0;
@@ -251,29 +294,22 @@ export async function GET(req: NextRequest) {
         monthMap.get(key).earned += val;
         monthMap.get(key).hajari += hajariValue;
         finalCalculations.totalEarned += val;
-        finalCalculations.outstandingBalance += val;
       });
 
-      // Paid: 21st to 20th of NEXT month -> this belongs to the EARLIER month's cycle!
-      // Example: 25th Aug payment belongs to August cycle (21st Aug - 20th Sept)
-      // Example: 5th Sept payment belongs to August cycle (21st Aug - 20th Sept)
+      // Aggregate Payments into their actual calendar month (NO arbitrary shifting!)
       payments.forEach(p => {
         const d = new Date(p.date);
-        let cycleMonthDate = new Date(d);
-        if (d.getDate() <= 20) {
-          // It belongs to the previous month's cycle
-          cycleMonthDate.setMonth(cycleMonthDate.getMonth() - 1);
-        }
-        
-        const key = getMonthKey(cycleMonthDate);
-        if (!monthMap.has(key)) monthMap.set(key, { monthStr: formatMonth(cycleMonthDate), earned: 0, paid: 0, hajari: 0, dateObj: new Date(cycleMonthDate.getFullYear(), cycleMonthDate.getMonth(), 1) });
+        const key = getMonthKey(d);
+        if (!monthMap.has(key)) monthMap.set(key, { monthStr: formatMonth(d), earned: 0, paid: 0, hajari: 0, dateObj: new Date(d.getFullYear(), d.getMonth(), 1) });
         
         monthMap.get(key).paid += p.amount;
         finalCalculations.totalPaid += p.amount;
-        finalCalculations.outstandingBalance -= p.amount;
       });
 
-      // Now convert to array, sort chronologically, and calculate rolling balance
+      // Outstanding balance MUST include the starting periodOpeningBalance
+      finalCalculations.outstandingBalance = periodOpeningBalance + finalCalculations.totalEarned - finalCalculations.totalPaid;
+
+      // Calculate rolling balance chronologically
       let rollingBalance = periodOpeningBalance;
       const sortedMonths = Array.from(monthMap.values()).sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
       
@@ -285,16 +321,26 @@ export async function GET(req: NextRequest) {
 
       monthlyBreakdown = sortedMonths;
       
-
-      
       allTransfers = allTransfers.filter(t => {
         const d = new Date(t.date);
         return d >= statementPeriod!.from && d <= statementPeriod!.to;
       });
     }
 
-    let logoStr: string | null = "/rcr-logo.png";
-    let stampStr: string | null = "/sign&logo.png";
+    let logoStr: string | null = null;
+    let stampStr: string | null = null;
+    try {
+      const logoPath = path.join(process.cwd(), "public", "rcr-logo.png");
+      if (fs.existsSync(logoPath)) {
+        logoStr = `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`;
+      }
+      const stampPath = path.join(process.cwd(), "public", "sign&logo.png");
+      if (fs.existsSync(stampPath)) {
+        stampStr = `data:image/png;base64,${fs.readFileSync(stampPath).toString("base64")}`;
+      }
+    } catch (e) {
+      console.warn("Could not load image buffer as base64:", e);
+    }
 
     const pdfData: PaymentSlipData = {
       companyName,

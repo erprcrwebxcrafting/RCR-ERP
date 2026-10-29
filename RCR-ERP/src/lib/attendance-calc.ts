@@ -227,7 +227,7 @@ export async function calculateAttendanceCardData(
       presentStr: presentStr,
       advDateNum: advDateNum,
       advFullDateStr,
-      advanceAmt: dayAdvance > 0 ? dayAdvance : null,
+      advanceAmt: dayAdvance !== 0 ? dayAdvance : null,
       remarks: reasons.join(", ")
     });
   }

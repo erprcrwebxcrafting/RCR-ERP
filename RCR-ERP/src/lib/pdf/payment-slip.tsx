@@ -106,7 +106,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#cbd5e1",
     borderRadius: 6,
-    overflow: "hidden",
   },
   tableHeader: {
     flexDirection: "row",
@@ -127,7 +126,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: "#e2e8f0",
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 15,
   },
   tableCellDate: {
@@ -201,7 +200,7 @@ const styles = StyleSheet.create({
   totalRow: {
     flexDirection: "row",
     backgroundColor: "#eef2ff",
-    paddingVertical: 15,
+    paddingVertical: 12,
     paddingHorizontal: 15,
     borderTopWidth: 2,
     borderTopColor: "#818cf8",
@@ -209,7 +208,7 @@ const styles = StyleSheet.create({
   totalLabel: {
     width: "70%",
     fontFamily: "Helvetica-Bold",
-    fontSize: 12,
+    fontSize: 11,
     color: "#3730a3",
     textAlign: "right",
     paddingRight: 15,
@@ -217,7 +216,7 @@ const styles = StyleSheet.create({
   totalAmount: {
     width: "30%",
     fontFamily: "Helvetica-Bold",
-    fontSize: 14,
+    fontSize: 12,
     color: "#312e81",
     textAlign: "right",
   },
@@ -447,41 +446,50 @@ const PaymentSlipDocument: React.FC<{ data: PaymentSlipData }> = ({ data }) => {
               </View>
               
               {data.monthlyBreakdown.map((m, i) => (
-                <View key={i} style={styles.tableRow}>
+                <View key={i} style={styles.tableRow} wrap={false}>
                   <Text style={[styles.tableCellDate, styles.colMonth]}>{m.monthStr}</Text>
                   <Text style={[styles.tableCellDesc, styles.colHajari]}>{m.hajari}</Text>
                   <Text style={[styles.tableCellAmount, styles.colEarned]}>
-                    {m.earned.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    {m.earned.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>
                   <Text style={[styles.tableCellAmount, styles.colPaid]}>
-                    {m.paid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    {m.paid.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>
                   <Text style={[styles.tableCellAmount, styles.colBal, { color: m.closingBalance > 0 ? "#e11d48" : "#0f172a" }]}>
-                    {m.closingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    {m.closingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>
                 </View>
               ))}
             </View>
 
             {data.finalCalculations && (
-              <View style={styles.finalSummaryBox}>
+              <View style={styles.finalSummaryBox} wrap={false}>
+                {data.statementPeriod?.openingBalance !== undefined && data.statementPeriod.openingBalance !== 0 && (
+                  <View style={styles.finalSummaryRow}>
+                    <Text style={styles.finalSummaryLabel}>Previous Balance (Before Period):</Text>
+                    <Text style={styles.finalSummaryValue}>
+                      Rs. {data.statementPeriod.openingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {data.statementPeriod.openingBalance > 0 ? " (Pending Due)" : " (Advance)"}
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.finalSummaryRow}>
                   <Text style={styles.finalSummaryLabel}>Total Earned (Date Range):</Text>
-                  <Text style={styles.finalSummaryValue}>Rs. {data.finalCalculations.totalEarned.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</Text>
+                  <Text style={styles.finalSummaryValue}>Rs. {data.finalCalculations.totalEarned.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
                 <View style={styles.finalSummaryRow}>
                   <Text style={styles.finalSummaryLabel}>Total Paid (Date Range):</Text>
-                  <Text style={styles.finalSummaryValue}>Rs. {data.finalCalculations.totalPaid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</Text>
+                  <Text style={styles.finalSummaryValue}>Rs. {data.finalCalculations.totalPaid.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
                 <View style={styles.finalOutstandingRow}>
                   <Text style={styles.finalOutstandingLabel}>Final Outstanding Balance:</Text>
-                  <Text style={styles.finalOutstandingValue}>Rs. {data.finalCalculations.outstandingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</Text>
+                  <Text style={styles.finalOutstandingValue}>Rs. {data.finalCalculations.outstandingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
               </View>
             )}
 
             {data.transferHistory && data.transferHistory.length > 0 && (
-              <View style={{ marginTop: 20 }} break>
+              <View style={{ marginTop: 20 }}>
                 <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", marginBottom: 10, color: "#334155" }}>Transfer History in Period</Text>
                 <View style={styles.table}>
                   <View style={styles.tableHeader}>
@@ -490,7 +498,7 @@ const PaymentSlipDocument: React.FC<{ data: PaymentSlipData }> = ({ data }) => {
                     <Text style={[styles.tableHeaderCell, { width: "40%" }]}>To Site</Text>
                   </View>
                   {data.transferHistory.map((t, i) => (
-                    <View key={i} style={styles.tableRow}>
+                    <View key={i} style={styles.tableRow} wrap={false}>
                       <Text style={[styles.tableCellDate, { width: "20%" }]}>{getFormattedDate(t.date)}</Text>
                       <Text style={[styles.tableCellDesc, { width: "40%" }]}>{t.fromSite}</Text>
                       <Text style={[styles.tableCellDesc, { width: "40%" }]}>{t.toSite}</Text>
@@ -501,14 +509,14 @@ const PaymentSlipDocument: React.FC<{ data: PaymentSlipData }> = ({ data }) => {
             )}
 
             {data.payments.length > 0 && (
-              <View style={{ marginTop: 30 }} break>
-                <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", marginBottom: 10, color: "#64748b" }}>Detailed Transaction List (Cycle Based)</Text>
+              <View style={{ marginTop: 25 }}>
+                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", marginBottom: 10, color: "#334155" }}>Detailed Transaction List</Text>
                 
-                {data.statementPeriod?.openingBalance !== undefined && (
+                {data.statementPeriod?.openingBalance !== undefined && data.statementPeriod.openingBalance !== 0 && (
                   <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 10, backgroundColor: "#f8fafc", padding: 8, borderRadius: 4, borderWidth: 1, borderColor: "#e2e8f0" }}>
                     <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#475569" }}>Previous Pending / Advance Balance</Text>
                     <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: data.statementPeriod.openingBalance > 0 ? "#e11d48" : "#0f172a" }}>
-                      Rs. {data.statementPeriod.openingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })} {data.statementPeriod.openingBalance > 0 ? "(Pending Due)" : data.statementPeriod.openingBalance < 0 ? "(Advance)" : "(Cleared)"}
+                      Rs. {data.statementPeriod.openingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {data.statementPeriod.openingBalance > 0 ? "(Pending Due)" : data.statementPeriod.openingBalance < 0 ? "(Advance)" : "(Cleared)"}
                     </Text>
                   </View>
                 )}
@@ -519,20 +527,33 @@ const PaymentSlipDocument: React.FC<{ data: PaymentSlipData }> = ({ data }) => {
                     <Text style={[styles.tableHeaderCell, styles.colRef]}>Reference / Reason</Text>
                     <Text style={[styles.tableHeaderCell, styles.colAmount]}>Amount Paid</Text>
                   </View>
-                  {data.payments.map((p, i) => (
-                    <View key={p.id || i} style={styles.tableRow}>
-                      <Text style={[styles.tableCellDate, styles.colDate]}>{getFormattedDate(p.date)}</Text>
-                      <View style={[styles.colRef]}>
-                        <Text style={styles.tableCellDesc}>{p.reason || "Advance Payout"}</Text>
-                        {p.transactionId && (
-                          <Text style={styles.tableCellTx}>Tx ID: {p.transactionId}</Text>
-                        )}
+                  {data.payments.map((p, i) => {
+                    const isCredit = p.amount < 0;
+                    return (
+                      <View key={p.id || i} style={styles.tableRow} wrap={false}>
+                        <Text style={[styles.tableCellDate, styles.colDate]}>{getFormattedDate(p.date)}</Text>
+                        <View style={[styles.colRef]}>
+                          <Text style={styles.tableCellDesc}>{p.reason || (isCredit ? "Credit / Due Adjustment" : "Advance Payout")}</Text>
+                          {p.transactionId && (
+                            <Text style={styles.tableCellTx}>Tx ID: {p.transactionId}</Text>
+                          )}
+                        </View>
+                        <Text style={[styles.tableCellAmount, styles.colAmount, { color: isCredit ? "#059669" : "#e11d48", fontFamily: "Helvetica-Bold" }]}>
+                          {isCredit ? "+ " : "- "}Rs. {Math.abs(p.amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Text>
                       </View>
-                      <Text style={[styles.tableCellAmount, styles.colAmount]}>
-                        {p.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                      </Text>
-                    </View>
-                  ))}
+                    );
+                  })}
+
+                  <View style={[styles.tableRow, { backgroundColor: "#f8fafc", borderTopWidth: 2, borderTopColor: "#cbd5e1" }]} wrap={false}>
+                    <Text style={[styles.tableCellDate, styles.colDate, { fontFamily: "Helvetica-Bold" }]}>Total</Text>
+                    <Text style={[styles.tableCellDesc, styles.colRef, { fontFamily: "Helvetica-Bold", color: "#64748b" }]}>
+                      {data.payments.length} Transaction{data.payments.length !== 1 ? "s" : ""}
+                    </Text>
+                    <Text style={[styles.tableCellAmount, styles.colAmount, { fontFamily: "Helvetica-Bold", color: "#4338ca" }]}>
+                      Rs. {totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </Text>
+                  </View>
                 </View>
               </View>
             )}
@@ -545,27 +566,30 @@ const PaymentSlipDocument: React.FC<{ data: PaymentSlipData }> = ({ data }) => {
               <Text style={[styles.tableHeaderCell, styles.colAmount]}>Amount Paid (Rs.)</Text>
             </View>
             
-            {data.payments.map((p, i) => (
-              <View key={p.id || i} style={styles.tableRow}>
-                <Text style={[styles.tableCellDate, styles.colDate]}>{getFormattedDate(p.date)}</Text>
-                <View style={[styles.colRef]}>
-                  <Text style={styles.tableCellDesc}>{p.reason || "Advance Payout"}</Text>
-                  {p.transactionId && (
-                    <Text style={styles.tableCellTx}>
-                      Tx ID: {p.transactionId}
-                    </Text>
-                  )}
+            {data.payments.map((p, i) => {
+              const isCredit = p.amount < 0;
+              return (
+                <View key={p.id || i} style={styles.tableRow} wrap={false}>
+                  <Text style={[styles.tableCellDate, styles.colDate]}>{getFormattedDate(p.date)}</Text>
+                  <View style={[styles.colRef]}>
+                    <Text style={styles.tableCellDesc}>{p.reason || (isCredit ? "Credit / Due Adjustment" : "Advance Payout")}</Text>
+                    {p.transactionId && (
+                      <Text style={styles.tableCellTx}>
+                        Tx ID: {p.transactionId}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={[styles.tableCellAmount, styles.colAmount, { color: isCredit ? "#059669" : "#e11d48", fontFamily: "Helvetica-Bold" }]}>
+                    {isCredit ? "+ " : "- "}Rs. {Math.abs(p.amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Text>
                 </View>
-                <Text style={[styles.tableCellAmount, styles.colAmount]}>
-                  {p.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                </Text>
-              </View>
-            ))}
+              );
+            })}
 
-            <View style={styles.totalRow}>
+            <View style={styles.totalRow} wrap={false}>
               <Text style={styles.totalLabel}>TOTAL PAID:</Text>
               <Text style={styles.totalAmount}>
-                Rs. {totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                Rs. {totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </Text>
             </View>
           </View>

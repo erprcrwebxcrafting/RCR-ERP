@@ -224,12 +224,34 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
                       {att.remarks && <span className="block text-[9px] leading-tight opacity-90 mt-0.5 italic">{att.remarks}</span>}
                     </div>
                   )}
-                  {payments.map(p => (
-                    <div key={p.id} className="text-[11px] text-red-600 bg-red-50 dark:bg-red-950/40 px-1.5 py-0.5 rounded w-fit border border-red-100 dark:border-red-900/50">
-                      <span className="font-bold">-₹{p.amount.toLocaleString("en-IN")}</span>
-                      {p.reason && <span className="block text-[9px] leading-tight text-red-500/80 mt-0.5">{p.reason}</span>}
-                    </div>
-                  ))}
+                  {payments.map(p => {
+                    const isCredit = p.amount < 0;
+                    return (
+                      <div
+                        key={p.id}
+                        className={`text-[11px] px-1.5 py-0.5 rounded w-fit border ${
+                          isCredit
+                            ? "text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 shadow-xs"
+                            : "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border-red-100 dark:border-red-900/50"
+                        }`}
+                      >
+                        <span className="font-bold">
+                          {isCredit ? "+₹" : "-₹"}{Math.abs(p.amount).toLocaleString("en-IN")}
+                        </span>
+                        {p.reason && (
+                          <span
+                            className={`block text-[9px] leading-tight mt-0.5 ${
+                              isCredit
+                                ? "text-emerald-600/90 dark:text-emerald-400/90 font-medium"
+                                : "text-red-500/80 dark:text-red-400/80"
+                            }`}
+                          >
+                            {p.reason}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                   {transfers && transfers.map(t => (
                     <div key={t.id} className="text-[10px] text-blue-700 bg-blue-100 dark:bg-blue-900/40 dark:text-blue-400 px-1.5 py-0.5 rounded w-fit border border-blue-200 dark:border-blue-800/50">
                       <span className="font-bold block">Transferred</span>

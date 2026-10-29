@@ -147,8 +147,8 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
   const earnedStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const earnedEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   
-  const paidStart = new Date(now.getFullYear(), now.getMonth(), 21);
-  const paidEnd = new Date(now.getFullYear(), now.getMonth() + 1, 20, 23, 59, 59, 999);
+  const paidStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const paidEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
   const displayMonthName = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(now);
 
@@ -305,7 +305,7 @@ export default async function SupervisorLedgerPage({ params, searchParams }: { p
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Paid ({displayMonthName})</p>
             <p className="text-2xl sm:text-3xl font-black tracking-tight text-fuchsia-600 dark:text-fuchsia-500">₹{thisMonthPaid.toLocaleString("en-IN")}</p>
             <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-1">
-              Payout: 21st {displayMonthName} - 20th Next Month
+              Payout: 1st - {new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()} {displayMonthName}
               <br/>
               Prev. Bal: ₹{Math.abs(thisMonthOpeningBalance).toLocaleString("en-IN")} {thisMonthOpeningBalance > 0 ? "(Pending Due)" : thisMonthOpeningBalance < 0 ? "(Advance)" : "(Cleared)"}
               <br/>

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,12 @@ import { validatePositiveNumber } from "@/lib/validations";
 export function PaymentForm({ labourId, initialData }: { labourId: string, initialData?: any }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [paymentType, setPaymentType] = useState<"PAYOUT" | "CREDIT">("PAYOUT");
+  const [paymentType, setPaymentType] = useState<"PAYOUT" | "CREDIT">(initialData?.amount < 0 ? "CREDIT" : "PAYOUT");
+  useEffect(() => {
+    if (open) {
+      setPaymentType(initialData?.amount < 0 ? "CREDIT" : "PAYOUT");
+    }
+  }, [open, initialData]);
   const isEditing = !!initialData;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {

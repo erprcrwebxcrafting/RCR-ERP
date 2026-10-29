@@ -494,12 +494,35 @@ export function AttendanceCalendar({ supervisor, initialAttendances, payments = 
                         Not marked
                       </div>
                     )}
-                    {dayPayments.map(p => (
-                      <div key={p.id} className="text-[10px] text-rose-600 bg-rose-50 dark:bg-rose-950/40 px-1 py-0.5 mt-1 rounded w-fit border border-rose-100 dark:border-rose-900/50">
-                        <span className="font-bold">-₹{p.amount.toLocaleString("en-IN")}</span>
-                        {p.reason && <span className="block text-[9px] leading-tight text-rose-500/80 mt-0.5 truncate max-w-[100px]" title={p.reason}>{p.reason}</span>}
-                      </div>
-                    ))}
+                    {dayPayments.map(p => {
+                      const isCredit = p.amount < 0;
+                      return (
+                        <div
+                          key={p.id}
+                          className={`text-[10px] px-1 py-0.5 mt-1 rounded w-fit border ${
+                            isCredit
+                              ? "text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 shadow-xs"
+                              : "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-rose-100 dark:border-rose-900/50"
+                          }`}
+                        >
+                          <span className="font-bold">
+                            {isCredit ? "+₹" : "-₹"}{Math.abs(p.amount).toLocaleString("en-IN")}
+                          </span>
+                          {p.reason && (
+                            <span
+                              className={`block text-[9px] leading-tight mt-0.5 truncate max-w-[100px] ${
+                                isCredit
+                                  ? "text-emerald-600/90 dark:text-emerald-400/90 font-medium"
+                                  : "text-rose-500/80 dark:text-rose-400/80"
+                              }`}
+                              title={p.reason}
+                            >
+                              {p.reason}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {/* Quick Action Buttons on Hover */}

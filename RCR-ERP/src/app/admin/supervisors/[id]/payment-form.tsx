@@ -11,7 +11,7 @@ import {
   DialogDescription
 } from "@/components/ui/dialog";
 import { recordSupervisorPayment, deleteSupervisorPayment } from "./actions";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { IndianRupee, Calendar, Search, Hash, Save, Plus, X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { validatePositiveNumber } from "@/lib/validations";
@@ -19,7 +19,12 @@ import { validatePositiveNumber } from "@/lib/validations";
 export function SupervisorPaymentForm({ supervisorId, initialData }: { supervisorId: string, initialData?: any }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const [paymentType, setPaymentType] = useState<"PAYOUT" | "CREDIT">("PAYOUT");
+  const [paymentType, setPaymentType] = useState<"PAYOUT" | "CREDIT">(initialData?.amount < 0 ? "CREDIT" : "PAYOUT");
+  useEffect(() => {
+    if (open) {
+      setPaymentType(initialData?.amount < 0 ? "CREDIT" : "PAYOUT");
+    }
+  }, [open, initialData]);
   const isEditing = !!initialData;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
