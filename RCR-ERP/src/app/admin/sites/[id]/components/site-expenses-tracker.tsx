@@ -486,11 +486,19 @@ export function SiteExpensesTracker({ site }: { site: any }) {
       const pdfMakeModule = await import('pdfmake/build/pdfmake');
       const pdfFontsModule = await import('pdfmake/build/vfs_fonts');
       
-      const pdfMake = pdfMakeModule.default || pdfMakeModule;
-      // @ts-ignore
-      const vfs = pdfFontsModule.default ? pdfFontsModule.default.pdfMake.vfs : (pdfFontsModule.pdfMake ? pdfFontsModule.pdfMake.vfs : pdfMake.vfs);
-      // @ts-ignore
-      pdfMake.vfs = vfs;
+      const pdfMake = (pdfMakeModule as any).default || pdfMakeModule;
+      const vfs = (pdfFontsModule as any).pdfMake?.vfs 
+        || (pdfFontsModule as any).default?.pdfMake?.vfs 
+        || (pdfFontsModule as any).default 
+        || pdfFontsModule;
+
+      if (pdfMake.addVirtualFileSystem) {
+        pdfMake.addVirtualFileSystem(vfs);
+      }
+      (pdfMake as any).vfs = vfs;
+
+      const safeProjectName = (site.projectName || "Site").trim();
+      const sanitizedFilename = safeProjectName.replace(/[^a-zA-Z0-9_-]/g, '_');
 
       const docDefinition: any = {
         pageSize: 'A4',
@@ -507,7 +515,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
           totalRowRight: { fontSize: 9, bold: true, color: '#0f172a', fillColor: '#f1f5f9', alignment: 'right' }
         },
         content: [
-          { text: site.projectName.toUpperCase(), style: 'header' },
+          { text: safeProjectName.toUpperCase(), style: 'header' },
           { text: `SITE EXPENSES & FINANCIAL LEDGER (${dateRangeStr.toUpperCase()})`, style: 'subheader' },
           { text: `Generated on: ${formatDate(new Date())} | Filter: ${dateRangeStr}`, style: 'metaText' },
           
@@ -523,10 +531,10 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                   { text: 'Net Savings / Profit', style: 'tableHeaderRight' }
                 ],
                 [
-                  { text: formatINR(totalRevenue), style: 'tableCell', bold: true, color: '#059669' },
-                  { text: formatINR(siteExpensesTotal), style: 'tableCell', bold: true, color: '#e11d48' },
-                  { text: formatINR(totalGstExpense), style: 'tableCell', bold: true, color: '#9333ea' },
-                  { text: formatINR(netProfit), style: 'tableCellRight', bold: true, color: netProfit >= 0 ? '#059669' : '#e11d48' }
+                  { text: formatINR(totalRevenue || 0), style: 'tableCell', bold: true, color: '#059669' },
+                  { text: formatINR(siteExpensesTotal || 0), style: 'tableCell', bold: true, color: '#e11d48' },
+                  { text: formatINR(totalGstExpense || 0), style: 'tableCell', bold: true, color: '#9333ea' },
+                  { text: formatINR(netProfit || 0), style: 'tableCellRight', bold: true, color: netProfit >= 0 ? '#059669' : '#e11d48' }
                 ]
               ]
             },
@@ -551,14 +559,14 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                 { text: 'Invoice Amt (Inc. GST)', style: 'tableHeaderRight' }
               ],
               ...billSummaries.map((b: any) => [
-                { text: b.billNo, style: 'tableCell' },
-                { text: formatDate(b.date), style: 'tableCell' },
-                { text: formatINR(b.grossAmount), style: 'tableCellRight' },
-                { text: formatINR(b.invoiceAmount), style: 'tableCellRight' }
+                { text: b.billNo || '-', style: 'tableCell' },
+                { text: formatDate(b.date || new Date()), style: 'tableCell' },
+                { text: formatINR(b.grossAmount || 0), style: 'tableCellRight' },
+                { text: formatINR(b.invoiceAmount || 0), style: 'tableCellRight' }
               ]),
               [
                 { text: 'TOTAL REVENUE', style: 'totalRow', colSpan: 3 }, {}, {},
-                { text: formatINR(totalRevenue), style: 'totalRowRight' }
+                { text: formatINR(totalRevenue || 0), style: 'totalRowRight' }
               ]
             ]
           },
@@ -582,15 +590,15 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                 { text: 'Total Earned', style: 'tableHeaderRight', fillColor: '#6366f1' }
               ],
               ...earnedWorkersList.map((p: any) => [
-                { text: p.name, style: 'tableCell' },
-                { text: `${p.type === 'SUPERVISOR' ? 'Supervisor' : p.roleName}`, style: 'tableCell' },
-                { text: formatINR(p.rate), style: 'tableCellRight' },
-                { text: `${p.totalHajari} Days`, style: 'tableCell', alignment: 'center' },
-                { text: formatINR(p.earnedAmount), style: 'tableCellRight' }
+                { text: p.name || 'Worker', style: 'tableCell' },
+                { text: p.type === 'SUPERVISOR' ? 'Supervisor' : (p.roleName || 'General'), style: 'tableCell' },
+                { text: formatINR(p.rate || 0), style: 'tableCellRight' },
+                { text: `${p.totalHajari || 0} Days`, style: 'tableCell', alignment: 'center' },
+                { text: formatINR(p.earnedAmount || 0), style: 'tableCellRight' }
               ]),
               [
                 { text: 'TOTAL MANPOWER COST', style: 'totalRow', colSpan: 4 }, {}, {}, {},
-                { text: formatINR(totalManpowerEarned), style: 'totalRowRight' }
+                { text: formatINR(totalManpowerEarned || 0), style: 'totalRowRight' }
               ]
             ]
           },
@@ -614,10 +622,10 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                 { text: 'Net Balance', style: 'tableHeaderRight', fillColor: '#059669' }
               ],
               ...advancesWorkersList.map((p: any) => [
-                { text: p.name, style: 'tableCell' },
-                { text: p.roleName, style: 'tableCell' },
-                { text: formatINR(p.earnedAmount), style: 'tableCellRight' },
-                { text: formatINR(p.advancePaid), style: 'tableCellRight' },
+                { text: p.name || 'Worker', style: 'tableCell' },
+                { text: p.roleName || 'General', style: 'tableCell' },
+                { text: formatINR(p.earnedAmount || 0), style: 'tableCellRight' },
+                { text: formatINR(p.advancePaid || 0), style: 'tableCellRight' },
                 { 
                   text: p.netBalance > 0 ? `+ ${formatINR(p.netBalance)} (Due)` : p.netBalance < 0 ? `- ${formatINR(Math.abs(p.netBalance))} (Adv)` : 'Settled',
                   style: 'tableCellRight',
@@ -626,9 +634,9 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               ]),
               [
                 { text: 'TOTALS', style: 'totalRow', colSpan: 2 }, {},
-                { text: formatINR(totalManpowerEarned), style: 'totalRowRight' },
-                { text: formatINR(totalAdvancesPaid), style: 'totalRowRight' },
-                { text: formatINR(totalNetDue), style: 'totalRowRight' }
+                { text: formatINR(totalManpowerEarned || 0), style: 'totalRowRight' },
+                { text: formatINR(totalAdvancesPaid || 0), style: 'totalRowRight' },
+                { text: formatINR(totalNetDue || 0), style: 'totalRowRight' }
               ]
             ]
           },
@@ -651,14 +659,14 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                 { text: 'GST (18%)', style: 'tableHeaderRight', fillColor: '#9333ea' }
               ],
               ...billSummaries.map((b: any) => [
-                { text: formatDate(b.date), style: 'tableCell' },
-                { text: b.billNo, style: 'tableCell' },
-                { text: formatINR(b.grossAmount), style: 'tableCellRight' },
-                { text: formatINR(b.gstAmount), style: 'tableCellRight' }
+                { text: formatDate(b.date || new Date()), style: 'tableCell' },
+                { text: b.billNo || '-', style: 'tableCell' },
+                { text: formatINR(b.grossAmount || 0), style: 'tableCellRight' },
+                { text: formatINR(b.gstAmount || 0), style: 'tableCellRight' }
               ]),
               [
                 { text: 'TOTAL GST OUTFLOW', style: 'totalRow', colSpan: 3 }, {}, {},
-                { text: formatINR(totalGstExpense), style: 'totalRowRight' }
+                { text: formatINR(totalGstExpense || 0), style: 'totalRowRight' }
               ]
             ]
           },
@@ -681,14 +689,14 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                 { text: 'Amount', style: 'tableHeaderRight', fillColor: '#e11d48' }
               ],
               ...manualExpenses.map((e: any) => [
-                { text: formatDate(e.date), style: 'tableCell' },
-                { text: e.paidTo, style: 'tableCell' },
-                { text: e.description, style: 'tableCell' },
-                { text: formatINR(e.amount), style: 'tableCellRight' }
+                { text: formatDate(e.date || new Date()), style: 'tableCell' },
+                { text: e.paidTo || '-', style: 'tableCell' },
+                { text: e.description || '-', style: 'tableCell' },
+                { text: formatINR(e.amount || 0), style: 'tableCellRight' }
               ]),
               [
                 { text: 'TOTAL MANUAL EXPENSES', style: 'totalRow', colSpan: 3 }, {}, {},
-                { text: formatINR(manualExpensesTotal), style: 'totalRowRight' }
+                { text: formatINR(manualExpensesTotal || 0), style: 'totalRowRight' }
               ]
             ]
           },
@@ -696,12 +704,20 @@ export function SiteExpensesTracker({ site }: { site: any }) {
         });
       }
 
-      // @ts-ignore
-      pdfMake.createPdf(docDefinition).download(`${site.projectName}_Ledger_Report.pdf`);
+      const pdfDoc = pdfMake.createPdf(docDefinition);
+      
+      // Use getBlob and saveAs for reliable browser file downloading
+      if (typeof pdfDoc.getBlob === 'function') {
+        const blob = await pdfDoc.getBlob();
+        saveAs(blob, `${sanitizedFilename}_Ledger_Report.pdf`);
+      } else {
+        pdfDoc.download(`${sanitizedFilename}_Ledger_Report.pdf`);
+      }
+      
       toast.success("PDF Downloaded successfully!", { id: "pdf-toast" });
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to generate PDF. Please try again.", { id: "pdf-toast" });
+    } catch (error: any) {
+      console.error("PDF Generation Error:", error);
+      toast.error(error?.message || "Failed to generate PDF. Please try again.", { id: "pdf-toast" });
     }
   };
 
