@@ -8,7 +8,7 @@ import { IndianNumberInput } from "@/components/ui/indian-number-input";
 import { Button } from "@/components/ui/button";
 import { formatINR, formatDate } from "@/lib/utils";
 import { recordSiteExpenseAction, deleteSiteExpenseAction } from "../expense-actions";
-import { Banknote, Plus, Printer, Download, TrendingUp, Trash2, CircleDollarSign, Users, HardHat, FileCheck } from "lucide-react";
+import { Banknote, Plus, Printer, Download, TrendingUp, Trash2, CircleDollarSign, Users, HardHat, FileCheck, Percent } from "lucide-react";
 import { toast } from "sonner";
 import * as ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -34,12 +34,18 @@ export function SiteExpensesTracker({ site }: { site: any }) {
   const [startDateStr, setStartDateStr] = useState(defaultStartDate.toISOString().split('T')[0]);
   const [endDateStr, setEndDateStr] = useState(defaultEndDate.toISOString().split('T')[0]);
   
-  const startDate = new Date(startDateStr);
-  const endDate = new Date(endDateStr);
-  endDate.setHours(23, 59, 59, 999);
+  // Safe local date boundaries (prevents UTC offset dropping early/late day records)
+  const [sYear, sMonth, sDay] = startDateStr.split('-').map(Number);
+  const startDate = new Date(sYear, sMonth - 1, sDay, 0, 0, 0, 0);
+
+  const [eYear, eMonth, eDay] = endDateStr.split('-').map(Number);
+  const endDate = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
 
   // 1. Revenue Calculations (RA Bills)
-  const bills = (site.bills || []).filter((b: any) => new Date(b.createdAt) >= startDate && new Date(b.createdAt) <= endDate);
+  const bills = (site.bills || []).filter((b: any) => {
+    const bDate = new Date(b.billDate || b.createdAt);
+    return bDate >= startDate && bDate <= endDate;
+  });
   let totalRevenue = 0;
   let totalGstExpense = 0;
   const billSummaries = bills.map((b: any) => {
@@ -61,10 +67,11 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     return {
       id: b.id,
       billNo: b.billNo,
-      date: b.createdAt,
+      date: b.billDate || b.createdAt,
       grossAmount: gross,
       netAmount: netAmt,
       invoiceAmount: invoiceAmount,
+      gstAmount: gstAmt,
       totalTax: gstAmt + tdsAmt,
     };
   });
@@ -76,11 +83,11 @@ export function SiteExpensesTracker({ site }: { site: any }) {
   // Generate Date Columns for the grid
   const dateColumns: string[] = [];
   let d = new Date(startDate);
-  d.setHours(0, 0, 0, 0);
-  const endD = new Date(endDate);
-  endD.setHours(0, 0, 0, 0);
-  while (d <= endD) {
-    dateColumns.push(d.toISOString().split('T')[0]);
+  while (d <= endDate) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    dateColumns.push(`${y}-${m}-${day}`);
     d.setDate(d.getDate() + 1);
   }
 
@@ -103,7 +110,10 @@ export function SiteExpensesTracker({ site }: { site: any }) {
           workerTotal += payment.amount;
           paymentCount++;
           
-          const dateStr = pDate.toISOString().split('T')[0];
+          const py = pDate.getFullYear();
+          const pm = String(pDate.getMonth() + 1).padStart(2, '0');
+          const pd = String(pDate.getDate()).padStart(2, '0');
+          const dateStr = `${py}-${pm}-${pd}`;
           paymentsByDate[dateStr] = (paymentsByDate[dateStr] || 0) + payment.amount;
           
           paymentDetails.push(`${formatDate(payment.date).split(' ')[0]} (₹${payment.amount})`);
@@ -113,7 +123,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
         }
       });
       
-      if (workerTotal > 0) {
+      if (paymentCount > 0) {
         allLabourPayments.push({
           labourId: labour.id,
           labourName: labour.name,
@@ -131,15 +141,12 @@ export function SiteExpensesTracker({ site }: { site: any }) {
   // Sort by highest amount paid
   allLabourPayments.sort((a, b) => b.amount - a.amount);
 
-  // 4. Supply Labour Costs
-  const supplyEntries = (site.supplyLabourEntries || []).filter((e: any) => new Date(e.date) >= startDate && new Date(e.date) <= endDate);
-  const supplyLabourTotal = supplyEntries.reduce((sum: number, entry: any) => sum + (entry.totalAmount || 0), 0);
-
-  // Totals
-  const totalExpenses = manualExpensesTotal + labourPaymentsTotal + supplyLabourTotal + totalGstExpense;
+  // Totals: Extra Supply Labours excluded (managed under separate Supply sheet, not internal site expense)
+  const siteExpensesTotal = manualExpensesTotal + labourPaymentsTotal;
+  const totalExpenses = siteExpensesTotal + totalGstExpense;
   const netProfit = totalRevenue - totalExpenses;
 
-  const dateRangeStr = startDate.getMonth() === endDate.getMonth()
+  const dateRangeStr = (startDate.getMonth() === endDate.getMonth() && startDate.getFullYear() === endDate.getFullYear())
     ? startDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
     : `${startDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })} to ${endDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`;
 
@@ -186,8 +193,12 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                   { text: formatINR(totalRevenue), style: 'tableCellRight' }
                 ],
                 [
-                  { text: 'Total Deductions & Expenses', style: 'tableCell' }, 
-                  { text: formatINR(totalExpenses), style: 'tableCellRight' }
+                  { text: 'Site Expenses (Labours + Manual)', style: 'tableCell' }, 
+                  { text: formatINR(siteExpensesTotal), style: 'tableCellRight' }
+                ],
+                [
+                  { text: 'GST Outflow (18% to Govt)', style: 'tableCell' }, 
+                  { text: formatINR(totalGstExpense), style: 'tableCellRight' }
                 ],
                 [
                   { text: 'Net Savings / Profit', style: 'totalRow', color: netProfit >= 0 ? '#059669' : '#e11d48' }, 
@@ -260,27 +271,29 @@ export function SiteExpensesTracker({ site }: { site: any }) {
         });
       }
 
-      // Add Supply Labours
-      if (supplyEntries.length > 0) {
-        docDefinition.content.push({ text: 'Extra Supply Labours', style: 'subheader' });
+      // Add GST Breakdown
+      if (billSummaries.length > 0) {
+        docDefinition.content.push({ text: 'GST Outflow (Govt Tax Breakdown)', style: 'subheader' });
         docDefinition.content.push({
           table: {
             headerRows: 1,
-            widths: ['auto', '*', 'auto'],
+            widths: ['auto', '*', 'auto', 'auto'],
             body: [
               [
-                { text: 'Date', style: 'tableHeader', fillColor: '#f97316' }, 
-                { text: 'Description', style: 'tableHeader', fillColor: '#f97316' }, 
-                { text: 'Total Cost', style: 'tableHeaderRight', fillColor: '#f97316' }
+                { text: 'Date', style: 'tableHeader', fillColor: '#9333ea' }, 
+                { text: 'Bill No.', style: 'tableHeader', fillColor: '#9333ea' }, 
+                { text: 'Gross Amount', style: 'tableHeaderRight', fillColor: '#9333ea' }, 
+                { text: 'GST (18%)', style: 'tableHeaderRight', fillColor: '#9333ea' }
               ],
-              ...supplyEntries.map((s: any) => [
-                { text: formatDate(s.date), style: 'tableCell' },
-                { text: s.description, style: 'tableCell' },
-                { text: formatINR(s.totalAmount), style: 'tableCellRight' }
+              ...billSummaries.map((b: any) => [
+                { text: formatDate(b.date), style: 'tableCell' },
+                { text: b.billNo, style: 'tableCell' },
+                { text: formatINR(b.grossAmount), style: 'tableCellRight' },
+                { text: formatINR(b.gstAmount), style: 'tableCellRight' }
               ]),
               [
-                { text: 'TOTAL SUPPLY LABOUR', style: 'totalRow', colSpan: 2 }, {},
-                { text: formatINR(supplyLabourTotal), style: 'totalRowRight' }
+                { text: 'TOTAL GST OUTFLOW', style: 'totalRow', colSpan: 3 }, {}, {},
+                { text: formatINR(totalGstExpense), style: 'totalRowRight' }
               ]
             ]
           },
@@ -355,7 +368,8 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     addSectionTitle(sheet, `FINANCIAL SUMMARY (${dateRangeStr})`);
     addHeaderRow(sheet, ["Metric", "", "", "Amount (Rs)"]);
     sheet.addRow(["Total Revenue (RA Bills + GST)", "", "", totalRevenue]);
-    sheet.addRow(["Total Deductions & Expenses", "", "", totalExpenses]);
+    sheet.addRow(["Site Expenses (Labours + Manual)", "", "", siteExpensesTotal]);
+    sheet.addRow(["GST Outflow (18% to Govt)", "", "", totalGstExpense]);
     const netRow = sheet.addRow(["Net Savings / Profit", "", "", netProfit]);
     netRow.font = { bold: true, color: { argb: netProfit >= 0 ? "FF059669" : "FFE11D48" } };
     sheet.addRow([]); sheet.addRow([]);
@@ -368,12 +382,12 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     sheet.addRow(["TOTAL REVENUE", "", "", totalRevenue]).font = { bold: true };
     sheet.addRow([]); sheet.addRow([]);
 
-    // 3. SUPPLY LABOURS
-    addSectionTitle(sheet, "EXTRA SUPPLY LABOURS");
-    addHeaderRow(sheet, ["Date", "Description", "", "Total Cost"]);
-    if (supplyEntries.length === 0) sheet.addRow(["No Supply Labours found", "", "", ""]);
-    supplyEntries.forEach((s: any) => sheet.addRow([formatDate(s.date), s.description, "", s.totalAmount]));
-    sheet.addRow(["TOTAL SUPPLY LABOUR", "", "", supplyLabourTotal]).font = { bold: true };
+    // 3. GST BREAKDOWN
+    addSectionTitle(sheet, "GST OUTFLOW (GOVT TAX BREAKDOWN)");
+    addHeaderRow(sheet, ["Date", "Bill No", "Gross Amount", "GST Amount (18%)"]);
+    if (billSummaries.length === 0) sheet.addRow(["No RA Bills found", "", "", ""]);
+    billSummaries.forEach((b: any) => sheet.addRow([formatDate(b.date), b.billNo, b.grossAmount, b.gstAmount]));
+    sheet.addRow(["TOTAL GST OUTFLOW", "", "", totalGstExpense]).font = { bold: true };
     sheet.addRow([]); sheet.addRow([]);
 
     // 4. MANUAL EXPENSES
@@ -474,7 +488,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-3 mb-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
         <Card className="bg-emerald-500/10 border-emerald-500/30 print:border print:bg-transparent">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Total Revenue (Invoice + GST)</CardTitle>
@@ -488,12 +502,23 @@ export function SiteExpensesTracker({ site }: { site: any }) {
 
         <Card className="bg-rose-500/10 border-rose-500/30 print:border print:bg-transparent">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-rose-700 dark:text-rose-400">Total Deductions & Expenses</CardTitle>
+            <CardTitle className="text-sm font-medium text-rose-700 dark:text-rose-400">Total Site Expenses</CardTitle>
             <TrendingUp className="h-4 w-4 text-rose-500 rotate-180" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatINR(totalExpenses)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Labours + Supply + Manual + GST</p>
+            <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatINR(siteExpensesTotal)}</div>
+            <p className="text-xs text-muted-foreground mt-1">Labours ({formatINR(labourPaymentsTotal)}) + Manual ({formatINR(manualExpensesTotal)})</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-purple-500/10 border-purple-500/30 print:border print:bg-transparent">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-400">GST Outflow (To Govt)</CardTitle>
+            <Percent className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{formatINR(totalGstExpense)}</div>
+            <p className="text-xs text-muted-foreground mt-1">18% GST across {billSummaries.length} RA Bills</p>
           </CardContent>
         </Card>
 
@@ -507,7 +532,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               {formatINR(netProfit)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              (Revenue - Expenses)
+              (Revenue - Expenses - GST)
             </p>
           </CardContent>
         </Card>
@@ -603,33 +628,38 @@ export function SiteExpensesTracker({ site }: { site: any }) {
           </CardContent>
         </Card>
 
-        {/* SUPPLY LABOURS */}
+        {/* GST BREAKDOWN SECTION */}
         <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden flex flex-col">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-lg font-bold flex items-center gap-2">
-              <HardHat className="h-5 w-5 text-orange-500" />
-              Extra Supply Labours
+              <Percent className="h-5 w-5 text-purple-500" />
+              <span>GST Outflow (Govt Tax)</span>
             </CardTitle>
+            <div className="text-xs font-semibold bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-2.5 py-1 rounded-full border border-purple-100 dark:border-purple-800">
+              18% GST (CGST + SGST)
+            </div>
           </CardHeader>
           <CardContent className="flex flex-col">
             <div className="max-h-[260px] max-w-full overflow-auto print:max-h-none print:overflow-visible pb-1 relative border rounded-md">
               <Table>
                 <THead>
                   <TR>
+                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Bill No.</TH>
                     <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Date</TH>
-                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Description</TH>
-                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Total Cost</TH>
+                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">Gross Amt</TH>
+                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b">GST (18%)</TH>
                   </TR>
                 </THead>
                 <TBody>
-                  {supplyEntries.length === 0 ? (
-                    <TR><TD colSpan={3} className="text-center text-muted-foreground py-4">No supply entries.</TD></TR>
+                  {billSummaries.length === 0 ? (
+                    <TR><TD colSpan={4} className="text-center text-muted-foreground py-4">No RA Bills generated.</TD></TR>
                   ) : (
-                    supplyEntries.map((s: any) => (
-                      <TR key={s.id}>
-                        <TD className="text-muted-foreground whitespace-nowrap">{formatDate(s.date)}</TD>
-                        <TD className="font-medium break-all min-w-[150px] max-w-[250px]">{s.description}</TD>
-                        <TD className="text-right font-bold text-rose-600 whitespace-nowrap">{formatINR(s.totalAmount)}</TD>
+                    billSummaries.map((b: any) => (
+                      <TR key={b.id}>
+                        <TD className="font-medium whitespace-nowrap">{b.billNo}</TD>
+                        <TD className="text-muted-foreground whitespace-nowrap">{formatDate(b.date)}</TD>
+                        <TD className="text-right text-muted-foreground whitespace-nowrap">{formatINR(b.grossAmount)}</TD>
+                        <TD className="text-right font-bold text-purple-600 dark:text-purple-400 whitespace-nowrap">{formatINR(b.gstAmount)}</TD>
                       </TR>
                     ))
                   )}
@@ -637,8 +667,13 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               </Table>
             </div>
             
-            <div className="mt-3 pt-2 text-right font-bold text-lg text-rose-600">
-              Total: {formatINR(supplyLabourTotal)}
+            <div className="mt-3 flex items-center justify-between">
+              <div className="text-xs text-muted-foreground">
+                CGST (9%) + SGST (9%) on RA Bills
+              </div>
+              <div className="text-right font-bold text-lg text-purple-600 dark:text-purple-400">
+                Total GST: {formatINR(totalGstExpense)}
+              </div>
             </div>
           </CardContent>
         </Card>
