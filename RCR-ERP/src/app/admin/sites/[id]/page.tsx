@@ -31,6 +31,20 @@ const getCachedSiteData = unstable_cache(
           payments: { orderBy: { date: "desc" } },
           labourEntries: { orderBy: { createdAt: "desc" } },
           expenses: { orderBy: { date: "desc" } },
+          attendances: {
+            where: { hajari: { gt: 0 } },
+            include: {
+              labour: {
+                select: {
+                  id: true,
+                  name: true,
+                  dailyWage: true,
+                  labourCategory: { select: { id: true, name: true, dailyWage: true } }
+                }
+              }
+            },
+            orderBy: { date: "asc" }
+          },
         },
       }),
       prisma.user.findMany({ 

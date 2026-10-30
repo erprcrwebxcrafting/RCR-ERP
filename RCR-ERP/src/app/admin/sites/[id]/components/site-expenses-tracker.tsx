@@ -91,58 +91,65 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     d.setDate(d.getDate() + 1);
   }
 
-  // 3. Labour Payments
-  let labourPaymentsTotal = 0;
-  const allLabourPayments: any[] = [];
-  
-  (site.labourCategories || []).forEach((cat: any) => {
-    (cat.labours || []).forEach((labour: any) => {
-      let workerTotal = 0;
-      let paymentCount = 0;
-      let lastPaymentDate: any = null;
-      const paymentDetails: string[] = [];
-      const paymentsByDate: Record<string, number> = {};
-      
-      (labour.payments || []).forEach((payment: any) => {
-        const pDate = new Date(payment.date);
-        if (pDate >= startDate && pDate <= endDate) {
-          labourPaymentsTotal += payment.amount;
-          workerTotal += payment.amount;
-          paymentCount++;
-          
-          const py = pDate.getFullYear();
-          const pm = String(pDate.getMonth() + 1).padStart(2, '0');
-          const pd = String(pDate.getDate()).padStart(2, '0');
-          const dateStr = `${py}-${pm}-${pd}`;
-          paymentsByDate[dateStr] = (paymentsByDate[dateStr] || 0) + payment.amount;
-          
-          paymentDetails.push(`${formatDate(payment.date).split(' ')[0]} (₹${payment.amount})`);
-          if (!lastPaymentDate || pDate > new Date(lastPaymentDate)) {
-            lastPaymentDate = payment.date;
-          }
-        }
-      });
-      
-      if (paymentCount > 0) {
-        allLabourPayments.push({
-          labourId: labour.id,
-          labourName: labour.name,
-          categoryName: cat.name,
-          amount: workerTotal,
-          paymentCount,
-          lastPaymentDate,
-          paymentDetailsArr: paymentDetails,
-          paymentsByDate
+  // 3. Site Labour Expenses (Calculated strictly by Attendance on this Site)
+  // Ensures transfers (e.g. Site A 1 Aug - 5 Sep -> Site B 6 Sep -> Site A 1 Oct) are 100% accurately costed to the site where work was done!
+  let labourWagesTotal = 0;
+  const labourMap = new Map<string, {
+    labourId: string;
+    labourName: string;
+    categoryName: string;
+    rate: number;
+    totalHajari: number;
+    amount: number;
+    datesWorked: string[];
+    wagesByDate: Record<string, number>;
+  }>();
+
+  (site.attendances || []).forEach((a: any) => {
+    const aDate = new Date(a.date);
+    if (aDate >= startDate && aDate <= endDate && (a.hajari || 0) > 0) {
+      const rate = a.hajariRate || a.labour?.dailyWage || a.labour?.labourCategory?.dailyWage || 0;
+      const dayWages = (a.hajari || 0) * rate;
+      labourWagesTotal += dayWages;
+
+      const labourId = a.labourId || a.labour?.id;
+      const labourName = a.labour?.name || "Labour";
+      const categoryName = a.labour?.labourCategory?.name || "General";
+
+      const py = aDate.getFullYear();
+      const pm = String(aDate.getMonth() + 1).padStart(2, '0');
+      const pd = String(aDate.getDate()).padStart(2, '0');
+      const dateStr = `${py}-${pm}-${pd}`;
+
+      if (!labourMap.has(labourId)) {
+        labourMap.set(labourId, {
+          labourId,
+          labourName,
+          categoryName,
+          rate,
+          totalHajari: 0,
+          amount: 0,
+          datesWorked: [],
+          wagesByDate: {},
         });
       }
-    });
-  });
-  
-  // Sort by highest amount paid
-  allLabourPayments.sort((a, b) => b.amount - a.amount);
 
-  // Totals: Extra Supply Labours excluded (managed under separate Supply sheet, not internal site expense)
-  const siteExpensesTotal = manualExpensesTotal + labourPaymentsTotal;
+      const worker = labourMap.get(labourId)!;
+      worker.totalHajari += (a.hajari || 0);
+      worker.amount += dayWages;
+      worker.wagesByDate[dateStr] = (worker.wagesByDate[dateStr] || 0) + dayWages;
+      const formattedD = formatDate(a.date);
+      if (!worker.datesWorked.includes(formattedD)) {
+        worker.datesWorked.push(formattedD);
+      }
+    }
+  });
+
+  const allLabourWages = Array.from(labourMap.values());
+  allLabourWages.sort((a, b) => b.amount - a.amount);
+
+  // Totals: Site Labour Wages + Manual Expenses + GST
+  const siteExpensesTotal = manualExpensesTotal + labourWagesTotal;
   const totalExpenses = siteExpensesTotal + totalGstExpense;
   const netProfit = totalRevenue - totalExpenses;
 
@@ -241,9 +248,9 @@ export function SiteExpensesTracker({ site }: { site: any }) {
         });
       }
 
-      // Add Labour Payments
-      if (allLabourPayments.length > 0) {
-        docDefinition.content.push({ text: 'Internal Labour Payments (Summary)', style: 'subheader' });
+      // Add Labour Wages (Attendance Based)
+      if (allLabourWages.length > 0) {
+        docDefinition.content.push({ text: 'Site Labour Cost (Attendance Based Wages)', style: 'subheader' });
         docDefinition.content.push({
           table: {
             headerRows: 1,
@@ -252,18 +259,18 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               [
                 { text: 'Labour Name', style: 'tableHeader', fillColor: '#6366f1' }, 
                 { text: 'Category', style: 'tableHeader', fillColor: '#6366f1' }, 
-                { text: 'Payments Details', style: 'tableHeader', fillColor: '#6366f1' },
-                { text: 'Total Amount', style: 'tableHeaderRight', fillColor: '#6366f1' }
+                { text: 'Total Hajari', style: 'tableHeader', fillColor: '#6366f1', alignment: 'center' },
+                { text: 'Total Wages', style: 'tableHeaderRight', fillColor: '#6366f1' }
               ],
-              ...allLabourPayments.map((p: any) => [
+              ...allLabourWages.map((p: any) => [
                 { text: p.labourName, style: 'tableCell' },
                 { text: p.categoryName, style: 'tableCell' },
-                { text: p.paymentDetailsArr.join('\n'), style: 'tableCell' },
+                { text: `${p.totalHajari} Days`, style: 'tableCell', alignment: 'center' },
                 { text: formatINR(p.amount), style: 'tableCellRight' }
               ]),
               [
-                { text: 'TOTAL LABOUR PAYMENTS', style: 'totalRow', colSpan: 3 }, {}, {},
-                { text: formatINR(labourPaymentsTotal), style: 'totalRowRight' }
+                { text: 'TOTAL LABOUR COST', style: 'totalRow', colSpan: 3 }, {}, {},
+                { text: formatINR(labourWagesTotal), style: 'totalRowRight' }
               ]
             ]
           },
@@ -400,34 +407,36 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     sheet.getColumn("D").numFmt = '"₹"#,##0.00';
     sheet.getColumn("C").numFmt = '"₹"#,##0.00'; // For Gross Amount in Bills
 
-    // --- SHEET 2: LABOUR PAYMENTS ---
-    const labourSheet = workbook.addWorksheet("Labour Payments");
+    // --- SHEET 2: LABOUR WAGES ---
+    const labourSheet = workbook.addWorksheet("Labour Wages");
     labourSheet.getColumn("A").width = 25; // Labour Name
     labourSheet.getColumn("B").width = 18; // Category
     
     // Calculate the last column letter for formatting (A, B, C... up to total columns)
-    const totalCols = 2 + dateColumns.length + 1; // Name, Cat, [Dates], Total
+    const totalCols = 2 + dateColumns.length + 2; // Name, Cat, [Dates], Total Hajari, Total Amount
     
-    addSectionTitle(labourSheet, `INTERNAL LABOUR PAYMENTS - ${dateRangeStr}`, "E");
+    addSectionTitle(labourSheet, `SITE LABOUR WAGES (ATTENDANCE BASED) - ${dateRangeStr}`, "E");
     const dateHeaders = dateColumns.map(d => {
       const dt = new Date(d);
       return `${dt.getDate()} ${dt.toLocaleDateString('en-IN', { month: 'short' })}`;
     });
-    addHeaderRow(labourSheet, ["Labour Name", "Category", ...dateHeaders, "Total Amount"]);
+    addHeaderRow(labourSheet, ["Labour Name", "Category", ...dateHeaders, "Total Hajari", "Total Amount"]);
     
-    if (allLabourPayments.length === 0) {
-      labourSheet.addRow(["No Labour Payments found"]);
+    if (allLabourWages.length === 0) {
+      labourSheet.addRow(["No Labour attendance found for this site"]);
     } else {
-      allLabourPayments.forEach((p: any) => {
+      allLabourWages.forEach((p: any) => {
         const row = [p.labourName, p.categoryName];
-        dateColumns.forEach(d => row.push(p.paymentsByDate[d] || ""));
+        dateColumns.forEach(d => row.push(p.wagesByDate[d] || ""));
+        row.push(p.totalHajari);
         row.push(p.amount);
         labourSheet.addRow(row);
       });
       
-      const totalRowData = ["TOTAL LABOUR PAYMENTS", ""];
+      const totalRowData = ["TOTAL LABOUR WAGES", ""];
       dateColumns.forEach(() => totalRowData.push(""));
-      totalRowData.push(labourPaymentsTotal.toString());
+      totalRowData.push("");
+      totalRowData.push(labourWagesTotal.toString());
       const tRow = labourSheet.addRow(totalRowData);
       tRow.font = { bold: true };
     }
@@ -507,7 +516,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatINR(siteExpensesTotal)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Labours ({formatINR(labourPaymentsTotal)}) + Manual ({formatINR(manualExpensesTotal)})</p>
+            <p className="text-xs text-muted-foreground mt-1">Labour Wages ({formatINR(labourWagesTotal)}) + Manual ({formatINR(manualExpensesTotal)})</p>
           </CardContent>
         </Card>
 
@@ -580,12 +589,12 @@ export function SiteExpensesTracker({ site }: { site: any }) {
           </CardContent>
         </Card>
 
-        {/* INTERNAL LABOUR PAYMENTS */}
+        {/* SITE LABOUR WAGES (ATTENDANCE BASED) */}
         <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden flex flex-col">
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-lg font-bold flex items-center gap-2">
               <Users className="h-5 w-5 text-indigo-500" />
-              <span>Internal Labour Payments</span>
+              <span>Site Labour Cost (Hajari Wages)</span>
             </CardTitle>
             <div className="text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-800">
               {dateRangeStr}
@@ -596,19 +605,21 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               <Table>
                 <THead>
                   <TR>
-                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[140px]">Labour Name</TH>
-                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[120px]">Category</TH>
-                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[100px]">Total Paid</TH>
+                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[130px]">Labour Name</TH>
+                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[100px]">Category</TH>
+                    <TH className="text-center whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[90px]">Total Hajari</TH>
+                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[100px]">Total Wages</TH>
                   </TR>
                 </THead>
                 <TBody>
-                  {allLabourPayments.length === 0 ? (
-                    <TR><TD colSpan={3} className="text-center text-muted-foreground py-4">No payments recorded.</TD></TR>
+                  {allLabourWages.length === 0 ? (
+                    <TR><TD colSpan={4} className="text-center text-muted-foreground py-4">No attendance recorded on this site for selected dates.</TD></TR>
                   ) : (
-                    allLabourPayments.map((p: any) => (
+                    allLabourWages.map((p: any) => (
                       <TR key={p.labourId}>
                         <TD className="font-medium whitespace-nowrap">{p.labourName}</TD>
                         <TD className="text-muted-foreground whitespace-nowrap">{p.categoryName}</TD>
+                        <TD className="text-center font-medium whitespace-nowrap">{p.totalHajari} Days</TD>
                         <TD className="text-right font-bold text-rose-600 whitespace-nowrap">{formatINR(p.amount)}</TD>
                       </TR>
                     ))
@@ -619,10 +630,10 @@ export function SiteExpensesTracker({ site }: { site: any }) {
             
             <div className="mt-3 flex items-center justify-between">
               <div className="text-xs text-muted-foreground">
-                Download Excel/PDF for daily breakdown
+                Actual wages earned on this site ({allLabourWages.length} worker{allLabourWages.length !== 1 ? "s" : ""})
               </div>
               <div className="text-right font-bold text-lg text-rose-600">
-                Total: {formatINR(labourPaymentsTotal)}
+                Total: {formatINR(labourWagesTotal)}
               </div>
             </div>
           </CardContent>
