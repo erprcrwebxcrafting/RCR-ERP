@@ -19,12 +19,99 @@ const getCachedSiteData = unstable_cache(
           buildings: { orderBy: [{ order: "asc" }, { createdAt: "asc" }], include: { workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] } } },
           workItems: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
           supplyLabourEntries: { orderBy: { date: "asc" } },
-          labourCategories: { orderBy: { order: "asc" }, include: { labours: { include: { payments: { orderBy: { date: "desc" } }, attendances: { select: { hajari: true } }, supervisor: { select: { name: true } } } } } },
+          labourCategories: { 
+            orderBy: { order: "asc" }, 
+            include: { 
+              labours: { 
+                include: { 
+                  payments: { orderBy: { date: "desc" } }, 
+                  attendances: { select: { hajari: true } }, 
+                  supervisor: { select: { name: true } },
+                  transferHistory: {
+                    select: { id: true, fromSiteId: true, toSiteId: true, transferDate: true },
+                    orderBy: { transferDate: "asc" }
+                  }
+                } 
+              } 
+            } 
+          },
           supervisors: { 
             select: { 
               supervisorId: true,
-              supervisor: { select: { id: true, name: true, email: true, phone: true } }
+              supervisor: { 
+                select: { 
+                  id: true, 
+                  name: true, 
+                  email: true, 
+                  phone: true,
+                  monthlySalary: true,
+                  supervisorAttendances: {
+                    select: { id: true, date: true, status: true, dailyRate: true, earnedAmount: true },
+                    orderBy: { date: "asc" }
+                  },
+                  supervisorPayments: {
+                    select: { id: true, amount: true, date: true, reason: true, transactionId: true },
+                    orderBy: { date: "desc" }
+                  },
+                  supervisorTransfers: {
+                    select: { id: true, fromSiteId: true, toSiteId: true, transferDate: true },
+                    orderBy: { transferDate: "asc" }
+                  }
+                } 
+              }
             } 
+          },
+          supervisorTransfersFrom: {
+            select: {
+              transferDate: true,
+              supervisor: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                  monthlySalary: true,
+                  supervisorAttendances: {
+                    select: { id: true, date: true, status: true, dailyRate: true, earnedAmount: true },
+                    orderBy: { date: "asc" }
+                  },
+                  supervisorPayments: {
+                    select: { id: true, amount: true, date: true, reason: true, transactionId: true },
+                    orderBy: { date: "desc" }
+                  },
+                  supervisorTransfers: {
+                    select: { id: true, fromSiteId: true, toSiteId: true, transferDate: true },
+                    orderBy: { transferDate: "asc" }
+                  }
+                }
+              }
+            }
+          },
+          supervisorTransfersTo: {
+            select: {
+              transferDate: true,
+              supervisor: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                  monthlySalary: true,
+                  supervisorAttendances: {
+                    select: { id: true, date: true, status: true, dailyRate: true, earnedAmount: true },
+                    orderBy: { date: "asc" }
+                  },
+                  supervisorPayments: {
+                    select: { id: true, amount: true, date: true, reason: true, transactionId: true },
+                    orderBy: { date: "desc" }
+                  },
+                  supervisorTransfers: {
+                    select: { id: true, fromSiteId: true, toSiteId: true, transferDate: true },
+                    orderBy: { transferDate: "asc" }
+                  }
+                }
+              }
+            }
           },
           bills: { orderBy: { createdAt: "desc" }, include: { lines: { orderBy: { order: "asc" } }, supplyLabourEntries: { orderBy: { date: "asc" } } } },
           quotations: { orderBy: { createdAt: "desc" } },
@@ -38,8 +125,17 @@ const getCachedSiteData = unstable_cache(
                 select: {
                   id: true,
                   name: true,
+                  siteId: true,
                   dailyWage: true,
-                  labourCategory: { select: { id: true, name: true, dailyWage: true } }
+                  labourCategory: { select: { id: true, name: true, dailyWage: true } },
+                  payments: {
+                    select: { id: true, amount: true, date: true, reason: true, transactionId: true },
+                    orderBy: { date: "desc" }
+                  },
+                  transferHistory: {
+                    select: { id: true, fromSiteId: true, toSiteId: true, transferDate: true },
+                    orderBy: { transferDate: "asc" }
+                  }
                 }
               }
             },

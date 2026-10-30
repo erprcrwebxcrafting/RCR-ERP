@@ -8,10 +8,110 @@ import { IndianNumberInput } from "@/components/ui/indian-number-input";
 import { Button } from "@/components/ui/button";
 import { formatINR, formatDate } from "@/lib/utils";
 import { recordSiteExpenseAction, deleteSiteExpenseAction } from "../expense-actions";
-import { Banknote, Plus, Printer, Download, TrendingUp, Trash2, CircleDollarSign, Users, HardHat, FileCheck, Percent } from "lucide-react";
+import {
+  Banknote,
+  Plus,
+  Printer,
+  Download,
+  TrendingUp,
+  Trash2,
+  CircleDollarSign,
+  Users,
+  HardHat,
+  FileCheck,
+  Percent,
+  Wallet,
+  CheckCircle2,
+  AlertCircle,
+  ShieldCheck,
+  Clock
+} from "lucide-react";
 import { toast } from "sonner";
 import * as ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
+
+// Helper to determine if a Labour was active at targetSiteId on a given date
+function isLabourAtSiteOnDate(labour: any, targetSiteId: string, pDate: Date, siteAttendances: any[]): boolean {
+  // 1. Direct Attendance on target site on that date
+  const py = pDate.getFullYear();
+  const pm = pDate.getMonth();
+  const pd = pDate.getDate();
+  const hasAttOnSite = (siteAttendances || []).some((a: any) => {
+    const aId = a.labourId || a.labour?.id;
+    if (aId !== labour.id) return false;
+    const ad = new Date(a.date);
+    return ad.getFullYear() === py && ad.getMonth() === pm && ad.getDate() === pd;
+  });
+  if (hasAttOnSite) return true;
+
+  // 2. Transfer history timeline
+  const transfers = [...(labour.transferHistory || [])].sort(
+    (a: any, b: any) => new Date(a.transferDate).getTime() - new Date(b.transferDate).getTime()
+  );
+
+  if (transfers.length === 0) {
+    return (labour.siteId === targetSiteId) || (!labour.siteId && labour.categoryName !== undefined);
+  }
+
+  const pTime = pDate.getTime();
+  const firstTransferTime = new Date(transfers[0].transferDate).getTime();
+  if (pTime < firstTransferTime) {
+    return transfers[0].fromSiteId === targetSiteId;
+  }
+
+  let activeSiteId = transfers[0].toSiteId;
+  for (const t of transfers) {
+    if (new Date(t.transferDate).getTime() <= pTime) {
+      activeSiteId = t.toSiteId;
+    } else {
+      break;
+    }
+  }
+  return activeSiteId === targetSiteId;
+}
+
+// Helper to determine if a Supervisor was active at targetSiteId on a given date
+function isSupervisorAtSiteOnDate(supervisor: any, targetSiteId: string, pDate: Date, isCurrentlyAssigned: boolean): boolean {
+  const transfers = [...(supervisor.supervisorTransfers || [])].sort(
+    (a: any, b: any) => new Date(a.transferDate).getTime() - new Date(b.transferDate).getTime()
+  );
+
+  if (transfers.length === 0) {
+    return isCurrentlyAssigned;
+  }
+
+  const pTime = pDate.getTime();
+  const firstTransferTime = new Date(transfers[0].transferDate).getTime();
+  if (pTime < firstTransferTime) {
+    return transfers[0].fromSiteId === targetSiteId;
+  }
+
+  let activeSiteId = transfers[0].toSiteId;
+  for (const t of transfers) {
+    if (new Date(t.transferDate).getTime() <= pTime) {
+      activeSiteId = t.toSiteId;
+    } else {
+      break;
+    }
+  }
+  return activeSiteId === targetSiteId;
+}
+
+interface ManpowerWorker {
+  id: string;
+  name: string;
+  type: "LABOUR" | "SUPERVISOR";
+  roleName: string;
+  rate: number;
+  totalHajari: number;
+  earnedAmount: number;
+  advancePaid: number;
+  paymentsCount: number;
+  netBalance: number;
+  datesWorked: string[];
+  wagesByDate: Record<string, number>;
+  paymentDetails: string[];
+}
 
 export function SiteExpensesTracker({ site }: { site: any }) {
   const [isRecording, setIsRecording] = useState(false);
@@ -48,31 +148,27 @@ export function SiteExpensesTracker({ site }: { site: any }) {
   });
   let totalRevenue = 0;
   let totalGstExpense = 0;
+
   const billSummaries = bills.map((b: any) => {
-    const gross = (b.lines || []).reduce((s: number, l: any) => s + (l.currentAmount || 0), 0);
-    const retPct = b.retentionPct ?? site.retentionPct ?? 2;
-    const tdsPct = b.tdsPct ?? site.tdsPct ?? 1;
-    const cgstPct = b.cgstPct ?? site.cgstPct ?? 9;
-    const sgstPct = b.sgstPct ?? site.sgstPct ?? 9;
-
-    const retAmt = gross * (retPct / 100);
-    const netAmt = gross - retAmt;
-    const tdsAmt = gross * (tdsPct / 100);
-    const gstAmt = gross * ((cgstPct + sgstPct) / 100);
-
-    const invoiceAmount = gross + gstAmt; // Actual invoice value
+    let grossAmount = 0;
+    (b.lines || []).forEach((line: any) => {
+      grossAmount += (line.currentAmount || 0);
+    });
+    const cgst = grossAmount * ((b.cgstPct || 9) / 100);
+    const sgst = grossAmount * ((b.sgstPct || 9) / 100);
+    const gstTotal = cgst + sgst;
+    const invoiceAmount = grossAmount + gstTotal;
+    
     totalRevenue += invoiceAmount;
-    totalGstExpense += gstAmt;
+    totalGstExpense += gstTotal;
 
     return {
       id: b.id,
       billNo: b.billNo,
       date: b.billDate || b.createdAt,
-      grossAmount: gross,
-      netAmount: netAmt,
-      invoiceAmount: invoiceAmount,
-      gstAmount: gstAmt,
-      totalTax: gstAmt + tdsAmt,
+      grossAmount,
+      gstAmount: gstTotal,
+      invoiceAmount,
     };
   });
 
@@ -91,52 +187,61 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     d.setDate(d.getDate() + 1);
   }
 
-  // 3. Site Labour Expenses (Calculated strictly by Attendance on this Site)
-  // Ensures transfers (e.g. Site A 1 Aug - 5 Sep -> Site B 6 Sep -> Site A 1 Oct) are 100% accurately costed to the site where work was done!
-  let labourWagesTotal = 0;
-  const labourMap = new Map<string, {
-    labourId: string;
-    labourName: string;
-    categoryName: string;
-    rate: number;
-    totalHajari: number;
-    amount: number;
-    datesWorked: string[];
-    wagesByDate: Record<string, number>;
-  }>();
+  // 3. Manpower Calculations (Labours & Supervisors)
+  const manpowerMap = new Map<string, ManpowerWorker>();
 
+  // Collect all unique labours
+  const allLabourEntities = new Map<string, any>();
+  (site.labourCategories || []).forEach((cat: any) => {
+    (cat.labours || []).forEach((l: any) => {
+      allLabourEntities.set(l.id, { ...l, categoryName: cat.name });
+    });
+  });
+  (site.attendances || []).forEach((a: any) => {
+    if (a.labour && !allLabourEntities.has(a.labour.id)) {
+      allLabourEntities.set(a.labour.id, {
+        ...a.labour,
+        categoryName: a.labour.labourCategory?.name || "General"
+      });
+    }
+  });
+
+  // Labour Attendances (strictly on this site)
   (site.attendances || []).forEach((a: any) => {
     const aDate = new Date(a.date);
     if (aDate >= startDate && aDate <= endDate && (a.hajari || 0) > 0) {
-      const rate = a.hajariRate || a.labour?.dailyWage || a.labour?.labourCategory?.dailyWage || 0;
-      const dayWages = (a.hajari || 0) * rate;
-      labourWagesTotal += dayWages;
-
       const labourId = a.labourId || a.labour?.id;
       const labourName = a.labour?.name || "Labour";
       const categoryName = a.labour?.labourCategory?.name || "General";
+      const rate = a.hajariRate || a.labour?.dailyWage || a.labour?.labourCategory?.dailyWage || 0;
+      const dayWages = (a.hajari || 0) * rate;
 
       const py = aDate.getFullYear();
       const pm = String(aDate.getMonth() + 1).padStart(2, '0');
       const pd = String(aDate.getDate()).padStart(2, '0');
       const dateStr = `${py}-${pm}-${pd}`;
 
-      if (!labourMap.has(labourId)) {
-        labourMap.set(labourId, {
-          labourId,
-          labourName,
-          categoryName,
+      if (!manpowerMap.has(labourId)) {
+        manpowerMap.set(labourId, {
+          id: labourId,
+          name: labourName,
+          type: "LABOUR",
+          roleName: categoryName,
           rate,
           totalHajari: 0,
-          amount: 0,
+          earnedAmount: 0,
+          advancePaid: 0,
+          paymentsCount: 0,
+          netBalance: 0,
           datesWorked: [],
           wagesByDate: {},
+          paymentDetails: []
         });
       }
 
-      const worker = labourMap.get(labourId)!;
+      const worker = manpowerMap.get(labourId)!;
       worker.totalHajari += (a.hajari || 0);
-      worker.amount += dayWages;
+      worker.earnedAmount += dayWages;
       worker.wagesByDate[dateStr] = (worker.wagesByDate[dateStr] || 0) + dayWages;
       const formattedD = formatDate(a.date);
       if (!worker.datesWorked.includes(formattedD)) {
@@ -145,11 +250,155 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     }
   });
 
-  const allLabourWages = Array.from(labourMap.values());
-  allLabourWages.sort((a, b) => b.amount - a.amount);
+  // Labour Advances & Payments (checked against site timeline)
+  allLabourEntities.forEach((labour) => {
+    (labour.payments || []).forEach((p: any) => {
+      const pDate = new Date(p.date);
+      if (pDate >= startDate && pDate <= endDate) {
+        if (isLabourAtSiteOnDate(labour, site.id, pDate, site.attendances || [])) {
+          if (!manpowerMap.has(labour.id)) {
+            manpowerMap.set(labour.id, {
+              id: labour.id,
+              name: labour.name || "Labour",
+              type: "LABOUR",
+              roleName: labour.categoryName || "General",
+              rate: labour.dailyWage || labour.labourCategory?.dailyWage || 0,
+              totalHajari: 0,
+              earnedAmount: 0,
+              advancePaid: 0,
+              paymentsCount: 0,
+              netBalance: 0,
+              datesWorked: [],
+              wagesByDate: {},
+              paymentDetails: []
+            });
+          }
+          const worker = manpowerMap.get(labour.id)!;
+          worker.advancePaid += p.amount;
+          worker.paymentsCount++;
+          worker.paymentDetails.push(`${formatDate(p.date).split(' ')[0]} (₹${p.amount})`);
+        }
+      }
+    });
+  });
 
-  // Totals: Site Labour Wages + Manual Expenses + GST
-  const siteExpensesTotal = manualExpensesTotal + labourWagesTotal;
+  // Supervisors (Assigned + Transferred)
+  const allSupervisorsMap = new Map<string, { supervisor: any; isCurrentlyAssigned: boolean }>();
+  (site.supervisors || []).forEach((s: any) => {
+    if (s.supervisor) allSupervisorsMap.set(s.supervisor.id, { supervisor: s.supervisor, isCurrentlyAssigned: true });
+  });
+  (site.supervisorTransfersFrom || []).forEach((st: any) => {
+    if (st.supervisor && !allSupervisorsMap.has(st.supervisor.id)) {
+      allSupervisorsMap.set(st.supervisor.id, { supervisor: st.supervisor, isCurrentlyAssigned: false });
+    }
+  });
+  (site.supervisorTransfersTo || []).forEach((st: any) => {
+    if (st.supervisor && !allSupervisorsMap.has(st.supervisor.id)) {
+      allSupervisorsMap.set(st.supervisor.id, { supervisor: st.supervisor, isCurrentlyAssigned: false });
+    }
+  });
+
+  allSupervisorsMap.forEach(({ supervisor, isCurrentlyAssigned }, supId) => {
+    // 1. Attendance earned on this site
+    (supervisor.supervisorAttendances || []).forEach((sa: any) => {
+      const saDate = new Date(sa.date);
+      if (saDate >= startDate && saDate <= endDate) {
+        if (isSupervisorAtSiteOnDate(supervisor, site.id, saDate, isCurrentlyAssigned)) {
+          const isPresent = sa.status === "PRESENT";
+          const isHalfDay = sa.status === "HALF_DAY";
+          if (isPresent || isHalfDay) {
+            const hajari = isPresent ? 1 : 0.5;
+            const dailyRate = sa.dailyRate || (supervisor.monthlySalary ? Math.round(supervisor.monthlySalary / 30) : 0);
+            const earned = sa.earnedAmount !== undefined && sa.earnedAmount !== null ? sa.earnedAmount : (dailyRate * hajari);
+
+            const py = saDate.getFullYear();
+            const pm = String(saDate.getMonth() + 1).padStart(2, '0');
+            const pd = String(saDate.getDate()).padStart(2, '0');
+            const dateStr = `${py}-${pm}-${pd}`;
+
+            if (!manpowerMap.has(supId)) {
+              manpowerMap.set(supId, {
+                id: supId,
+                name: supervisor.name || "Supervisor",
+                type: "SUPERVISOR",
+                roleName: "Supervisor",
+                rate: dailyRate,
+                totalHajari: 0,
+                earnedAmount: 0,
+                advancePaid: 0,
+                paymentsCount: 0,
+                netBalance: 0,
+                datesWorked: [],
+                wagesByDate: {},
+                paymentDetails: []
+              });
+            }
+
+            const worker = manpowerMap.get(supId)!;
+            worker.totalHajari += hajari;
+            worker.earnedAmount += earned;
+            worker.wagesByDate[dateStr] = (worker.wagesByDate[dateStr] || 0) + earned;
+            const formattedD = formatDate(sa.date);
+            if (!worker.datesWorked.includes(formattedD)) {
+              worker.datesWorked.push(formattedD);
+            }
+          }
+        }
+      }
+    });
+
+    // 2. Supervisor payments on this site
+    (supervisor.supervisorPayments || []).forEach((p: any) => {
+      const pDate = new Date(p.date);
+      if (pDate >= startDate && pDate <= endDate) {
+        if (isSupervisorAtSiteOnDate(supervisor, site.id, pDate, isCurrentlyAssigned)) {
+          if (!manpowerMap.has(supId)) {
+            const dailyRate = supervisor.monthlySalary ? Math.round(supervisor.monthlySalary / 30) : 0;
+            manpowerMap.set(supId, {
+              id: supId,
+              name: supervisor.name || "Supervisor",
+              type: "SUPERVISOR",
+              roleName: "Supervisor",
+              rate: dailyRate,
+              totalHajari: 0,
+              earnedAmount: 0,
+              advancePaid: 0,
+              paymentsCount: 0,
+              netBalance: 0,
+              datesWorked: [],
+              wagesByDate: {},
+              paymentDetails: []
+            });
+          }
+          const worker = manpowerMap.get(supId)!;
+          worker.advancePaid += p.amount;
+          worker.paymentsCount++;
+          worker.paymentDetails.push(`${formatDate(p.date).split(' ')[0]} (₹${p.amount})`);
+        }
+      }
+    });
+  });
+
+  // Calculate Net Balances and Totals
+  let totalManpowerEarned = 0;
+  let totalAdvancesPaid = 0;
+
+  manpowerMap.forEach((w) => {
+    w.netBalance = w.earnedAmount - w.advancePaid;
+    totalManpowerEarned += w.earnedAmount;
+    totalAdvancesPaid += w.advancePaid;
+  });
+
+  const totalNetDue = totalManpowerEarned - totalAdvancesPaid;
+
+  const allWorkers = Array.from(manpowerMap.values());
+  // Card 1 list: Active working with earned wages > 0
+  const earnedWorkersList = allWorkers.filter(w => w.earnedAmount > 0).sort((a, b) => b.earnedAmount - a.earnedAmount);
+  // Card 2 list: Workers with advances paid OR earned wages
+  const advancesWorkersList = allWorkers.filter(w => w.advancePaid > 0 || w.earnedAmount > 0).sort((a, b) => b.advancePaid - a.advancePaid || b.earnedAmount - a.earnedAmount);
+
+  // Totals: Site Manpower Wages + Manual Expenses + GST
+  const siteExpensesTotal = manualExpensesTotal + totalManpowerEarned;
   const totalExpenses = siteExpensesTotal + totalGstExpense;
   const netProfit = totalRevenue - totalExpenses;
 
@@ -158,62 +407,58 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     : `${startDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })} to ${endDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`;
 
   const handlePrintPDF = async () => {
-    toast.loading("Generating High-Quality PDF...", { id: "pdf-toast" });
+    toast.info("Generating PDF report...", { id: "pdf-toast" });
     try {
-      const pdfMakeModule = await import("pdfmake/build/pdfmake");
-      const pdfFontsModule = await import("pdfmake/build/vfs_fonts");
+      // Dynamic imports for pdfmake
+      const pdfMakeModule = await import('pdfmake/build/pdfmake');
+      const pdfFontsModule = await import('pdfmake/build/vfs_fonts');
       
       const pdfMake = pdfMakeModule.default || pdfMakeModule;
-      const pdfFonts = pdfFontsModule.default || pdfFontsModule;
       // @ts-ignore
-      pdfMake.vfs = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts.vfs;
+      const vfs = pdfFontsModule.default ? pdfFontsModule.default.pdfMake.vfs : (pdfFontsModule.pdfMake ? pdfFontsModule.pdfMake.vfs : pdfMake.vfs);
+      // @ts-ignore
+      pdfMake.vfs = vfs;
 
       const docDefinition: any = {
         pageSize: 'A4',
-        pageMargins: [40, 40, 40, 40],
+        pageMargins: [30, 30, 30, 30],
         styles: {
-          header: { fontSize: 18, bold: true, margin: [0, 0, 0, 10] },
-          subheader: { fontSize: 14, bold: true, margin: [0, 15, 0, 5], color: '#333333' },
-          tableHeader: { bold: true, fontSize: 11, color: 'white', fillColor: '#4f46e5', alignment: 'left' },
-          tableHeaderRight: { bold: true, fontSize: 11, color: 'white', fillColor: '#4f46e5', alignment: 'right' },
-          tableCell: { margin: [0, 5, 0, 5], fontSize: 10 },
-          tableCellRight: { margin: [0, 5, 0, 5], fontSize: 10, alignment: 'right' },
-          totalRow: { bold: true, fontSize: 11, margin: [0, 5, 0, 5] },
-          totalRowRight: { bold: true, fontSize: 11, margin: [0, 5, 0, 5], alignment: 'right' }
+          header: { fontSize: 16, bold: true, color: '#1e293b', margin: [0, 0, 0, 4] },
+          subheader: { fontSize: 12, bold: true, color: '#334155', margin: [0, 10, 0, 5] },
+          metaText: { fontSize: 9, color: '#64748b', margin: [0, 0, 0, 10] },
+          tableHeader: { fontSize: 8, bold: true, color: '#ffffff', fillColor: '#4f46e5', alignment: 'left' },
+          tableHeaderRight: { fontSize: 8, bold: true, color: '#ffffff', fillColor: '#4f46e5', alignment: 'right' },
+          tableCell: { fontSize: 8, color: '#1e293b' },
+          tableCellRight: { fontSize: 8, color: '#1e293b', alignment: 'right' },
+          totalRow: { fontSize: 9, bold: true, color: '#0f172a', fillColor: '#f1f5f9' },
+          totalRowRight: { fontSize: 9, bold: true, color: '#0f172a', fillColor: '#f1f5f9', alignment: 'right' }
         },
         content: [
-          { text: `Financial Ledger - ${site.projectName}`, style: 'header' },
-          { text: `Generated on: ${formatDate(new Date())}`, fontSize: 10, color: 'gray', margin: [0, 0, 0, 20] },
+          { text: site.projectName.toUpperCase(), style: 'header' },
+          { text: `SITE EXPENSES & FINANCIAL LEDGER (${dateRangeStr.toUpperCase()})`, style: 'subheader' },
+          { text: `Generated on: ${formatDate(new Date())} | Filter: ${dateRangeStr}`, style: 'metaText' },
           
-          { text: 'Financial Summary', style: 'subheader' },
+          // Summary KPI Table
           {
             table: {
-              headerRows: 1,
-              widths: ['*', 'auto'],
+              widths: ['*', '*', '*', '*'],
               body: [
                 [
-                  { text: 'Metric', style: 'tableHeader' }, 
-                  { text: 'Amount (Rs)', style: 'tableHeaderRight' }
+                  { text: 'Total Revenue (RA Bills)', style: 'tableHeader' },
+                  { text: 'Total Site Cost (True Exp)', style: 'tableHeader' },
+                  { text: 'GST Outflow (18% Govt)', style: 'tableHeader' },
+                  { text: 'Net Savings / Profit', style: 'tableHeaderRight' }
                 ],
                 [
-                  { text: 'Total Revenue (RA Bills + GST)', style: 'tableCell' }, 
-                  { text: formatINR(totalRevenue), style: 'tableCellRight' }
-                ],
-                [
-                  { text: 'Site Expenses (Labours + Manual)', style: 'tableCell' }, 
-                  { text: formatINR(siteExpensesTotal), style: 'tableCellRight' }
-                ],
-                [
-                  { text: 'GST Outflow (18% to Govt)', style: 'tableCell' }, 
-                  { text: formatINR(totalGstExpense), style: 'tableCellRight' }
-                ],
-                [
-                  { text: 'Net Savings / Profit', style: 'totalRow', color: netProfit >= 0 ? '#059669' : '#e11d48' }, 
-                  { text: formatINR(netProfit), style: 'totalRowRight', color: netProfit >= 0 ? '#059669' : '#e11d48' }
+                  { text: formatINR(totalRevenue), style: 'tableCell', bold: true, color: '#059669' },
+                  { text: formatINR(siteExpensesTotal), style: 'tableCell', bold: true, color: '#e11d48' },
+                  { text: formatINR(totalGstExpense), style: 'tableCell', bold: true, color: '#9333ea' },
+                  { text: formatINR(netProfit), style: 'tableCellRight', bold: true, color: netProfit >= 0 ? '#059669' : '#e11d48' }
                 ]
               ]
             },
-            layout: 'lightHorizontalLines'
+            layout: 'lightHorizontalLines',
+            margin: [0, 0, 0, 15]
           }
         ]
       };
@@ -227,14 +472,14 @@ export function SiteExpensesTracker({ site }: { site: any }) {
             widths: ['auto', '*', 'auto', 'auto'],
             body: [
               [
-                { text: 'Date', style: 'tableHeader', fillColor: '#10b981' }, 
-                { text: 'Bill No.', style: 'tableHeader', fillColor: '#10b981' }, 
-                { text: 'Gross Amount', style: 'tableHeaderRight', fillColor: '#10b981' }, 
-                { text: 'Invoice Amt', style: 'tableHeaderRight', fillColor: '#10b981' }
+                { text: 'Bill No.', style: 'tableHeader' }, 
+                { text: 'Date', style: 'tableHeader' }, 
+                { text: 'Gross Amount', style: 'tableHeaderRight' }, 
+                { text: 'Invoice Amt (Inc. GST)', style: 'tableHeaderRight' }
               ],
               ...billSummaries.map((b: any) => [
-                { text: formatDate(b.date), style: 'tableCell' },
                 { text: b.billNo, style: 'tableCell' },
+                { text: formatDate(b.date), style: 'tableCell' },
                 { text: formatINR(b.grossAmount), style: 'tableCellRight' },
                 { text: formatINR(b.invoiceAmount), style: 'tableCellRight' }
               ]),
@@ -248,29 +493,69 @@ export function SiteExpensesTracker({ site }: { site: any }) {
         });
       }
 
-      // Add Labour Wages (Attendance Based)
-      if (allLabourWages.length > 0) {
-        docDefinition.content.push({ text: 'Site Labour Cost (Attendance Based Wages)', style: 'subheader' });
+      // Add Manpower Wages (Attendance Based)
+      if (earnedWorkersList.length > 0) {
+        docDefinition.content.push({ text: 'Card 1: Site Manpower Cost (Attendance Wages Earned)', style: 'subheader' });
         docDefinition.content.push({
           table: {
             headerRows: 1,
-            widths: ['*', '*', 'auto', 'auto'],
+            widths: ['*', 'auto', 'auto', 'auto', 'auto'],
             body: [
               [
-                { text: 'Labour Name', style: 'tableHeader', fillColor: '#6366f1' }, 
-                { text: 'Category', style: 'tableHeader', fillColor: '#6366f1' }, 
+                { text: 'Worker Name', style: 'tableHeader', fillColor: '#6366f1' }, 
+                { text: 'Type / Role', style: 'tableHeader', fillColor: '#6366f1' }, 
+                { text: 'Rate/Day', style: 'tableHeaderRight', fillColor: '#6366f1' }, 
                 { text: 'Total Hajari', style: 'tableHeader', fillColor: '#6366f1', alignment: 'center' },
-                { text: 'Total Wages', style: 'tableHeaderRight', fillColor: '#6366f1' }
+                { text: 'Total Earned', style: 'tableHeaderRight', fillColor: '#6366f1' }
               ],
-              ...allLabourWages.map((p: any) => [
-                { text: p.labourName, style: 'tableCell' },
-                { text: p.categoryName, style: 'tableCell' },
+              ...earnedWorkersList.map((p: any) => [
+                { text: p.name, style: 'tableCell' },
+                { text: `${p.type === 'SUPERVISOR' ? 'Supervisor' : p.roleName}`, style: 'tableCell' },
+                { text: formatINR(p.rate), style: 'tableCellRight' },
                 { text: `${p.totalHajari} Days`, style: 'tableCell', alignment: 'center' },
-                { text: formatINR(p.amount), style: 'tableCellRight' }
+                { text: formatINR(p.earnedAmount), style: 'tableCellRight' }
               ]),
               [
-                { text: 'TOTAL LABOUR COST', style: 'totalRow', colSpan: 3 }, {}, {},
-                { text: formatINR(labourWagesTotal), style: 'totalRowRight' }
+                { text: 'TOTAL MANPOWER COST', style: 'totalRow', colSpan: 4 }, {}, {}, {},
+                { text: formatINR(totalManpowerEarned), style: 'totalRowRight' }
+              ]
+            ]
+          },
+          layout: 'lightHorizontalLines'
+        });
+      }
+
+      // Add Manpower Advances & Dues
+      if (advancesWorkersList.length > 0) {
+        docDefinition.content.push({ text: 'Card 2: Manpower Advances Paid & Net Balance', style: 'subheader' });
+        docDefinition.content.push({
+          table: {
+            headerRows: 1,
+            widths: ['*', 'auto', 'auto', 'auto', 'auto'],
+            body: [
+              [
+                { text: 'Worker Name', style: 'tableHeader', fillColor: '#059669' }, 
+                { text: 'Role', style: 'tableHeader', fillColor: '#059669' }, 
+                { text: 'Earned Wages', style: 'tableHeaderRight', fillColor: '#059669' }, 
+                { text: 'Advance Paid', style: 'tableHeaderRight', fillColor: '#059669' },
+                { text: 'Net Balance', style: 'tableHeaderRight', fillColor: '#059669' }
+              ],
+              ...advancesWorkersList.map((p: any) => [
+                { text: p.name, style: 'tableCell' },
+                { text: p.roleName, style: 'tableCell' },
+                { text: formatINR(p.earnedAmount), style: 'tableCellRight' },
+                { text: formatINR(p.advancePaid), style: 'tableCellRight' },
+                { 
+                  text: p.netBalance > 0 ? `+ ${formatINR(p.netBalance)} (Due)` : p.netBalance < 0 ? `- ${formatINR(Math.abs(p.netBalance))} (Adv)` : 'Settled',
+                  style: 'tableCellRight',
+                  color: p.netBalance > 0 ? '#b45309' : p.netBalance < 0 ? '#2563eb' : '#059669'
+                }
+              ]),
+              [
+                { text: 'TOTALS', style: 'totalRow', colSpan: 2 }, {},
+                { text: formatINR(totalManpowerEarned), style: 'totalRowRight' },
+                { text: formatINR(totalAdvancesPaid), style: 'totalRowRight' },
+                { text: formatINR(totalNetDue), style: 'totalRowRight' }
               ]
             ]
           },
@@ -348,214 +633,309 @@ export function SiteExpensesTracker({ site }: { site: any }) {
   };
 
   const handleExportExcel = async () => {
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = "RCR ERP";
-    workbook.created = new Date();
+    toast.info("Generating Excel workbook...", { id: "excel-toast" });
+    try {
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = "RCR ERP";
+      workbook.created = new Date();
 
-    // --- SHEET 1: GENERAL LEDGER ---
-    const sheet = workbook.addWorksheet("Ledger Report");
-    sheet.getColumn("A").width = 20; 
-    sheet.getColumn("B").width = 30; 
-    sheet.getColumn("C").width = 35; 
-    sheet.getColumn("D").width = 25; 
+      // --- SHEET 1: GENERAL LEDGER ---
+      const sheet = workbook.addWorksheet("Ledger Report");
+      sheet.getColumn("A").width = 20; 
+      sheet.getColumn("B").width = 30; 
+      sheet.getColumn("C").width = 35; 
+      sheet.getColumn("D").width = 25; 
 
-    const addSectionTitle = (ws: any, title: string, cols = "D") => {
-      const row = ws.addRow([title]);
-      row.font = { bold: true, size: 14, color: { argb: "FF1E293B" } };
-      ws.mergeCells(`A${row.number}:${cols}${row.number}`);
-    };
+      const addSectionTitle = (ws: any, title: string, cols = "D") => {
+        const row = ws.addRow([title]);
+        row.font = { bold: true, size: 14, color: { argb: "FF1E293B" } };
+        ws.mergeCells(`A${row.number}:${cols}${row.number}`);
+      };
 
-    const addHeaderRow = (ws: any, headers: string[]) => {
-      const row = ws.addRow(headers);
-      row.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
-      row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4F46E5" } };
-    };
+      const addHeaderRow = (ws: any, headers: string[]) => {
+        const row = ws.addRow(headers);
+        row.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
+        row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4F46E5" } };
+      };
 
-    // 1. SUMMARY
-    addSectionTitle(sheet, `FINANCIAL SUMMARY (${dateRangeStr})`);
-    addHeaderRow(sheet, ["Metric", "", "", "Amount (Rs)"]);
-    sheet.addRow(["Total Revenue (RA Bills + GST)", "", "", totalRevenue]);
-    sheet.addRow(["Site Expenses (Labours + Manual)", "", "", siteExpensesTotal]);
-    sheet.addRow(["GST Outflow (18% to Govt)", "", "", totalGstExpense]);
-    const netRow = sheet.addRow(["Net Savings / Profit", "", "", netProfit]);
-    netRow.font = { bold: true, color: { argb: netProfit >= 0 ? "FF059669" : "FFE11D48" } };
-    sheet.addRow([]); sheet.addRow([]);
+      // 1. SUMMARY
+      addSectionTitle(sheet, `FINANCIAL SUMMARY (${dateRangeStr})`);
+      addHeaderRow(sheet, ["Metric", "", "", "Amount (Rs)"]);
+      sheet.addRow(["Total Revenue (RA Bills + GST)", "", "", totalRevenue]);
+      sheet.addRow(["Site Cost (Manpower + Manual)", "", "", siteExpensesTotal]);
+      sheet.addRow(["GST Outflow (18% to Govt)", "", "", totalGstExpense]);
+      const netRow = sheet.addRow(["Net Savings / Profit", "", "", netProfit]);
+      netRow.font = { bold: true, color: { argb: netProfit >= 0 ? "FF059669" : "FFE11D48" } };
+      sheet.addRow([]); sheet.addRow([]);
 
-    // 2. RA BILLS
-    addSectionTitle(sheet, "RA BILLS GENERATED");
-    addHeaderRow(sheet, ["Date", "Bill No", "Gross Amount", "Invoice Amt"]);
-    if (billSummaries.length === 0) sheet.addRow(["No RA Bills found", "", "", ""]);
-    billSummaries.forEach((b: any) => sheet.addRow([formatDate(b.date), b.billNo, b.grossAmount, b.invoiceAmount]));
-    sheet.addRow(["TOTAL REVENUE", "", "", totalRevenue]).font = { bold: true };
-    sheet.addRow([]); sheet.addRow([]);
+      // 2. RA BILLS
+      addSectionTitle(sheet, "RA BILLS GENERATED");
+      addHeaderRow(sheet, ["Date", "Bill No", "Gross Amount", "Invoice Amt"]);
+      if (billSummaries.length === 0) sheet.addRow(["No RA Bills found", "", "", ""]);
+      billSummaries.forEach((b: any) => sheet.addRow([formatDate(b.date), b.billNo, b.grossAmount, b.invoiceAmount]));
+      sheet.addRow(["TOTAL REVENUE", "", "", totalRevenue]).font = { bold: true };
+      sheet.addRow([]); sheet.addRow([]);
 
-    // 3. GST BREAKDOWN
-    addSectionTitle(sheet, "GST OUTFLOW (GOVT TAX BREAKDOWN)");
-    addHeaderRow(sheet, ["Date", "Bill No", "Gross Amount", "GST Amount (18%)"]);
-    if (billSummaries.length === 0) sheet.addRow(["No RA Bills found", "", "", ""]);
-    billSummaries.forEach((b: any) => sheet.addRow([formatDate(b.date), b.billNo, b.grossAmount, b.gstAmount]));
-    sheet.addRow(["TOTAL GST OUTFLOW", "", "", totalGstExpense]).font = { bold: true };
-    sheet.addRow([]); sheet.addRow([]);
+      // 3. GST BREAKDOWN
+      addSectionTitle(sheet, "GST OUTFLOW (GOVT TAX BREAKDOWN)");
+      addHeaderRow(sheet, ["Date", "Bill No", "Gross Amount", "GST Amount (18%)"]);
+      if (billSummaries.length === 0) sheet.addRow(["No RA Bills found", "", "", ""]);
+      billSummaries.forEach((b: any) => sheet.addRow([formatDate(b.date), b.billNo, b.grossAmount, b.gstAmount]));
+      sheet.addRow(["TOTAL GST OUTFLOW", "", "", totalGstExpense]).font = { bold: true };
+      sheet.addRow([]); sheet.addRow([]);
 
-    // 4. MANUAL EXPENSES
-    addSectionTitle(sheet, "MANUAL & PETTY EXPENSES");
-    addHeaderRow(sheet, ["Date", "Paid To", "Purpose / Reason", "Amount"]);
-    if (manualExpenses.length === 0) sheet.addRow(["No Manual Expenses found", "", "", ""]);
-    manualExpenses.forEach((e: any) => sheet.addRow([formatDate(e.date), e.paidTo, e.description, e.amount]));
-    sheet.addRow(["TOTAL MANUAL EXPENSES", "", "", manualExpensesTotal]).font = { bold: true };
+      // 4. MANUAL EXPENSES
+      addSectionTitle(sheet, "MANUAL & PETTY EXPENSES");
+      addHeaderRow(sheet, ["Date", "Paid To", "Purpose / Reason", "Amount"]);
+      if (manualExpenses.length === 0) sheet.addRow(["No Manual Expenses found", "", "", ""]);
+      manualExpenses.forEach((e: any) => sheet.addRow([formatDate(e.date), e.paidTo, e.description, e.amount]));
+      sheet.addRow(["TOTAL MANUAL EXPENSES", "", "", manualExpensesTotal]).font = { bold: true };
 
-    sheet.getColumn("D").numFmt = '"₹"#,##0.00';
-    sheet.getColumn("C").numFmt = '"₹"#,##0.00'; // For Gross Amount in Bills
+      sheet.getColumn("D").numFmt = '"₹"#,##0.00';
+      sheet.getColumn("C").numFmt = '"₹"#,##0.00';
 
-    // --- SHEET 2: LABOUR WAGES ---
-    const labourSheet = workbook.addWorksheet("Labour Wages");
-    labourSheet.getColumn("A").width = 25; // Labour Name
-    labourSheet.getColumn("B").width = 18; // Category
-    
-    // Calculate the last column letter for formatting (A, B, C... up to total columns)
-    const totalCols = 2 + dateColumns.length + 2; // Name, Cat, [Dates], Total Hajari, Total Amount
-    
-    addSectionTitle(labourSheet, `SITE LABOUR WAGES (ATTENDANCE BASED) - ${dateRangeStr}`, "E");
-    const dateHeaders = dateColumns.map(d => {
-      const dt = new Date(d);
-      return `${dt.getDate()} ${dt.toLocaleDateString('en-IN', { month: 'short' })}`;
-    });
-    addHeaderRow(labourSheet, ["Labour Name", "Category", ...dateHeaders, "Total Hajari", "Total Amount"]);
-    
-    if (allLabourWages.length === 0) {
-      labourSheet.addRow(["No Labour attendance found for this site"]);
-    } else {
-      allLabourWages.forEach((p: any) => {
-        const row = [p.labourName, p.categoryName];
-        dateColumns.forEach(d => row.push(p.wagesByDate[d] || ""));
-        row.push(p.totalHajari);
-        row.push(p.amount);
-        labourSheet.addRow(row);
-      });
+      // --- SHEET 2: MANPOWER WAGES (ATTENDANCE BASED) ---
+      const labourSheet = workbook.addWorksheet("Manpower Wages Earned");
+      labourSheet.getColumn("A").width = 25; // Name
+      labourSheet.getColumn("B").width = 18; // Role
       
-      const totalRowData = ["TOTAL LABOUR WAGES", ""];
-      dateColumns.forEach(() => totalRowData.push(""));
-      totalRowData.push("");
-      totalRowData.push(labourWagesTotal.toString());
-      const tRow = labourSheet.addRow(totalRowData);
-      tRow.font = { bold: true };
-    }
+      const totalCols = 2 + dateColumns.length + 2;
+      
+      addSectionTitle(labourSheet, `CARD 1: MANPOWER EARNED COST (ATTENDANCE BASED) - ${dateRangeStr}`, "E");
+      const dateHeaders = dateColumns.map(d => {
+        const dt = new Date(d);
+        return `${dt.getDate()} ${dt.toLocaleDateString('en-IN', { month: 'short' })}`;
+      });
+      addHeaderRow(labourSheet, ["Worker Name", "Role / Type", ...dateHeaders, "Total Hajari", "Total Earned"]);
+      
+      if (earnedWorkersList.length === 0) {
+        labourSheet.addRow(["No attendance found on this site for selected dates"]);
+      } else {
+        earnedWorkersList.forEach((p: any) => {
+          const row = [p.name, p.type === 'SUPERVISOR' ? 'Supervisor' : p.roleName];
+          dateColumns.forEach(d => row.push(p.wagesByDate[d] || ""));
+          row.push(p.totalHajari);
+          row.push(p.earnedAmount);
+          labourSheet.addRow(row);
+        });
+        
+        const totalRowData = ["TOTAL MANPOWER COST", ""];
+        dateColumns.forEach(() => totalRowData.push(""));
+        totalRowData.push("");
+        totalRowData.push(totalManpowerEarned.toString());
+        const tRow = labourSheet.addRow(totalRowData);
+        tRow.font = { bold: true };
+      }
 
-    // Format Date columns and Total column in Sheet 2
-    for (let i = 3; i <= totalCols; i++) {
-      labourSheet.getColumn(i).width = 10;
-      labourSheet.getColumn(i).alignment = { horizontal: 'center' };
-    }
-    labourSheet.getColumn(totalCols).width = 18;
-    labourSheet.getColumn(totalCols).numFmt = '"₹"#,##0.00';
-    labourSheet.getColumn(totalCols).font = { bold: true };
+      for (let i = 3; i <= totalCols; i++) {
+        labourSheet.getColumn(i).width = 10;
+        labourSheet.getColumn(i).alignment = { horizontal: 'center' };
+      }
+      labourSheet.getColumn(totalCols).width = 18;
+      labourSheet.getColumn(totalCols).numFmt = '"₹"#,##0.00';
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `${site.projectName}_Ledger_Report.xlsx`);
+      // --- SHEET 3: ADVANCES & NET BALANCE ---
+      const advancesSheet = workbook.addWorksheet("Advances & Balances");
+      advancesSheet.getColumn("A").width = 25; // Name
+      advancesSheet.getColumn("B").width = 18; // Role
+      advancesSheet.getColumn("C").width = 20; // Earned
+      advancesSheet.getColumn("D").width = 20; // Paid
+      advancesSheet.getColumn("E").width = 20; // Net Due
+
+      addSectionTitle(advancesSheet, `CARD 2: MANPOWER ADVANCES & BALANCES - ${dateRangeStr}`, "E");
+      addHeaderRow(advancesSheet, ["Worker Name", "Role", "Earned Wages", "Advance Paid", "Net Balance Due"]);
+
+      if (advancesWorkersList.length === 0) {
+        advancesSheet.addRow(["No advances or wages recorded for selected dates"]);
+      } else {
+        advancesWorkersList.forEach((p: any) => {
+          advancesSheet.addRow([
+            p.name,
+            p.roleName,
+            p.earnedAmount,
+            p.advancePaid,
+            p.netBalance
+          ]);
+        });
+
+        const advTotalRow = advancesSheet.addRow([
+          "TOTALS",
+          "",
+          totalManpowerEarned,
+          totalAdvancesPaid,
+          totalNetDue
+        ]);
+        advTotalRow.font = { bold: true };
+      }
+
+      advancesSheet.getColumn("C").numFmt = '"₹"#,##0.00';
+      advancesSheet.getColumn("D").numFmt = '"₹"#,##0.00';
+      advancesSheet.getColumn("E").numFmt = '"₹"#,##0.00';
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      saveAs(blob, `${site.projectName}_Ledger_${startDateStr}_to_${endDateStr}.xlsx`);
+      toast.success("Excel Workbook Downloaded!", { id: "excel-toast" });
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to export Excel. Please try again.", { id: "excel-toast" });
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* Action Bar */}
-      <div className="flex flex-col sm:flex-row flex-wrap items-center justify-between print:hidden gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+      {/* HEADER CONTROLS: Date Filters & Export */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-slate-500">From:</span>
-            <Input 
-              type="date" 
-              value={startDateStr} 
-              onChange={(e) => setStartDateStr(e.target.value)} 
-              className="w-[140px] h-9"
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">From:</span>
+            <Input
+              type="date"
+              value={startDateStr}
+              onChange={(e) => setStartDateStr(e.target.value)}
+              className="h-9 w-36 text-sm font-medium"
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-slate-500">To:</span>
-            <Input 
-              type="date" 
-              value={endDateStr} 
-              onChange={(e) => setEndDateStr(e.target.value)} 
-              className="w-[140px] h-9"
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">To:</span>
+            <Input
+              type="date"
+              value={endDateStr}
+              onChange={(e) => setEndDateStr(e.target.value)}
+              className="h-9 w-36 text-sm font-medium"
             />
+          </div>
+          
+          <div className="flex items-center gap-1.5 ml-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs font-medium"
+              onClick={() => {
+                const now = new Date();
+                const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+                const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                setStartDateStr(firstDay.toISOString().split('T')[0]);
+                setEndDateStr(lastDay.toISOString().split('T')[0]);
+              }}
+            >
+              This Month
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs font-medium"
+              onClick={() => {
+                const now = new Date();
+                const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+                setStartDateStr(firstDay.toISOString().split('T')[0]);
+                setEndDateStr(lastDay.toISOString().split('T')[0]);
+              }}
+            >
+              Last Month
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs font-medium"
+              onClick={() => {
+                let initStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                if (site.startDate) initStart = new Date(site.startDate);
+                else if (site.createdAt) initStart = new Date(site.createdAt);
+                setStartDateStr(initStart.toISOString().split('T')[0]);
+                setEndDateStr(new Date().toISOString().split('T')[0]);
+              }}
+            >
+              All Time
+            </Button>
           </div>
         </div>
-        
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Button onClick={handleExportExcel} variant="outline" className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 w-full sm:w-auto">
-            <Download className="h-4 w-4" /> Download Excel
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Button onClick={handlePrintPDF} variant="outline" size="sm" className="gap-1.5 text-xs font-semibold">
+            <Printer className="h-4 w-4" /> PDF Report
           </Button>
-          <Button onClick={handlePrintPDF} variant="outline" className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50 w-full sm:w-auto">
-            <Printer className="h-4 w-4" /> Print Full Ledger
+          <Button onClick={handleExportExcel} variant="outline" size="sm" className="gap-1.5 text-xs font-semibold">
+            <Download className="h-4 w-4" /> Export Excel
           </Button>
         </div>
       </div>
 
-      {/* Wrapping the content for PDF generation */}
-      <div id="pdf-content" className="p-4 bg-white dark:bg-slate-950 rounded-lg">
-        <div className="hidden print:block mb-6 text-center">
-          <h1 className="text-3xl font-bold">{site.projectName} - Financial Ledger</h1>
-          <p className="text-muted-foreground mt-2">Generated on {formatDate(new Date())}</p>
-        </div>
-
-        {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-        <Card className="bg-emerald-500/10 border-emerald-500/30 print:border print:bg-transparent">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Total Revenue (Invoice + GST)</CardTitle>
-            <TrendingUp className="h-4 w-4 text-emerald-500" />
+      {/* TOP SUMMARY METRICS (4 CARDS) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:grid-cols-4">
+        {/* Total Revenue */}
+        <Card className="border-emerald-100 dark:border-emerald-950/50 bg-emerald-50/20 dark:bg-emerald-950/10">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+              Total Revenue
+              <FileCheck className="h-4 w-4 text-emerald-600" />
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatINR(totalRevenue)}</div>
-            <p className="text-xs text-muted-foreground mt-1">From {billSummaries.length} RA Bills</p>
+            <p className="text-xs text-muted-foreground mt-1">{billSummaries.length} RA Bill{billSummaries.length !== 1 ? 's' : ''} (Inc. GST)</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-rose-500/10 border-rose-500/30 print:border print:bg-transparent">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-rose-700 dark:text-rose-400">Total Site Expenses</CardTitle>
-            <TrendingUp className="h-4 w-4 text-rose-500 rotate-180" />
+        {/* Site True Expenses */}
+        <Card className="border-rose-100 dark:border-rose-950/50 bg-rose-50/20 dark:bg-rose-950/10">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+              Total Site Cost
+              <Banknote className="h-4 w-4 text-rose-600" />
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatINR(siteExpensesTotal)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Labour Wages ({formatINR(labourWagesTotal)}) + Manual ({formatINR(manualExpensesTotal)})</p>
+            <p className="text-xs text-muted-foreground mt-1">Manpower ({formatINR(totalManpowerEarned)}) + Petty ({formatINR(manualExpensesTotal)})</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-purple-500/10 border-purple-500/30 print:border print:bg-transparent">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-400">GST Outflow (To Govt)</CardTitle>
-            <Percent className="h-4 w-4 text-purple-500" />
+        {/* GST Outflow */}
+        <Card className="border-purple-100 dark:border-purple-950/50 bg-purple-50/20 dark:bg-purple-950/10">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+              GST Outflow (To Govt)
+              <Percent className="h-4 w-4 text-purple-600" />
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{formatINR(totalGstExpense)}</div>
-            <p className="text-xs text-muted-foreground mt-1">18% GST across {billSummaries.length} RA Bills</p>
+            <p className="text-xs text-muted-foreground mt-1">18% GST (CGST 9% + SGST 9%)</p>
           </CardContent>
         </Card>
 
-        <Card className={netProfit >= 0 ? "bg-blue-500/10 border-blue-500/30 print:border print:bg-transparent" : "bg-orange-500/10 border-orange-500/30 print:border print:bg-transparent"}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Net Savings / Profit</CardTitle>
-            <CircleDollarSign className={`h-4 w-4 ${netProfit >= 0 ? "text-blue-500" : "text-orange-500"}`} />
+        {/* Net Savings / Profit */}
+        <Card className={`border-slate-200 dark:border-slate-800 ${netProfit >= 0 ? "bg-emerald-500/5" : "bg-rose-500/5"}`}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+              Net Savings / Profit
+              <TrendingUp className={`h-4 w-4 ${netProfit >= 0 ? "text-emerald-600" : "text-rose-600"}`} />
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${netProfit >= 0 ? "text-blue-600 dark:text-blue-400" : "text-orange-600 dark:text-orange-400"}`}>
+            <div className={`text-2xl font-bold ${netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
               {formatINR(netProfit)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              (Revenue - Expenses - GST)
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Revenue - (Site Cost + GST)</p>
           </CardContent>
         </Card>
       </div>
 
+      {/* DETAILED SECTION GRID */}
       <div className="grid md:grid-cols-2 gap-6 items-start print:block print:space-y-6 max-w-full">
         
-        {/* REVENUE SECTION */}
+        {/* ROW 1 LEFT: REVENUE SECTION */}
         <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden flex flex-col">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-lg font-bold flex items-center gap-2">
               <FileCheck className="h-5 w-5 text-emerald-500" />
-              RA Bills Revenue
+              <span>RA Bills Revenue</span>
             </CardTitle>
+            <div className="text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-800">
+              {billSummaries.length} Bill{billSummaries.length !== 1 ? 's' : ''}
+            </div>
           </CardHeader>
           <CardContent className="flex flex-col">
             <div className="max-h-[260px] max-w-full overflow-auto print:max-h-none print:overflow-visible pb-1 relative border rounded-md">
@@ -584,62 +964,12 @@ export function SiteExpensesTracker({ site }: { site: any }) {
             </div>
             
             <div className="mt-3 pt-2 text-right font-bold text-lg text-emerald-600">
-              Total: {formatINR(totalRevenue)}
+              Total Revenue: {formatINR(totalRevenue)}
             </div>
           </CardContent>
         </Card>
 
-        {/* SITE LABOUR WAGES (ATTENDANCE BASED) */}
-        <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden flex flex-col">
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-bold flex items-center gap-2">
-              <Users className="h-5 w-5 text-indigo-500" />
-              <span>Site Labour Cost (Hajari Wages)</span>
-            </CardTitle>
-            <div className="text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-800">
-              {dateRangeStr}
-            </div>
-          </CardHeader>
-          <CardContent className="flex flex-col">
-            <div className="max-h-[260px] max-w-full overflow-auto print:max-h-none print:overflow-visible pb-1 relative border rounded-md">
-              <Table>
-                <THead>
-                  <TR>
-                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[130px]">Labour Name</TH>
-                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[100px]">Category</TH>
-                    <TH className="text-center whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[90px]">Total Hajari</TH>
-                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[100px]">Total Wages</TH>
-                  </TR>
-                </THead>
-                <TBody>
-                  {allLabourWages.length === 0 ? (
-                    <TR><TD colSpan={4} className="text-center text-muted-foreground py-4">No attendance recorded on this site for selected dates.</TD></TR>
-                  ) : (
-                    allLabourWages.map((p: any) => (
-                      <TR key={p.labourId}>
-                        <TD className="font-medium whitespace-nowrap">{p.labourName}</TD>
-                        <TD className="text-muted-foreground whitespace-nowrap">{p.categoryName}</TD>
-                        <TD className="text-center font-medium whitespace-nowrap">{p.totalHajari} Days</TD>
-                        <TD className="text-right font-bold text-rose-600 whitespace-nowrap">{formatINR(p.amount)}</TD>
-                      </TR>
-                    ))
-                  )}
-                </TBody>
-              </Table>
-            </div>
-            
-            <div className="mt-3 flex items-center justify-between">
-              <div className="text-xs text-muted-foreground">
-                Actual wages earned on this site ({allLabourWages.length} worker{allLabourWages.length !== 1 ? "s" : ""})
-              </div>
-              <div className="text-right font-bold text-lg text-rose-600">
-                Total: {formatINR(labourWagesTotal)}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* GST BREAKDOWN SECTION */}
+        {/* ROW 1 RIGHT: GST BREAKDOWN SECTION */}
         <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden flex flex-col">
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -647,7 +977,7 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               <span>GST Outflow (Govt Tax)</span>
             </CardTitle>
             <div className="text-xs font-semibold bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-2.5 py-1 rounded-full border border-purple-100 dark:border-purple-800">
-              18% GST (CGST + SGST)
+              18% (CGST + SGST)
             </div>
           </CardHeader>
           <CardContent className="flex flex-col">
@@ -689,8 +1019,149 @@ export function SiteExpensesTracker({ site }: { site: any }) {
           </CardContent>
         </Card>
 
-        {/* MANUAL EXPENSES */}
-        <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden">
+        {/* ROW 2 LEFT: CARD 1 - MANPOWER COST (EARNED WAGES) */}
+        <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden flex flex-col border-indigo-100 dark:border-indigo-900/50">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-bold flex items-center gap-2">
+              <Users className="h-5 w-5 text-indigo-600" />
+              <span>Card 1: Manpower Earned Wages</span>
+            </CardTitle>
+            <div className="text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-800">
+              Site Work Cost
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col">
+            <div className="max-h-[260px] max-w-full overflow-auto print:max-h-none print:overflow-visible pb-1 relative border rounded-md">
+              <Table>
+                <THead>
+                  <TR>
+                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[130px]">Name</TH>
+                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[90px]">Role</TH>
+                    <TH className="text-center whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[80px]">Hajari</TH>
+                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[90px]">Rate</TH>
+                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[100px]">Earned</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {earnedWorkersList.length === 0 ? (
+                    <TR><TD colSpan={5} className="text-center text-muted-foreground py-4">No attendance recorded on this site for selected dates.</TD></TR>
+                  ) : (
+                    earnedWorkersList.map((p: any) => (
+                      <TR key={p.id}>
+                        <TD className="font-medium whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            {p.name}
+                            {p.type === 'SUPERVISOR' && (
+                              <span className="text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 px-1.5 py-0.2 rounded font-semibold">
+                                Sup
+                              </span>
+                            )}
+                          </div>
+                        </TD>
+                        <TD className="text-muted-foreground whitespace-nowrap text-xs">
+                          {p.type === 'SUPERVISOR' ? 'Supervisor' : p.roleName}
+                        </TD>
+                        <TD className="text-center font-medium whitespace-nowrap">{p.totalHajari} d</TD>
+                        <TD className="text-right text-muted-foreground whitespace-nowrap text-xs">{formatINR(p.rate)}</TD>
+                        <TD className="text-right font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">{formatINR(p.earnedAmount)}</TD>
+                      </TR>
+                    ))
+                  )}
+                </TBody>
+              </Table>
+            </div>
+            
+            <div className="mt-3 flex items-center justify-between">
+              <div className="text-xs text-muted-foreground">
+                {earnedWorkersList.length} active worker{earnedWorkersList.length !== 1 ? 's' : ''} on this site
+              </div>
+              <div className="text-right font-bold text-lg text-indigo-600 dark:text-indigo-400">
+                Total Earned: {formatINR(totalManpowerEarned)}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ROW 2 RIGHT: CARD 2 - MANPOWER ADVANCES & BALANCES */}
+        <Card className="print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden flex flex-col border-emerald-100 dark:border-emerald-900/50">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-bold flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-emerald-600" />
+              <span>Card 2: Advances Paid & Balance</span>
+            </CardTitle>
+            <div className="text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-800">
+              Paid vs Earned
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col">
+            <div className="max-h-[260px] max-w-full overflow-auto print:max-h-none print:overflow-visible pb-1 relative border rounded-md">
+              <Table>
+                <THead>
+                  <TR>
+                    <TH className="whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[120px]">Name</TH>
+                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[90px]">Earned</TH>
+                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[95px]">Advance Paid</TH>
+                    <TH className="text-right whitespace-nowrap sticky top-0 z-30 bg-slate-50 dark:bg-slate-900 border-b min-w-[100px]">Net Balance</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {advancesWorkersList.length === 0 ? (
+                    <TR><TD colSpan={4} className="text-center text-muted-foreground py-4">No advances or attendance recorded.</TD></TR>
+                  ) : (
+                    advancesWorkersList.map((p: any) => (
+                      <TR key={p.id}>
+                        <TD className="font-medium whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            {p.name}
+                            {p.type === 'SUPERVISOR' && (
+                              <span className="text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 px-1.5 py-0.2 rounded font-semibold">
+                                Sup
+                              </span>
+                            )}
+                          </div>
+                        </TD>
+                        <TD className="text-right text-muted-foreground whitespace-nowrap text-xs">{formatINR(p.earnedAmount)}</TD>
+                        <TD className="text-right font-medium text-rose-600 whitespace-nowrap text-xs">
+                          {formatINR(p.advancePaid)}
+                          {p.paymentsCount > 1 && (
+                            <span className="text-[10px] text-muted-foreground ml-1">({p.paymentsCount})</span>
+                          )}
+                        </TD>
+                        <TD className="text-right whitespace-nowrap">
+                          {p.netBalance > 0 ? (
+                            <span className="text-xs font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+                              + {formatINR(p.netBalance)} Due
+                            </span>
+                          ) : p.netBalance < 0 ? (
+                            <span className="text-xs font-semibold text-blue-600 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                              - {formatINR(Math.abs(p.netBalance))} Adv
+                            </span>
+                          ) : (
+                            <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                              Settled
+                            </span>
+                          )}
+                        </TD>
+                      </TR>
+                    ))
+                  )}
+                </TBody>
+              </Table>
+            </div>
+            
+            <div className="mt-3 flex items-center justify-between">
+              <div className="text-xs font-semibold text-muted-foreground">
+                Advance Paid: <span className="text-rose-600">{formatINR(totalAdvancesPaid)}</span>
+              </div>
+              <div className="text-right font-bold text-base">
+                Net Pending: <span className={totalNetDue >= 0 ? "text-amber-600" : "text-blue-600"}>{formatINR(totalNetDue)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ROW 3: MANUAL EXPENSES (FULL WIDTH) */}
+        <Card className="md:col-span-2 print:shadow-none print:border-none print:break-inside-avoid min-w-0 w-full overflow-hidden">
           <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between pb-3 gap-4">
             <CardTitle className="text-lg font-bold flex items-center gap-2">
               <Banknote className="h-5 w-5 text-rose-500 shrink-0" />
@@ -780,12 +1251,11 @@ export function SiteExpensesTracker({ site }: { site: any }) {
             </div>
             
             <div className="mt-3 pt-2 text-right font-bold text-lg text-rose-600">
-              Total: {formatINR(manualExpensesTotal)}
+              Total Manual Expenses: {formatINR(manualExpensesTotal)}
             </div>
           </CardContent>
         </Card>
 
-      </div>
       </div>
     </div>
   );
