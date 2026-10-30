@@ -113,26 +113,98 @@ interface ManpowerWorker {
   paymentDetails: string[];
 }
 
+function formatDateToInput(date: Date | string): string {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function getEarliestSiteDate(site: any): Date {
+  let earliest: Date | null = null;
+
+  if (site.startDate) earliest = new Date(site.startDate);
+
+  (site.attendances || []).forEach((a: any) => {
+    if (a.date && (a.hajari || 0) > 0) {
+      const d = new Date(a.date);
+      if (!earliest || d < earliest) earliest = d;
+    }
+  });
+
+  (site.bills || []).forEach((b: any) => {
+    const d = new Date(b.billDate || b.createdAt);
+    if (!earliest || d < earliest) earliest = d;
+  });
+
+  (site.expenses || []).forEach((e: any) => {
+    if (e.date) {
+      const d = new Date(e.date);
+      if (!earliest || d < earliest) earliest = d;
+    }
+  });
+
+  (site.supplyLabourEntries || []).forEach((s: any) => {
+    if (s.date) {
+      const d = new Date(s.date);
+      if (!earliest || d < earliest) earliest = d;
+    }
+  });
+
+  (site.labourCategories || []).forEach((c: any) => {
+    (c.labours || []).forEach((l: any) => {
+      (l.payments || []).forEach((p: any) => {
+        if (p.date) {
+          const d = new Date(p.date);
+          if (!earliest || d < earliest) earliest = d;
+        }
+      });
+    });
+  });
+
+  if (!earliest && site.createdAt) {
+    earliest = new Date(site.createdAt);
+  }
+
+  return earliest || new Date();
+}
+
+function getLatestSiteDate(site: any): Date {
+  let latest = new Date();
+
+  (site.attendances || []).forEach((a: any) => {
+    if (a.date) {
+      const d = new Date(a.date);
+      if (d > latest) latest = d;
+    }
+  });
+
+  (site.bills || []).forEach((b: any) => {
+    const d = new Date(b.billDate || b.createdAt);
+    if (d > latest) latest = d;
+  });
+
+  (site.expenses || []).forEach((e: any) => {
+    if (e.date) {
+      const d = new Date(e.date);
+      if (d > latest) latest = d;
+    }
+  });
+
+  return latest;
+}
+
 export function SiteExpensesTracker({ site }: { site: any }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  // Date Filter State
-  const now = new Date();
+  // Date Filter State - defaults to all-time active work range on this site
+  const defaultStartDate = getEarliestSiteDate(site);
+  const defaultEndDate = getLatestSiteDate(site);
   
-  // Use site's creation date or start date as the default "From" date
-  let defaultStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
-  if (site.startDate) {
-    defaultStartDate = new Date(site.startDate);
-  } else if (site.createdAt) {
-    defaultStartDate = new Date(site.createdAt);
-  }
-  
-  // Set default "To" date to today
-  const defaultEndDate = new Date();
-  
-  const [startDateStr, setStartDateStr] = useState(defaultStartDate.toISOString().split('T')[0]);
-  const [endDateStr, setEndDateStr] = useState(defaultEndDate.toISOString().split('T')[0]);
+  const [startDateStr, setStartDateStr] = useState(formatDateToInput(defaultStartDate));
+  const [endDateStr, setEndDateStr] = useState(formatDateToInput(defaultEndDate));
   
   // Safe local date boundaries (prevents UTC offset dropping early/late day records)
   const [sYear, sMonth, sDay] = startDateStr.split('-').map(Number);
@@ -816,8 +888,8 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                 const now = new Date();
                 const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
                 const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-                setStartDateStr(firstDay.toISOString().split('T')[0]);
-                setEndDateStr(lastDay.toISOString().split('T')[0]);
+                setStartDateStr(formatDateToInput(firstDay));
+                setEndDateStr(formatDateToInput(lastDay));
               }}
             >
               This Month
@@ -830,8 +902,8 @@ export function SiteExpensesTracker({ site }: { site: any }) {
                 const now = new Date();
                 const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
                 const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
-                setStartDateStr(firstDay.toISOString().split('T')[0]);
-                setEndDateStr(lastDay.toISOString().split('T')[0]);
+                setStartDateStr(formatDateToInput(firstDay));
+                setEndDateStr(formatDateToInput(lastDay));
               }}
             >
               Last Month
@@ -841,11 +913,10 @@ export function SiteExpensesTracker({ site }: { site: any }) {
               size="sm"
               className="h-8 text-xs font-medium"
               onClick={() => {
-                let initStart = new Date(now.getFullYear(), now.getMonth(), 1);
-                if (site.startDate) initStart = new Date(site.startDate);
-                else if (site.createdAt) initStart = new Date(site.createdAt);
-                setStartDateStr(initStart.toISOString().split('T')[0]);
-                setEndDateStr(new Date().toISOString().split('T')[0]);
+                const earliest = getEarliestSiteDate(site);
+                const latest = getLatestSiteDate(site);
+                setStartDateStr(formatDateToInput(earliest));
+                setEndDateStr(formatDateToInput(latest));
               }}
             >
               All Time
