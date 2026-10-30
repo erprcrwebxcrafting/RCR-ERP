@@ -56,9 +56,9 @@ function isLabourAtSiteOnDate(labour: any, targetSiteId: string, pDate: Date, si
   const pTime = pDate.getTime();
   const firstTransferTime = new Date(transfers[0].transferDate).getTime();
   if (pTime < firstTransferTime) {
-    return transfers[0].fromSiteId === targetSiteId;
+    if (transfers[0].fromSiteId) return transfers[0].fromSiteId === targetSiteId;
+    return (labour.siteId === targetSiteId) || (!labour.siteId && labour.categoryName !== undefined);
   }
-
   let activeSiteId = transfers[0].toSiteId;
   for (const t of transfers) {
     if (new Date(t.transferDate).getTime() <= pTime) {
@@ -83,9 +83,9 @@ function isSupervisorAtSiteOnDate(supervisor: any, targetSiteId: string, pDate: 
   const pTime = pDate.getTime();
   const firstTransferTime = new Date(transfers[0].transferDate).getTime();
   if (pTime < firstTransferTime) {
-    return transfers[0].fromSiteId === targetSiteId;
+    if (transfers[0].fromSiteId) return transfers[0].fromSiteId === targetSiteId;
+    return isCurrentlyAssigned;
   }
-
   let activeSiteId = transfers[0].toSiteId;
   for (const t of transfers) {
     if (new Date(t.transferDate).getTime() <= pTime) {
@@ -211,9 +211,10 @@ export function SiteExpensesTracker({ site }: { site: any }) {
     const aDate = new Date(a.date);
     if (aDate >= startDate && aDate <= endDate && (a.hajari || 0) > 0) {
       const labourId = a.labourId || a.labour?.id;
-      const labourName = a.labour?.name || "Labour";
-      const categoryName = a.labour?.labourCategory?.name || "General";
-      const rate = a.hajariRate || a.labour?.dailyWage || a.labour?.labourCategory?.dailyWage || 0;
+      const labourEntity = allLabourEntities.get(labourId);
+      const labourName = a.labour?.name || labourEntity?.name || "Labour";
+      const categoryName = a.labour?.labourCategory?.name || labourEntity?.categoryName || "General";
+      const rate = a.hajariRate || a.labour?.dailyWage || labourEntity?.dailyWage || a.labour?.labourCategory?.dailyWage || labourEntity?.labourCategory?.dailyWage || 0;
       const dayWages = (a.hajari || 0) * rate;
 
       const py = aDate.getFullYear();
