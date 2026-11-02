@@ -610,12 +610,23 @@ export function RABillViewer({ site }: { site: any }) {
             let totCumA = 0;
 
             items.forEach((item: any) => {
-              const prevQ = item.previousPct ?? item.previousQty ?? 0;
-              const currQ = item.currentPct ?? item.currentQty ?? 0;
-              const cumQ = item.cumulativePct ?? (prevQ + currQ);
-              const prevA = (item.previousAmt !== undefined && item.previousAmt !== null) ? item.previousAmt : (prevQ > 0 ? (item.partAmount * prevQ / 100) : 0);
-              const currA = (item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : (currQ > 0 ? (item.partAmount * currQ / 100) : 0);
-              const cumA = item.cumulativeAmt ?? (prevA + currA);
+              const isQty = b.calculationMethod === "QUANTITY" || item.unit === "Sft";
+              const partAmt = item.partAmount || (item.buWork && item.rate ? item.buWork * item.rate : item.rate || 0);
+              let prevQ = item.previousPct ?? item.previousQty ?? 0;
+              let currQ = item.currentPct ?? item.currentQty ?? 0;
+              const prevA = (item.previousAmt !== undefined && item.previousAmt !== null) ? Number(item.previousAmt) : (prevQ > 0 && partAmt > 0 ? (partAmt * prevQ / 100) : 0);
+              const currA = (item.currentAmt !== undefined && item.currentAmt !== null) ? Number(item.currentAmt) : (currQ > 0 && partAmt > 0 ? (partAmt * currQ / 100) : 0);
+              const cumA = item.cumulativeAmt !== undefined && item.cumulativeAmt !== null ? Number(item.cumulativeAmt) : (prevA + currA);
+
+              if (!isQty && partAmt > 0) {
+                if (currQ === 0 && currA > 0) {
+                  currQ = Math.round(((currA / partAmt) * 100) * 100) / 100;
+                }
+                if (prevQ === 0 && prevA > 0) {
+                  prevQ = Math.round(((prevA / partAmt) * 100) * 100) / 100;
+                }
+              }
+              const cumQ = isQty ? (prevQ + currQ) : (item.cumulativePct ?? (prevQ + currQ));
 
               totPrevQ += prevQ;
               totCurrQ += currQ;
@@ -660,28 +671,37 @@ export function RABillViewer({ site }: { site: any }) {
                     {items.map((item: any, i: number) => {
                       const isQty = b.calculationMethod === "QUANTITY" || item.unit === "Sft";
                       const itemRate = item.rate || b.contractRate || 0;
+                      const partAmt = item.partAmount || (item.buWork && item.rate ? item.buWork * item.rate : item.rate || 0);
 
-                      const prevA = (item.previousAmt !== undefined && item.previousAmt !== null) ? item.previousAmt : (item.previousPct > 0 ? (item.partAmount * item.previousPct / 100) : item.previousQty * item.rate);
-                      const currA = (item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : (item.currentPct > 0 ? (item.partAmount * item.currentPct / 100) : item.currentQty * item.rate);
-                      const cumA = item.cumulativeAmt ?? (prevA + currA);
+                      const prevA = (item.previousAmt !== undefined && item.previousAmt !== null) ? Number(item.previousAmt) : (item.previousPct > 0 && partAmt > 0 ? (partAmt * item.previousPct / 100) : item.previousQty * item.rate);
+                      const currA = (item.currentAmt !== undefined && item.currentAmt !== null) ? Number(item.currentAmt) : (item.currentPct > 0 && partAmt > 0 ? (partAmt * item.currentPct / 100) : item.currentQty * item.rate);
+                      const cumA = item.cumulativeAmt !== undefined && item.cumulativeAmt !== null ? Number(item.cumulativeAmt) : (prevA + currA);
 
                       let prevQ = item.previousPct > 0 ? item.previousPct : item.previousQty ?? 0;
                       if (isQty && (prevA || 0) > 0 && itemRate > 0) {
                         prevQ = Math.round(prevA / itemRate);
+                      } else if (!isQty && prevQ === 0 && (prevA || 0) > 0 && partAmt > 0) {
+                        prevQ = Math.round(((prevA / partAmt) * 100) * 100) / 100;
                       }
 
                       let currQ = item.currentPct > 0 ? item.currentPct : item.currentQty ?? 0;
                       if (isQty && currQ === 0 && (currA || 0) > 0 && itemRate > 0) {
                         currQ = Math.round(currA / itemRate);
+                      } else if (!isQty && currQ === 0 && (currA || 0) > 0 && partAmt > 0) {
+                        currQ = Math.round(((currA / partAmt) * 100) * 100) / 100;
                       }
 
-                      const cumQ = isQty ? (prevQ + currQ) : (item.cumulativePct > 0 ? item.cumulativePct : (prevQ + currQ));
+                      let cumQ = isQty ? (prevQ + currQ) : (item.cumulativePct > 0 ? item.cumulativePct : (prevQ + currQ));
+                      if (!isQty && cumQ === 0 && (cumA || 0) > 0 && partAmt > 0) {
+                        cumQ = Math.round(((cumA / partAmt) * 100) * 100) / 100;
+                      }
+
                       return (
                         <TR key={item.id}>
                           <TD>{i + 1}</TD>
                           <TD className="font-medium">{item.name}</TD>
                           <TD>{item.unit || (isQty ? "Sft" : "%")}</TD>
-                          <TD className="font-mono text-right font-semibold text-muted-foreground">{isQty && b.contractRate ? (item.partAmount / b.contractRate).toFixed(2) : formatINR(item.partAmount || (item.buWork && item.rate ? item.buWork * item.rate : item.rate || 0))}</TD>
+                          <TD className="font-mono text-right font-semibold text-muted-foreground">{isQty && b.contractRate ? (partAmt / b.contractRate).toFixed(2) : formatINR(partAmt)}</TD>
                           <TD className="font-mono text-center">{isQty ? prevQ.toFixed(2) : prevQ + "%"}</TD>
                           <TD className="font-mono text-emerald-500 font-semibold text-center">{isQty ? currQ.toFixed(2) : currQ + "%"}</TD>
                           <TD className="font-mono text-center font-bold">{isQty ? cumQ.toFixed(2) : cumQ + "%"}</TD>
@@ -698,9 +718,9 @@ export function RABillViewer({ site }: { site: any }) {
                       return (
                         <TR className="bg-muted/80 font-bold border-t-2 text-xs">
                           <TD colSpan={4} className="text-right uppercase tracking-wider">TOTAL {b.name.toUpperCase()} AMOUNT</TD>
-                          <TD className="text-center font-mono">{isQty ? totPrevQ.toFixed(2) + " Sft" : totPrevQ + "%"}</TD>
-                          <TD className="text-center font-mono text-emerald-500">{isQty ? totCurrQ.toFixed(2) + " Sft" : totCurrQ + "%"}</TD>
-                          <TD className="text-center font-mono font-bold">{isQty ? totCumQ.toFixed(2) + " Sft" : totCumQ + "%"}</TD>
+                          <TD className="text-center font-mono">{isQty ? totPrevQ.toFixed(2) + " Sft" : (totalVal > 0 ? (Math.round((totPrevA / totalVal) * 10000) / 100).toFixed(2) + "%" : "0%")}</TD>
+                          <TD className="text-center font-mono text-emerald-500">{isQty ? totCurrQ.toFixed(2) + " Sft" : (totalVal > 0 ? (Math.round((totCurrA / totalVal) * 10000) / 100).toFixed(2) + "%" : "0%")}</TD>
+                          <TD className="text-center font-mono font-bold">{isQty ? totCumQ.toFixed(2) + " Sft" : (totalVal > 0 ? (Math.round((totCumA / totalVal) * 10000) / 100).toFixed(2) + "%" : "0%")}</TD>
                           <TD className="text-right font-mono">{formatINR(totPrevA)}</TD>
                           <TD className="text-right font-mono text-emerald-500 font-black text-sm">{formatINR(totCurrA)}</TD>
                           <TD className="text-right font-mono font-black text-sm">{formatINR(totCumA)}</TD>
@@ -734,10 +754,17 @@ export function RABillViewer({ site }: { site: any }) {
             let totHelperHrs = 0;
 
             entries.forEach((se: any) => {
-              totFitterHrs += (se.fitterQty || 0) * (se.fitterHours || 8);
-              totForemanHrs += (se.fitterForemanQty || 0) * (se.fitterForemanHours || 8);
-              totHelperHrs += (se.helperQty || 0) * (se.helperHours || 8);
+              const fHrs = Math.round(((se.fitterQty || 0) * (se.fitterHours || 8)) * 100) / 100;
+              const fmHrs = Math.round(((se.fitterForemanQty || 0) * (se.fitterForemanHours || 8)) * 100) / 100;
+              const hHrs = Math.round(((se.helperQty || 0) * (se.helperHours || 8)) * 100) / 100;
+              totFitterHrs += fHrs;
+              totForemanHrs += fmHrs;
+              totHelperHrs += hHrs;
             });
+
+            totFitterHrs = Math.round(totFitterHrs * 100) / 100;
+            totForemanHrs = Math.round(totForemanHrs * 100) / 100;
+            totHelperHrs = Math.round(totHelperHrs * 100) / 100;
 
             const fitterDays = Math.round((totFitterHrs / 8) * 100) / 100;
             const foremanDays = Math.round((totForemanHrs / 8) * 100) / 100;
@@ -768,9 +795,9 @@ export function RABillViewer({ site }: { site: any }) {
                   </THead>
                   <TBody>
                     {entries.map((se: any) => {
-                      const fHrs = (se.fitterQty || 0) * (se.fitterHours || 8);
-                      const fmHrs = (se.fitterForemanQty || 0) * (se.fitterForemanHours || 8);
-                      const hHrs = (se.helperQty || 0) * (se.helperHours || 8);
+                      const fHrs = Math.round(((se.fitterQty || 0) * (se.fitterHours || 8)) * 100) / 100;
+                      const fmHrs = Math.round(((se.fitterForemanQty || 0) * (se.fitterForemanHours || 8)) * 100) / 100;
+                      const hHrs = Math.round(((se.helperQty || 0) * (se.helperHours || 8)) * 100) / 100;
 
                       return (
                         <TR key={se.id}>

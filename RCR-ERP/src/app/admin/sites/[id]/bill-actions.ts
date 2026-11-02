@@ -46,12 +46,22 @@ export async function updateTowerWorkProgressAction(
   if (!itemsProgress || itemsProgress.length === 0) return;
 
   const updates = itemsProgress.map((item) => {
-    const prevPct = item.previousPct ?? 0;
-    const currPct = item.currentPct ?? 0;
+    let prevPct = item.previousPct ?? 0;
+    let currPct = item.currentPct ?? 0;
     const partAmt = item.partAmount ?? 0;
     
-    const previousAmt = item.previousAmt ?? ((prevPct / 100) * partAmt);
-    const currentAmt = item.currentAmt ?? ((currPct / 100) * partAmt);
+    let previousAmt = item.previousAmt ?? ((prevPct / 100) * partAmt);
+    let currentAmt = item.currentAmt ?? ((currPct / 100) * partAmt);
+
+    if (partAmt > 0) {
+      if (currPct === 0 && currentAmt > 0) {
+        currPct = Math.round(((currentAmt / partAmt) * 100) * 100) / 100;
+      }
+      if (prevPct === 0 && previousAmt > 0) {
+        prevPct = Math.round(((previousAmt / partAmt) * 100) * 100) / 100;
+      }
+    }
+
     const cumulativePct = item.cumulativePct ?? (prevPct + currPct);
     const cumulativeAmt = item.cumulativeAmt ?? (previousAmt + currentAmt);
 
@@ -155,7 +165,7 @@ export async function addSupplyLabourEntryAction(siteId: string, formData: FormD
     foremanAmt = fitterForemanQty * fitterForemanRate;
   }
 
-  const totalAmount = fitterAmt + helperAmt + foremanAmt;
+  const totalAmount = Math.round((fitterAmt + helperAmt + foremanAmt) * 100) / 100;
 
   await prisma.supplyLabourEntry.create({
     data: {
@@ -473,9 +483,20 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
         ? cumulativeAmt
         : (previousAmount + currentAmount);
 
-      const prevQ = isQtyMode ? previousQtyVal : (previousPct > 0 ? previousPct : previousQtyVal);
-      const currQ = isQtyMode ? currentQtyVal : (currentPct > 0 ? currentPct : currentQtyVal);
-      const cumQ = isQtyMode ? (previousQtyVal + currentQtyVal) : ((previousPct > 0 || currentPct > 0) ? (previousPct + currentPct) : (previousQtyVal + currentQtyVal));
+      let effectivePrevPct = previousPct;
+      let effectiveCurrPct = currentPct;
+      if (!isQtyMode && item.partAmount && item.partAmount > 0) {
+        if (effectivePrevPct === 0 && previousAmount > 0) {
+          effectivePrevPct = Math.round(((previousAmount / item.partAmount) * 100) * 100) / 100;
+        }
+        if (effectiveCurrPct === 0 && currentAmount > 0) {
+          effectiveCurrPct = Math.round(((currentAmount / item.partAmount) * 100) * 100) / 100;
+        }
+      }
+
+      const prevQ = isQtyMode ? previousQtyVal : (effectivePrevPct > 0 ? effectivePrevPct : previousQtyVal);
+      const currQ = isQtyMode ? currentQtyVal : (effectiveCurrPct > 0 ? effectiveCurrPct : currentQtyVal);
+      const cumQ = isQtyMode ? (previousQtyVal + currentQtyVal) : (effectivePrevPct + effectiveCurrPct);
 
       billLinesData.push({
         runningBillId: runningBill.id,
@@ -501,11 +522,11 @@ export async function generateRunningBillAction(siteId: string, formData: FormDa
           data: {
             previousQty: isQtyMode ? cumQ : (previousQtyVal + item.currentQty),
             currentQty: 0,
-            previousPct: isQtyMode ? 0 : (previousPct + currentPct),
+            previousPct: isQtyMode ? 0 : (effectivePrevPct + effectiveCurrPct),
             currentPct: 0,
             previousAmt: previousAmount + currentAmount,
             currentAmt: 0,
-            cumulativePct: isQtyMode ? 0 : (previousPct + currentPct),
+            cumulativePct: isQtyMode ? 0 : (effectivePrevPct + effectiveCurrPct),
             cumulativeAmt: previousAmount + currentAmount,
           },
         })

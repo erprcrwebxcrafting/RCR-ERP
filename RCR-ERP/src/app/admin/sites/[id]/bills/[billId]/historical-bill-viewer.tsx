@@ -168,9 +168,9 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
       if (anyMatched || bLines.length === 0) {
         items = b.workItems.map((item: any) => {
           const l = bLines.find((x: any) => (x.workItemId && x.workItemId === item.id) || (x.description && x.description.includes(item.name)));
-          const prevQ = l ? (l.previousQty ?? 0) : (hasSpecificItemLines ? 0 : (item.previousPct ?? item.previousQty ?? 0));
-          const currQ = l ? (l.currentQty ?? 0) : (hasSpecificItemLines ? 0 : (item.currentPct ?? item.currentQty ?? 0));
-          const cumQ = l ? (l.cumulativeQty ?? (prevQ + currQ)) : (hasSpecificItemLines ? 0 : (item.cumulativePct ?? item.cumulativeQty ?? (prevQ + currQ)));
+          let prevQ = l ? (l.previousQty ?? 0) : (hasSpecificItemLines ? 0 : (item.previousPct ?? item.previousQty ?? 0));
+          let currQ = l ? (l.currentQty ?? 0) : (hasSpecificItemLines ? 0 : (item.currentPct ?? item.currentQty ?? 0));
+          let cumQ = l ? (l.cumulativeQty ?? (prevQ + currQ)) : (hasSpecificItemLines ? 0 : (item.cumulativePct ?? item.cumulativeQty ?? (prevQ + currQ)));
           const prevA = l ? (l.previousAmount ?? 0) : (hasSpecificItemLines ? 0 : (item.previousAmt ?? 0));
           const currA = l ? (l.currentAmount ?? 0) : (hasSpecificItemLines ? 0 : (item.currentAmt ?? 0));
           const cumA = l ? (l.cumulativeAmount ?? (prevA + currA)) : (hasSpecificItemLines ? 0 : (item.cumulativeAmt ?? (prevA + currA)));
@@ -186,6 +186,16 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
             } else {
                partAmt = rate;
             }
+          }
+
+          if (unit === "%" || b.calculationMethod !== "QUANTITY") {
+            if (currQ === 0 && currA > 0 && partAmt > 0) {
+              currQ = Math.round(((currA / partAmt) * 100) * 100) / 100;
+            }
+            if (prevQ === 0 && prevA > 0 && partAmt > 0) {
+              prevQ = Math.round(((prevA / partAmt) * 100) * 100) / 100;
+            }
+            cumQ = prevQ + currQ;
           }
 
           return {
@@ -217,16 +227,33 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
             }
           }
 
+          let prevQ = l.previousQty || 0;
+          let currQ = l.currentQty || 0;
+          let cumQ = l.cumulativeQty || ((l.previousQty || 0) + (l.currentQty || 0));
+          const prevA = l.previousAmount || 0;
+          const currA = l.currentAmount || 0;
+          const cumA = l.cumulativeAmount || ((l.previousAmount || 0) + (l.currentAmount || 0));
+
+          if (unit === "%" || b.calculationMethod !== "QUANTITY") {
+            if (currQ === 0 && currA > 0 && partAmt > 0) {
+              currQ = Math.round(((currA / partAmt) * 100) * 100) / 100;
+            }
+            if (prevQ === 0 && prevA > 0 && partAmt > 0) {
+              prevQ = Math.round(((prevA / partAmt) * 100) * 100) / 100;
+            }
+            cumQ = prevQ + currQ;
+          }
+
           return {
             id: l.workItemId || l.id,
             name: l.workItem?.name || l.description?.replace(`${b.name} - `, "") || l.description || "Work Done",
             unit,
-            previousAmt: l.previousAmount || 0,
-            currentAmt: l.currentAmount || 0,
-            cumulativeAmt: l.cumulativeAmount || ((l.previousAmount || 0) + (l.currentAmount || 0)),
-            previousQty: l.previousQty || 0,
-            currentQty: l.currentQty || 0,
-            cumulativeQty: l.cumulativeQty || ((l.previousQty || 0) + (l.currentQty || 0)),
+            previousAmt: prevA,
+            currentAmt: currA,
+            cumulativeAmt: cumA,
+            previousQty: prevQ,
+            currentQty: currQ,
+            cumulativeQty: cumQ,
             rate,
             partAmount: partAmt,
           };
@@ -247,16 +274,33 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
           }
         }
 
+        let prevQ = l.previousQty || 0;
+        let currQ = l.currentQty || 0;
+        let cumQ = l.cumulativeQty || ((l.previousQty || 0) + (l.currentQty || 0));
+        const prevA = l.previousAmount || 0;
+        const currA = l.currentAmount || 0;
+        const cumA = l.cumulativeAmount || ((l.previousAmount || 0) + (l.currentAmount || 0));
+
+        if (unit === "%" || b.calculationMethod !== "QUANTITY") {
+          if (currQ === 0 && currA > 0 && partAmt > 0) {
+            currQ = Math.round(((currA / partAmt) * 100) * 100) / 100;
+          }
+          if (prevQ === 0 && prevA > 0 && partAmt > 0) {
+            prevQ = Math.round(((prevA / partAmt) * 100) * 100) / 100;
+          }
+          cumQ = prevQ + currQ;
+        }
+
         return {
           id: l.workItemId || l.id,
           name: l.workItem?.name || l.description?.replace(`${b.name} - `, "") || l.description || "Work Done",
           unit,
-          previousAmt: l.previousAmount || 0,
-          currentAmt: l.currentAmount || 0,
-          cumulativeAmt: l.cumulativeAmount || ((l.previousAmount || 0) + (l.currentAmount || 0)),
-          previousQty: l.previousQty || 0,
-          currentQty: l.currentQty || 0,
-          cumulativeQty: l.cumulativeQty || ((l.previousQty || 0) + (l.currentQty || 0)),
+          previousAmt: prevA,
+          currentAmt: currA,
+          cumulativeAmt: cumA,
+          previousQty: prevQ,
+          currentQty: currQ,
+          cumulativeQty: cumQ,
           rate,
           partAmount: partAmt,
         };
@@ -634,11 +678,15 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                       let prevQ = item.previousQty || 0;
                       if (isQty && prevA > 0 && itemRate > 0) {
                         prevQ = Math.round(prevA / itemRate);
+                      } else if (!isQty && prevQ === 0 && prevA > 0 && (item.partAmount || 0) > 0) {
+                        prevQ = Math.round(((prevA / item.partAmount) * 100) * 100) / 100;
                       }
 
                       let currQ = item.currentQty || 0;
                       if (isQty && currQ === 0 && currA > 0 && itemRate > 0) {
                         currQ = Math.round(currA / itemRate);
+                      } else if (!isQty && currQ === 0 && currA > 0 && (item.partAmount || 0) > 0) {
+                        currQ = Math.round(((currA / item.partAmount) * 100) * 100) / 100;
                       }
 
                       const cumQ = isQty ? (prevQ + currQ) : (item.cumulativeQty || (prevQ + currQ));
@@ -665,9 +713,9 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                         <TR className="bg-muted/80 font-bold border-t-2 text-xs">
                           <TD colSpan={3} className="text-right uppercase tracking-wider">TOTAL {b.name.toUpperCase()} AMOUNT</TD>
                           <TD className="text-right font-mono text-muted-foreground">{isQty && contractRate ? (totPartAmt / contractRate).toFixed(2) : formatINR(totPartAmt)}</TD>
-                          <TD className="text-center font-mono">{isQty ? totPrevQ.toFixed(2) + " Sft" : totPrevQ + "%"}</TD>
-                          <TD className="text-center font-mono text-emerald-500">{isQty ? totCurrQ.toFixed(2) + " Sft" : totCurrQ + "%"}</TD>
-                          <TD className="text-center font-mono font-bold">{isQty ? totCumQ.toFixed(2) + " Sft" : totCumQ + "%"}</TD>
+                          <TD className="text-center font-mono">{isQty ? totPrevQ.toFixed(2) + " Sft" : (totalVal > 0 ? (Math.round((totPrevA / totalVal) * 10000) / 100).toFixed(2) + "%" : "0%")}</TD>
+                          <TD className="text-center font-mono text-emerald-500">{isQty ? totCurrQ.toFixed(2) + " Sft" : (totalVal > 0 ? (Math.round((totCurrA / totalVal) * 10000) / 100).toFixed(2) + "%" : "0%")}</TD>
+                          <TD className="text-center font-mono font-bold">{isQty ? totCumQ.toFixed(2) + " Sft" : (totalVal > 0 ? (Math.round((totCumA / totalVal) * 10000) / 100).toFixed(2) + "%" : "0%")}</TD>
                           <TD className="text-right font-mono">{formatINR(totPrevA)}</TD>
                           <TD className="text-right font-mono text-emerald-500 font-black text-sm">{formatINR(totCurrA)}</TD>
                           <TD className="text-right font-mono font-black text-sm">{formatINR(totCumA)}</TD>
@@ -702,10 +750,17 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
             let totHelperHrs = 0;
 
             entries.forEach((se: any) => {
-              totFitterHrs += (se.fitterQty || 0) * (se.fitterHours || 8);
-              totForemanHrs += (se.fitterForemanQty || 0) * (se.fitterForemanHours || 8);
-              totHelperHrs += (se.helperQty || 0) * (se.helperHours || 8);
+              const fHrs = Math.round(((se.fitterQty || 0) * (se.fitterHours || 8)) * 100) / 100;
+              const fmHrs = Math.round(((se.fitterForemanQty || 0) * (se.fitterForemanHours || 8)) * 100) / 100;
+              const hHrs = Math.round(((se.helperQty || 0) * (se.helperHours || 8)) * 100) / 100;
+              totFitterHrs += fHrs;
+              totForemanHrs += fmHrs;
+              totHelperHrs += hHrs;
             });
+
+            totFitterHrs = Math.round(totFitterHrs * 100) / 100;
+            totForemanHrs = Math.round(totForemanHrs * 100) / 100;
+            totHelperHrs = Math.round(totHelperHrs * 100) / 100;
 
             const fitterDays = Math.round((totFitterHrs / 8) * 100) / 100;
             const foremanDays = Math.round((totForemanHrs / 8) * 100) / 100;
@@ -743,9 +798,9 @@ export function HistoricalBillViewer({ bill }: { bill: any }) {
                       </TR>
                     ) : (
                       entries.map((se: any) => {
-                        const fHrs = (se.fitterQty || 0) * (se.fitterHours || 8);
-                        const fmHrs = (se.fitterForemanQty || 0) * (se.fitterForemanHours || 8);
-                        const hHrs = (se.helperQty || 0) * (se.helperHours || 8);
+                        const fHrs = Math.round(((se.fitterQty || 0) * (se.fitterHours || 8)) * 100) / 100;
+                        const fmHrs = Math.round(((se.fitterForemanQty || 0) * (se.fitterForemanHours || 8)) * 100) / 100;
+                        const hHrs = Math.round(((se.helperQty || 0) * (se.helperHours || 8)) * 100) / 100;
 
                         return (
                           <TR key={se.id}>

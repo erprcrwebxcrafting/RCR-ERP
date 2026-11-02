@@ -343,8 +343,16 @@ function LegendFooter({ items, isLandscape }: { items?: LegendItem[]; isLandscap
 
 function getBuildingWorkAmounts(b: any, runningBill?: any) {
   const workItems = b.workItems || [];
-  let prevA = workItems.reduce((s: number, i: any) => s + ((i.previousAmt !== undefined && i.previousAmt !== null) ? Number(i.previousAmt) : (Number(i.previousQty || 0) * Number(i.rate || 0))), 0);
-  let currA = workItems.reduce((s: number, i: any) => s + ((i.currentAmt !== undefined && i.currentAmt !== null) ? Number(i.currentAmt) : (Number(i.currentQty || 0) * Number(i.rate || 0))), 0);
+  let prevA = workItems.reduce((s: number, i: any) => {
+    if (i.previousAmt !== undefined && i.previousAmt !== null) return s + Number(i.previousAmt);
+    if (i.previousPct > 0 && i.partAmount) return s + (Number(i.partAmount) * Number(i.previousPct) / 100);
+    return s + (Number(i.previousQty || 0) * Number(i.rate || 0));
+  }, 0);
+  let currA = workItems.reduce((s: number, i: any) => {
+    if (i.currentAmt !== undefined && i.currentAmt !== null) return s + Number(i.currentAmt);
+    if (i.currentPct > 0 && i.partAmount) return s + (Number(i.partAmount) * Number(i.currentPct) / 100);
+    return s + (Number(i.currentQty || 0) * Number(i.rate || 0));
+  }, 0);
 
   if (prevA === 0 && currA === 0) {
     if (b.bLines && b.bLines.length > 0) {
@@ -459,9 +467,6 @@ function TaxInvoice({ data, logoStr, signStr }: any) {
 
 function AbstractSummary({ data, logoStr, signStr }: any) {
   const { site, runningBill, towers, supplyEntries } = data;
-  let totPrevAmt = 0;
-  let totCurrAmt = 0;
-  let grossContractValue = 0;
   
   const currentSupplyEntries = (supplyEntries || []).filter((e: any) => 
     e.runningBillId === runningBill?.id || 
@@ -476,6 +481,38 @@ function AbstractSummary({ data, logoStr, signStr }: any) {
   const sgstPct = runningBill?.sgstPct ?? site?.sgstPct ?? 9;
   const retPct = runningBill?.retentionPct ?? site?.retentionPct ?? 2;
   const tdsPct = runningBill?.tdsPct ?? site?.tdsPct ?? 1;
+
+  let towerPrevAmt = 0;
+  let towerCurrAmt = 0;
+  let grossContractValue = 0;
+
+  const towerRows = towers.map((b: any) => {
+    const approxArea = b.approxArea || 0;
+    const contractRate = b.contractRate || 0;
+    grossContractValue += (approxArea * contractRate);
+
+    const { prevA, currA, cumA } = getBuildingWorkAmounts(b, runningBill);
+    towerPrevAmt += prevA;
+    towerCurrAmt += currA;
+
+    return {
+      ...b,
+      approxArea,
+      contractRate,
+      prevA,
+      currA,
+      cumA,
+    };
+  });
+
+  const totPrevAmt = towerPrevAmt + prevSupplyTotal;
+  const totCurrAmt = towerCurrAmt + supplyTotal;
+  const totCumAmt = totPrevAmt + totCurrAmt;
+  const cgstAbstract = totCurrAmt * (cgstPct / 100);
+  const sgstAbstract = totCurrAmt * (sgstPct / 100);
+  const retAmt = totCurrAmt * (retPct / 100);
+  const tdsAmt = totCurrAmt * (tdsPct / 100);
+  const netBalAmt = totCurrAmt + cgstAbstract + sgstAbstract - retAmt - tdsAmt;
 
   return (
     <Page size="A4" style={styles.page}>
@@ -493,26 +530,17 @@ function AbstractSummary({ data, logoStr, signStr }: any) {
           <Text style={[styles.th, { width: "12%", textAlign: "right", backgroundColor: "#ede9fe", color: "#6b21a8" }]}>Cum. Amt</Text>
         </View>
 
-        {towers.map((b: any, idx: number) => {
-          const approxArea = b.approxArea || 0;
-          const contractRate = b.contractRate || 0;
-          grossContractValue += (approxArea * contractRate);
-
-          const { prevA, currA, cumA } = getBuildingWorkAmounts(b, runningBill);
-
-          totPrevAmt += prevA;
-          totCurrAmt += currA;
-
+        {towerRows.map((b: any, idx: number) => {
           return (
             <View style={styles.tr} key={b.id} wrap={false}>
               <Text style={[styles.td, { width: "6%" }]}>{idx + 1}</Text>
               <Text style={[styles.td, { width: "24%", fontFamily: "Helvetica-Bold" }]}>{b.name} Reinforcement Work</Text>
               <Text style={[styles.td, { width: "10%" }]}>Sft.</Text>
-              <Text style={[styles.td, { width: "12%", textAlign: "right" }]}>{approxArea > 0 ? approxArea.toLocaleString() : "—"}</Text>
-              <Text style={[styles.td, { width: "12%", textAlign: "right" }]}>{contractRate > 0 ? `Rs.${contractRate}` : "—"}</Text>
-              <Text style={[styles.td, { width: "12%", textAlign: "right", backgroundColor: "#eff6ff", color: "#1e40af" }]}>{formatINR(prevA)}</Text>
-              <Text style={[styles.td, { width: "12%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#15803d", backgroundColor: "#f0fdf4" }]}>{formatINR(currA)}</Text>
-              <Text style={[styles.td, { width: "12%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#6b21a8", backgroundColor: "#faf5ff" }]}>{formatINR(cumA)}</Text>
+              <Text style={[styles.td, { width: "12%", textAlign: "right" }]}>{b.approxArea > 0 ? b.approxArea.toLocaleString() : "—"}</Text>
+              <Text style={[styles.td, { width: "12%", textAlign: "right" }]}>{b.contractRate > 0 ? `Rs.${b.contractRate}` : "—"}</Text>
+              <Text style={[styles.td, { width: "12%", textAlign: "right", backgroundColor: "#eff6ff", color: "#1e40af" }]}>{formatINR(b.prevA)}</Text>
+              <Text style={[styles.td, { width: "12%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#15803d", backgroundColor: "#f0fdf4" }]}>{formatINR(b.currA)}</Text>
+              <Text style={[styles.td, { width: "12%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#6b21a8", backgroundColor: "#faf5ff" }]}>{formatINR(b.cumA)}</Text>
             </View>
           );
         })}
@@ -532,47 +560,32 @@ function AbstractSummary({ data, logoStr, signStr }: any) {
       {/* Abstract Calculations Box */}
       <View style={{ marginTop: 12 }} wrap={false}>
         <View style={styles.table}>
-          {(() => {
-            totPrevAmt += prevSupplyTotal;
-            totCurrAmt += supplyTotal;
-            const totCumAmt = totPrevAmt + totCurrAmt;
-            const cgstAbstract = totCurrAmt * (cgstPct / 100);
-            const sgstAbstract = totCurrAmt * (sgstPct / 100);
-            const retAmt = totCurrAmt * (retPct / 100);
-            const tdsAmt = totCurrAmt * (tdsPct / 100);
-            const netBalAmt = totCurrAmt + cgstAbstract + sgstAbstract - retAmt - tdsAmt;
-
-            return (
-              <>
-                <View style={[styles.tr, styles.trTotal]}>
-                  <Text style={[styles.td, { width: "52%", textAlign: "right" }]}>TOTAL VALUE OF WORK DONE:</Text>
-                  <Text style={[styles.td, { width: "12%", textAlign: "right", backgroundColor: "#eff6ff", color: "#1e40af" }]}>{formatINR(totPrevAmt)}</Text>
-                  <Text style={[styles.td, { width: "12%", textAlign: "right", backgroundColor: "#f0fdf4", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(totCurrAmt)}</Text>
-                  <Text style={[styles.td, { width: "24%", textAlign: "right", backgroundColor: "#faf5ff", color: "#6b21a8", fontFamily: "Helvetica-Bold" }]}>{formatINR(totCumAmt)} (Cumulative)</Text>
-                </View>
-                <View style={[styles.tr, { backgroundColor: "#f0fdfa" }]}>
-                  <Text style={[styles.td, { width: "64%", textAlign: "right", color: "#0f766e" }]}>Add CGST @ {cgstPct}%:</Text>
-                  <Text style={[styles.td, { width: "36%", textAlign: "right", color: "#0f766e", fontFamily: "Helvetica-Bold" }]}>+ {formatINR(cgstAbstract)}</Text>
-                </View>
-                <View style={[styles.tr, { backgroundColor: "#f0fdfa" }]}>
-                  <Text style={[styles.td, { width: "64%", textAlign: "right", color: "#0f766e" }]}>Add SGST @ {sgstPct}%:</Text>
-                  <Text style={[styles.td, { width: "36%", textAlign: "right", color: "#0f766e", fontFamily: "Helvetica-Bold" }]}>+ {formatINR(sgstAbstract)}</Text>
-                </View>
-                <View style={[styles.tr, { backgroundColor: "#fff7ed" }]}>
-                  <Text style={[styles.td, { width: "64%", textAlign: "right", color: "#c2410c" }]}>Less Retention @ {retPct}%:</Text>
-                  <Text style={[styles.td, { width: "36%", textAlign: "right", color: "#c2410c", fontFamily: "Helvetica-Bold" }]}>- {formatINR(retAmt)}</Text>
-                </View>
-                <View style={[styles.tr, { backgroundColor: "#fef2f2" }]}>
-                  <Text style={[styles.td, { width: "64%", textAlign: "right", color: "#b91c1c" }]}>Less TDS @ {tdsPct}%:</Text>
-                  <Text style={[styles.td, { width: "36%", textAlign: "right", color: "#b91c1c", fontFamily: "Helvetica-Bold" }]}>- {formatINR(tdsAmt)}</Text>
-                </View>
-                <View style={[styles.tr, { backgroundColor: "#e0e7ff", borderBottomWidth: 0 }]}>
-                  <Text style={[styles.td, { width: "64%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#3730a3" }]}>NET PAYABLE INVOICE BALANCE:</Text>
-                  <Text style={[styles.td, { width: "36%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#3730a3" }]}>{formatINR(netBalAmt)}</Text>
-                </View>
-              </>
-            );
-          })()}
+          <View style={[styles.tr, styles.trTotal]}>
+            <Text style={[styles.td, { width: "52%", textAlign: "right" }]}>TOTAL VALUE OF WORK DONE:</Text>
+            <Text style={[styles.td, { width: "12%", textAlign: "right", backgroundColor: "#eff6ff", color: "#1e40af" }]}>{formatINR(totPrevAmt)}</Text>
+            <Text style={[styles.td, { width: "12%", textAlign: "right", backgroundColor: "#f0fdf4", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(totCurrAmt)}</Text>
+            <Text style={[styles.td, { width: "24%", textAlign: "right", backgroundColor: "#faf5ff", color: "#6b21a8", fontFamily: "Helvetica-Bold" }]}>{formatINR(totCumAmt)} (Cumulative)</Text>
+          </View>
+          <View style={[styles.tr, { backgroundColor: "#f0fdfa" }]}>
+            <Text style={[styles.td, { width: "64%", textAlign: "right", color: "#0f766e" }]}>Add CGST @ {cgstPct}%:</Text>
+            <Text style={[styles.td, { width: "36%", textAlign: "right", color: "#0f766e", fontFamily: "Helvetica-Bold" }]}>+ {formatINR(cgstAbstract)}</Text>
+          </View>
+          <View style={[styles.tr, { backgroundColor: "#f0fdfa" }]}>
+            <Text style={[styles.td, { width: "64%", textAlign: "right", color: "#0f766e" }]}>Add SGST @ {sgstPct}%:</Text>
+            <Text style={[styles.td, { width: "36%", textAlign: "right", color: "#0f766e", fontFamily: "Helvetica-Bold" }]}>+ {formatINR(sgstAbstract)}</Text>
+          </View>
+          <View style={[styles.tr, { backgroundColor: "#fff7ed" }]}>
+            <Text style={[styles.td, { width: "64%", textAlign: "right", color: "#c2410c" }]}>Less Retention @ {retPct}%:</Text>
+            <Text style={[styles.td, { width: "36%", textAlign: "right", color: "#c2410c", fontFamily: "Helvetica-Bold" }]}>- {formatINR(retAmt)}</Text>
+          </View>
+          <View style={[styles.tr, { backgroundColor: "#fef2f2" }]}>
+            <Text style={[styles.td, { width: "64%", textAlign: "right", color: "#b91c1c" }]}>Less TDS @ {tdsPct}%:</Text>
+            <Text style={[styles.td, { width: "36%", textAlign: "right", color: "#b91c1c", fontFamily: "Helvetica-Bold" }]}>- {formatINR(tdsAmt)}</Text>
+          </View>
+          <View style={[styles.tr, { backgroundColor: "#e0e7ff", borderBottomWidth: 0 }]}>
+            <Text style={[styles.td, { width: "64%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#3730a3" }]}>NET PAYABLE INVOICE BALANCE:</Text>
+            <Text style={[styles.td, { width: "36%", textAlign: "right", fontFamily: "Helvetica-Bold", color: "#3730a3" }]}>{formatINR(netBalAmt)}</Text>
+          </View>
         </View>
         {grossContractValue > 0 && (
           <Text style={{ textAlign: "right", marginTop: 6, fontFamily: "Helvetica-Bold", color: "#6b7280", fontSize: 7 }}>
@@ -640,24 +653,48 @@ function TowerPages({ data, logoStr, signStr }: any) {
           </View>
           
           {items.map((item: any, i: number) => {
-            const isQtyMode = isQty;
+            const isQtyMode = isQty || item.unit === "Sft";
             const itemRate = item.rate || tower.contractRate || 0;
 
-            const prevA = (item.previousAmt !== undefined && item.previousAmt !== null) ? item.previousAmt : 0;
-            const currA = (item.currentAmt !== undefined && item.currentAmt !== null) ? item.currentAmt : 0;
-            const cumA = item.cumulativeAmt ?? (prevA + currA);
+            let partAmt = item.partAmount || 0;
+            if (!partAmt) {
+              if (item.unit === "%") {
+                partAmt = 100 * itemRate;
+              } else if (item.buWork && itemRate) {
+                partAmt = item.buWork * itemRate;
+              } else {
+                partAmt = itemRate;
+              }
+            }
 
-            let prevQ = item.previousQty || 0;
+            const prevA = (item.previousAmt !== undefined && item.previousAmt !== null)
+              ? Number(item.previousAmt)
+              : (item.previousPct > 0 && partAmt > 0 ? (partAmt * Number(item.previousPct) / 100) : (item.previousQty ? Number(item.previousQty) * itemRate : 0));
+            const currA = (item.currentAmt !== undefined && item.currentAmt !== null)
+              ? Number(item.currentAmt)
+              : (item.currentPct > 0 && partAmt > 0 ? (partAmt * Number(item.currentPct) / 100) : (item.currentQty ? Number(item.currentQty) * itemRate : 0));
+            const cumA = (item.cumulativeAmt !== undefined && item.cumulativeAmt !== null)
+              ? Number(item.cumulativeAmt)
+              : (prevA + currA);
+
+            let prevQ = item.previousPct !== undefined && item.previousPct !== null && item.previousPct > 0 ? item.previousPct : (item.previousQty || 0);
             if (isQtyMode && prevA > 0 && itemRate > 0) {
               prevQ = Math.round(prevA / itemRate);
+            } else if (!isQtyMode && prevQ === 0 && prevA > 0 && partAmt > 0) {
+              prevQ = Math.round(((prevA / partAmt) * 100) * 100) / 100;
             }
 
-            let currQ = item.currentQty || 0;
+            let currQ = item.currentPct !== undefined && item.currentPct !== null && item.currentPct > 0 ? item.currentPct : (item.currentQty || 0);
             if (isQtyMode && currQ === 0 && currA > 0 && itemRate > 0) {
               currQ = Math.round(currA / itemRate);
+            } else if (!isQtyMode && currQ === 0 && currA > 0 && partAmt > 0) {
+              currQ = Math.round(((currA / partAmt) * 100) * 100) / 100;
             }
 
-            const cumQ = isQtyMode ? (prevQ + currQ) : (item.cumulativeQty || (prevQ + currQ));
+            let cumQ = isQtyMode ? (prevQ + currQ) : (item.cumulativePct || item.cumulativeQty || (prevQ + currQ));
+            if (!isQtyMode && cumQ === 0 && cumA > 0 && partAmt > 0) {
+              cumQ = Math.round(((cumA / partAmt) * 100) * 100) / 100;
+            }
 
             tPrevTotal += prevA;
             tCurrTotal += currA;
@@ -665,14 +702,14 @@ function TowerPages({ data, logoStr, signStr }: any) {
             tPrevQ += prevQ;
             tCurrQ += currQ;
             tCumQ += cumQ;
-            tPartAmt += item.partAmount || 0;
+            tPartAmt += partAmt;
 
             return (
               <View style={styles.towerTr} key={item.id} wrap={false}>
                 <Text style={[styles.towerTd, { width: "4%" }]}>{i + 1}</Text>
                 <Text style={[styles.towerTd, { width: "22%", textAlign: "left" }]}>{item.description || item.name}</Text>
                 <Text style={[styles.towerTd, { width: "14%", textAlign: "right", color: "#92400e", backgroundColor: "#fffbeb" }]}>
-                  {isQty && tower.contractRate ? (item.partAmount / tower.contractRate).toFixed(2) : formatINR(item.partAmount || 0)}
+                  {isQty && tower.contractRate ? (partAmt / tower.contractRate).toFixed(2) : formatINR(partAmt)}
                 </Text>
                 <Text style={[styles.towerTd, { width: "6%", textAlign: "center", color: "#1e40af", backgroundColor: "#eff6ff" }]}>{isQty ? prevQ.toFixed(2) : prevQ + "%"}</Text>
                 <Text style={[styles.towerTd, { width: "6%", textAlign: "center", color: "#15803d", backgroundColor: "#f0fdf4", fontFamily: "Helvetica-Bold" }]}>{isQty ? currQ.toFixed(2) : currQ + "%"}</Text>
@@ -689,9 +726,15 @@ function TowerPages({ data, logoStr, signStr }: any) {
             <Text style={[styles.towerTd, { width: "14%", textAlign: "right", color: "#92400e", backgroundColor: "#fef3c7", fontFamily: "Helvetica-Bold" }]}>
               {isQty && tower.contractRate ? (tPartAmt / tower.contractRate).toFixed(2) : formatINR(tPartAmt)}
             </Text>
-            <Text style={[styles.towerTd, { width: "6%", textAlign: "center", color: "#1e40af", backgroundColor: "#dbeafe", fontFamily: "Helvetica-Bold" }]}>{isQty ? tPrevQ.toFixed(2) : tPrevQ + "%"}</Text>
-            <Text style={[styles.towerTd, { width: "6%", textAlign: "center", color: "#15803d", backgroundColor: "#dcfce7", fontFamily: "Helvetica-Bold" }]}>{isQty ? tCurrQ.toFixed(2) : tCurrQ + "%"}</Text>
-            <Text style={[styles.towerTd, { width: "6%", textAlign: "center", color: "#6b21a8", backgroundColor: "#ede9fe", fontFamily: "Helvetica-Bold" }]}>{isQty ? tCumQ.toFixed(2) : tCumQ + "%"}</Text>
+            <Text style={[styles.towerTd, { width: "6%", textAlign: "center", color: "#1e40af", backgroundColor: "#dbeafe", fontFamily: "Helvetica-Bold" }]}>
+              {isQty ? tPrevQ.toFixed(2) : (tPartAmt > 0 ? (Math.round((tPrevTotal / tPartAmt) * 10000) / 100).toFixed(2) + "%" : "0%")}
+            </Text>
+            <Text style={[styles.towerTd, { width: "6%", textAlign: "center", color: "#15803d", backgroundColor: "#dcfce7", fontFamily: "Helvetica-Bold" }]}>
+              {isQty ? tCurrQ.toFixed(2) : (tPartAmt > 0 ? (Math.round((tCurrTotal / tPartAmt) * 10000) / 100).toFixed(2) + "%" : "0%")}
+            </Text>
+            <Text style={[styles.towerTd, { width: "6%", textAlign: "center", color: "#6b21a8", backgroundColor: "#ede9fe", fontFamily: "Helvetica-Bold" }]}>
+              {isQty ? tCumQ.toFixed(2) : (tPartAmt > 0 ? (Math.round((tCumTotal / tPartAmt) * 10000) / 100).toFixed(2) + "%" : "0%")}
+            </Text>
             <Text style={[styles.towerTd, { width: "14%", textAlign: "right", color: "#1e40af", backgroundColor: "#dbeafe", fontFamily: "Helvetica-Bold" }]}>{formatINR(tPrevTotal)}</Text>
             <Text style={[styles.towerTd, { width: "14%", textAlign: "right", color: "#15803d", backgroundColor: "#dcfce7", fontFamily: "Helvetica-Bold" }]}>{formatINR(tCurrTotal)}</Text>
             <Text style={[styles.towerTd, { width: "14%", textAlign: "right", color: "#6b21a8", backgroundColor: "#ede9fe", fontFamily: "Helvetica-Bold" }]}>{formatINR(tCumTotal)}</Text>
@@ -729,10 +772,42 @@ function SupplyPage({ data, logoStr, signStr }: any) {
     (!e.runningBillId && (!runningBill || (supplyEntries.filter((x: any) => x.runningBillId === runningBill?.id).length === 0)))
   );
 
-  let totFitterHrs = 0;
-  let totForemanHrs = 0;
-  let totHelperHrs = 0;
-  let totSupplyAmt = 0;
+  let rawFitterHrs = 0;
+  let rawForemanHrs = 0;
+  let rawHelperHrs = 0;
+  let rawSupplyAmt = 0;
+
+  const processedEntries = currentSupplyEntries.map((se: any) => {
+    const fHrs = Math.round(((se.fitterQty || 0) * (se.fitterHours || 8)) * 100) / 100;
+    const fmHrs = Math.round(((se.fitterForemanQty || 0) * (se.fitterForemanHours || 8)) * 100) / 100;
+    const hHrs = Math.round(((se.helperQty || 0) * (se.helperHours || 8)) * 100) / 100;
+    rawFitterHrs += fHrs;
+    rawForemanHrs += fmHrs;
+    rawHelperHrs += hHrs;
+    rawSupplyAmt += (se.totalAmount || 0);
+
+    // Fix long continuous words in description by inserting newlines
+    let desc = se.description || "";
+    desc = desc.replace(/(\S{15})/g, "$1\n");
+
+    return {
+      ...se,
+      fHrs,
+      fmHrs,
+      hHrs,
+      desc,
+      dateStr: se.date ? new Date(se.date).toLocaleDateString("en-IN") : "-",
+    };
+  });
+
+  const totFitterHrs = Math.round(rawFitterHrs * 100) / 100;
+  const totForemanHrs = Math.round(rawForemanHrs * 100) / 100;
+  const totHelperHrs = Math.round(rawHelperHrs * 100) / 100;
+  const totSupplyAmt = Math.round(rawSupplyAmt * 100) / 100;
+
+  const fDays = Math.round((totFitterHrs / 8) * 100) / 100;
+  const fmDays = Math.round((totForemanHrs / 8) * 100) / 100;
+  const hDays = Math.round((totHelperHrs / 8) * 100) / 100;
 
   return (
     <Page size="A4" style={styles.page}>
@@ -755,35 +830,21 @@ function SupplyPage({ data, logoStr, signStr }: any) {
           <Text style={[styles.th, { width: "14%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d" }]}>Amount</Text>
         </View>
 
-
-        {currentSupplyEntries.map((se: any, idx: number) => {
-          const fHrs = (se.fitterQty || 0) * (se.fitterHours || 8);
-          const fmHrs = (se.fitterForemanQty || 0) * (se.fitterForemanHours || 8);
-          const hHrs = (se.helperQty || 0) * (se.helperHours || 8);
-          totFitterHrs += fHrs;
-          totForemanHrs += fmHrs;
-          totHelperHrs += hHrs;
-          totSupplyAmt += se.totalAmount || 0;
-          const dateStr = se.date ? new Date(se.date).toLocaleDateString("en-IN") : "-";
-          
-          // Fix long continuous words in description by inserting newlines
-          let desc = se.description || "";
-          desc = desc.replace(/(\S{15})/g, "$1\n");
-
+        {processedEntries.map((se: any, idx: number) => {
           return (
             <View style={styles.tr} key={idx} wrap={false}>
-              <Text style={[styles.td, { width: "9%" }]}>{dateStr}</Text>
+              <Text style={[styles.td, { width: "9%" }]}>{se.dateStr}</Text>
               <Text style={[styles.td, { width: "10%" }]}>{se.challanNo || "-"}</Text>
-              <Text style={[styles.td, { width: "22%" }]}>{desc}</Text>
+              <Text style={[styles.td, { width: "22%" }]}>{se.desc}</Text>
               <Text style={[styles.td, { width: "4%", textAlign: "center", backgroundColor: "#f0f7ff", color: "#1e40af", paddingLeft: 1, paddingRight: 1 }]}>{se.fitterQty || 0}</Text>
               <Text style={[styles.td, { width: "5%", textAlign: "center", backgroundColor: "#f0f7ff", color: "#1e40af", paddingLeft: 1, paddingRight: 1 }]}>{se.fitterHours || 8}h</Text>
-              <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#f0f7ff", color: "#1e40af", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1 }]}>{fHrs}h</Text>
+              <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#f0f7ff", color: "#1e40af", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1, fontSize: 7 }]}>{se.fHrs}h</Text>
               <Text style={[styles.td, { width: "4%", textAlign: "center", backgroundColor: "#fff7ed", color: "#c2410c", paddingLeft: 1, paddingRight: 1 }]}>{se.fitterForemanQty || 0}</Text>
               <Text style={[styles.td, { width: "5%", textAlign: "center", backgroundColor: "#fff7ed", color: "#c2410c", paddingLeft: 1, paddingRight: 1 }]}>{se.fitterForemanHours || 8}h</Text>
-              <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#fff7ed", color: "#c2410c", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1 }]}>{fmHrs}h</Text>
+              <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#fff7ed", color: "#c2410c", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1, fontSize: 7 }]}>{se.fmHrs}h</Text>
               <Text style={[styles.td, { width: "4%", textAlign: "center", backgroundColor: "#fbf8ff", color: "#6b21a8", paddingLeft: 1, paddingRight: 1 }]}>{se.helperQty || 0}</Text>
               <Text style={[styles.td, { width: "5%", textAlign: "center", backgroundColor: "#fbf8ff", color: "#6b21a8", paddingLeft: 1, paddingRight: 1 }]}>{se.helperHours || 8}h</Text>
-              <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#fbf8ff", color: "#6b21a8", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1 }]}>{hHrs}h</Text>
+              <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#fbf8ff", color: "#6b21a8", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1, fontSize: 7 }]}>{se.hHrs}h</Text>
               <Text style={[styles.td, { width: "14%", textAlign: "right", backgroundColor: "#f2fbf5", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(se.totalAmount || 0)}</Text>
             </View>
           );
@@ -793,28 +854,21 @@ function SupplyPage({ data, logoStr, signStr }: any) {
           <Text style={[styles.td, { width: "41%", textAlign: "right" }]}>TOTAL HOURS</Text>
           <Text style={[styles.td, { width: "4%", backgroundColor: "#eff6ff", paddingLeft: 1, paddingRight: 1 }]}></Text>
           <Text style={[styles.td, { width: "5%", backgroundColor: "#eff6ff", paddingLeft: 1, paddingRight: 1 }]}></Text>
-          <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#dbeafe", color: "#1e40af", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1 }]}>{totFitterHrs}h</Text>
+          <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#dbeafe", color: "#1e40af", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1, fontSize: 7 }]}>{totFitterHrs}h</Text>
           <Text style={[styles.td, { width: "4%", backgroundColor: "#fff7ed", paddingLeft: 1, paddingRight: 1 }]}></Text>
           <Text style={[styles.td, { width: "5%", backgroundColor: "#fff7ed", paddingLeft: 1, paddingRight: 1 }]}></Text>
-          <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#ffedd5", color: "#c2410c", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1 }]}>{totForemanHrs}h</Text>
+          <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#ffedd5", color: "#c2410c", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1, fontSize: 7 }]}>{totForemanHrs}h</Text>
           <Text style={[styles.td, { width: "4%", backgroundColor: "#faf5ff", paddingLeft: 1, paddingRight: 1 }]}></Text>
           <Text style={[styles.td, { width: "5%", backgroundColor: "#faf5ff", paddingLeft: 1, paddingRight: 1 }]}></Text>
-          <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#ede9fe", color: "#6b21a8", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1 }]}>{totHelperHrs}h</Text>
+          <Text style={[styles.td, { width: "6%", textAlign: "center", backgroundColor: "#ede9fe", color: "#6b21a8", fontFamily: "Helvetica-Bold", paddingLeft: 1, paddingRight: 1, fontSize: 7 }]}>{totHelperHrs}h</Text>
           <Text style={[styles.td, { width: "14%", textAlign: "right", backgroundColor: "#dcfce7", color: "#15803d", fontFamily: "Helvetica-Bold" }]}>{formatINR(totSupplyAmt)}</Text>
         </View>
       </View>
       
-      {(() => {
-        const fDays = Math.round((totFitterHrs / 8) * 100) / 100;
-        const fmDays = Math.round((totForemanHrs / 8) * 100) / 100;
-        const hDays = Math.round((totHelperHrs / 8) * 100) / 100;
-        return (
-          <View style={{ marginTop: 14, alignItems: "flex-end" }} wrap={false}>
-            <Text style={{ fontSize: 7.5, marginBottom: 2 }}>Total Shifts: {fDays} Days (Fitter)  |  {fmDays} Days (Foreman)  |  {hDays} Days (Helper)</Text>
-            <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#111827" }}>TOTAL EXTRA LABOUR SUPPLY: <Text style={{ color: "#15803d" }}>{formatINR(totSupplyAmt)}</Text></Text>
-          </View>
-        );
-      })()}
+      <View style={{ marginTop: 14, alignItems: "flex-end" }} wrap={false}>
+        <Text style={{ fontSize: 7.5, marginBottom: 2 }}>Total Shifts: {fDays} Days (Fitter)  |  {fmDays} Days (Foreman)  |  {hDays} Days (Helper)</Text>
+        <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#111827" }}>TOTAL EXTRA LABOUR SUPPLY: <Text style={{ color: "#15803d" }}>{formatINR(totSupplyAmt)}</Text></Text>
+      </View>
       <LegendFooter
         items={[
           { short: "Blue (F)", full: "Fitter Manpower Supply", colorDot: "#1e40af" },
@@ -1036,18 +1090,6 @@ export async function generateBillPdfs(bill: any): Promise<{ filename: string; b
             const currA = l?.currentAmount ?? 0;
             const cumA = l?.cumulativeAmount ?? (prevA + currA);
 
-            let prevQ = l?.previousQty ?? 0;
-            if (isQtyMode && prevA > 0 && rate > 0) {
-              prevQ = Math.round(prevA / rate);
-            }
-
-            let currQ = l?.currentQty ?? 0;
-            if (isQtyMode && currQ === 0 && currA > 0 && rate > 0) {
-              currQ = Math.round(currA / rate);
-            }
-
-            const cumQ = isQtyMode ? (prevQ + currQ) : (l?.cumulativeQty ?? (prevQ + currQ));
-
             let partAmt = item.partAmount || l?.workItem?.partAmount || 0;
             const unit = item.unit || l?.unit || "%";
             if (!partAmt) {
@@ -1058,6 +1100,25 @@ export async function generateBillPdfs(bill: any): Promise<{ filename: string; b
               } else {
                 partAmt = rate;
               }
+            }
+
+            let prevQ = l?.previousQty ?? 0;
+            if (isQtyMode && prevA > 0 && rate > 0) {
+              prevQ = Math.round(prevA / rate);
+            } else if (!isQtyMode && prevQ === 0 && prevA > 0 && partAmt > 0) {
+              prevQ = Math.round(((prevA / partAmt) * 100) * 100) / 100;
+            }
+
+            let currQ = l?.currentQty ?? 0;
+            if (isQtyMode && currQ === 0 && currA > 0 && rate > 0) {
+              currQ = Math.round(currA / rate);
+            } else if (!isQtyMode && currQ === 0 && currA > 0 && partAmt > 0) {
+              currQ = Math.round(((currA / partAmt) * 100) * 100) / 100;
+            }
+
+            let cumQ = isQtyMode ? (prevQ + currQ) : (l?.cumulativeQty ?? (prevQ + currQ));
+            if (!isQtyMode && cumQ === 0 && cumA > 0 && partAmt > 0) {
+              cumQ = Math.round(((cumA / partAmt) * 100) * 100) / 100;
             }
             return {
               id: item.id,
@@ -1083,18 +1144,6 @@ export async function generateBillPdfs(bill: any): Promise<{ filename: string; b
             const currA = l.currentAmount || 0;
             const cumA = l.cumulativeAmount || (prevA + currA);
 
-            let prevQ = l.previousQty || 0;
-            if (isQtyMode && prevA > 0 && rate > 0) {
-              prevQ = Math.round(prevA / rate);
-            }
-
-            let currQ = l.currentQty || 0;
-            if (isQtyMode && currQ === 0 && currA > 0 && rate > 0) {
-              currQ = Math.round(currA / rate);
-            }
-
-            const cumQ = isQtyMode ? (prevQ + currQ) : (l.cumulativeQty || (prevQ + currQ));
-
             if (!partAmt) {
               if (unit === "%") {
                 partAmt = 100 * rate;
@@ -1103,6 +1152,25 @@ export async function generateBillPdfs(bill: any): Promise<{ filename: string; b
               } else {
                 partAmt = rate;
               }
+            }
+
+            let prevQ = l.previousQty || 0;
+            if (isQtyMode && prevA > 0 && rate > 0) {
+              prevQ = Math.round(prevA / rate);
+            } else if (!isQtyMode && prevQ === 0 && prevA > 0 && partAmt > 0) {
+              prevQ = Math.round(((prevA / partAmt) * 100) * 100) / 100;
+            }
+
+            let currQ = l.currentQty || 0;
+            if (isQtyMode && currQ === 0 && currA > 0 && rate > 0) {
+              currQ = Math.round(currA / rate);
+            } else if (!isQtyMode && currQ === 0 && currA > 0 && partAmt > 0) {
+              currQ = Math.round(((currA / partAmt) * 100) * 100) / 100;
+            }
+
+            let cumQ = isQtyMode ? (prevQ + currQ) : (l.cumulativeQty || (prevQ + currQ));
+            if (!isQtyMode && cumQ === 0 && cumA > 0 && partAmt > 0) {
+              cumQ = Math.round(((cumA / partAmt) * 100) * 100) / 100;
             }
             return {
               id: l.workItemId || l.id,

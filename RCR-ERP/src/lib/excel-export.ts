@@ -374,14 +374,21 @@ export async function generateRABillExcelWorkbook(data: {
       let prevQ = item.previousPct ?? item.previousQty ?? 0;
       if (isQty && prevA > 0 && itemRate > 0) {
         prevQ = Math.round(prevA / itemRate);
+      } else if (!isQty && prevQ === 0 && prevA > 0 && item.partAmount && item.partAmount > 0) {
+        prevQ = Math.round(((prevA / item.partAmount) * 100) * 100) / 100;
       }
 
       let currQ = item.currentPct ?? item.currentQty ?? 0;
       if (isQty && currQ === 0 && currA > 0 && itemRate > 0) {
         currQ = Math.round(currA / itemRate);
+      } else if (!isQty && currQ === 0 && currA > 0 && item.partAmount && item.partAmount > 0) {
+        currQ = Math.round(((currA / item.partAmount) * 100) * 100) / 100;
       }
 
-      const cumQ = isQty ? (prevQ + currQ) : (item.cumulativePct ?? (prevQ + currQ));
+      let cumQ = isQty ? (prevQ + currQ) : (item.cumulativePct ?? (prevQ + currQ));
+      if (!isQty && cumQ === 0 && cumA > 0 && item.partAmount && item.partAmount > 0) {
+        cumQ = Math.round(((cumA / item.partAmount) * 100) * 100) / 100;
+      }
 
       tPrevTotal += prevA;
       tCurrTotal += currA;
@@ -447,11 +454,11 @@ export async function generateRABillExcelWorkbook(data: {
   let totalSupplyAmount = 0;
 
   supplyEntries.forEach((se: any) => {
-    const fHrs = (se.fitterQty || 0) * (se.fitterHours || 0);
-    const hHrs = (se.helperQty || 0) * (se.helperHours || 0);
+    const fHrs = Math.round(((se.fitterQty || 0) * (se.fitterHours || 0)) * 100) / 100;
+    const hHrs = Math.round(((se.helperQty || 0) * (se.helperHours || 0)) * 100) / 100;
     totalFitterHours += fHrs;
     totalHelperHours += hHrs;
-    totalSupplyAmount += se.totalAmount || 0;
+    totalSupplyAmount += (se.totalAmount || 0);
 
     const r = supplySheet.addRow([
       se.date ? new Date(se.date).toLocaleDateString("en-IN") : "-",
@@ -471,6 +478,10 @@ export async function generateRABillExcelWorkbook(data: {
     r.getCell(10).numFmt = "₹ #,##0.00";
     r.eachCell((cell) => { cell.border = thinBorder; });
   });
+
+  totalFitterHours = Math.round(totalFitterHours * 100) / 100;
+  totalHelperHours = Math.round(totalHelperHours * 100) / 100;
+  totalSupplyAmount = Math.round(totalSupplyAmount * 100) / 100;
 
   supplySheet.addRow([]);
   const sTotHrsRow = supplySheet.addRow(["", "", "Total Hours", "", "", totalFitterHours, "", "", totalHelperHours, ""]);
