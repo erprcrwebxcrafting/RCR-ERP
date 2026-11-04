@@ -430,8 +430,8 @@ export function AttendanceCalendar({ supervisor, initialAttendances, payments = 
               let isLocked = false;
               if (att && att.createdAt) {
                 const createdAtTime = new Date(att.createdAt).getTime();
-                const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
-                isLocked = createdAtTime < twentyFourHoursAgo;
+                const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+                isLocked = createdAtTime < thirtyDaysAgo;
               }
 
               const dayPayments = payments.filter((p) => {
@@ -478,7 +478,7 @@ export function AttendanceCalendar({ supervisor, initialAttendances, payments = 
                           <div className="text-[11px] sm:text-xs font-black tracking-tight text-slate-800 dark:text-slate-100">
                             ₹{att.earnedAmount.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                           </div>
-                          {isLocked && <span title="Locked (24h past)"><Lock className="h-3 w-3 text-slate-400" /></span>}
+                          {isLocked && <span title="Locked (30 days past)"><Lock className="h-3 w-3 text-slate-400" /></span>}
                         </div>
                         <p className="text-[9px] text-slate-400 font-medium truncate">
                           Rate: ₹{Math.round(att.dailyRate * 100) / 100}

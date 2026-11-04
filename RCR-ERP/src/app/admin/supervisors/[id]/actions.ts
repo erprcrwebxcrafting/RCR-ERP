@@ -148,9 +148,9 @@ export async function markSupervisorAttendanceAction(
   });
 
   if (existing) {
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
-      return { error: "Attendance cannot be edited. It was recorded more than 24 hours ago and is now locked." };
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    if (existing.createdAt.getTime() < thirtyDaysAgo.getTime()) {
+      return { error: "Attendance cannot be edited. It was recorded more than 30 days ago and is now locked." };
     }
   }
 
@@ -233,9 +233,9 @@ export async function deleteSupervisorAttendanceAction(attendanceId: string, sup
     return { error: "Attendance record not found." };
   }
 
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
-    return { error: "Attendance deletion is disabled. It was recorded more than 24 hours ago and is now locked." };
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  if (existing.createdAt.getTime() < thirtyDaysAgo.getTime()) {
+    return { error: "Attendance deletion is disabled. It was recorded more than 30 days ago and is now locked." };
   }
 
   await prisma.supervisorAttendance.delete({

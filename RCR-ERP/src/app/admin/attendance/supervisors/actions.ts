@@ -66,9 +66,9 @@ export async function markSupervisorAttendanceUniversal(
   });
 
   if (existing) {
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    if (existing.createdAt.getTime() < twentyFourHoursAgo.getTime()) {
-      throw new Error("Attendance cannot be edited for dates older than 24 hours from creation.");
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    if (existing.createdAt.getTime() < thirtyDaysAgo.getTime()) {
+      throw new Error("Attendance cannot be edited for dates older than 30 days from creation.");
     }
   }
 
@@ -246,11 +246,11 @@ export async function clearSupervisorAttendanceUniversal(
   const targetDate = new Date(date);
   targetDate.setHours(0, 0, 0, 0);
 
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  if (targetDate.getTime() < yesterday.getTime()) {
-    throw new Error("Attendance cannot be deleted for dates older than 24 hours (yesterday).");
+  if (targetDate.getTime() < thirtyDaysAgo.getTime()) {
+    throw new Error("Attendance cannot be deleted for dates older than 30 days.");
   }
 
   const existing = await prisma.supervisorAttendance.findUnique({
