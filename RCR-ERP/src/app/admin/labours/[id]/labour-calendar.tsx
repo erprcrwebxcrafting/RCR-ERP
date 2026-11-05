@@ -106,16 +106,24 @@ export function LabourCalendar({ labour, attendances, payments, transfers = [] }
   };
 
   const isInactiveOnDate = (dateStr: string) => {
-    const target = new Date(dateStr);
-    target.setHours(0, 0, 0, 0);
-    const targetTime = target.getTime();
+    const [y, m, dayNum] = dateStr.split("-").map(Number);
+    const targetTime = new Date(y, m - 1, dayNum, 0, 0, 0, 0).getTime();
 
-    const historyArray = (labour?.statusHistory || []).map((h: any) => ({
-      status: h.status,
-      time: new Date(h.effectiveDate).setHours(0, 0, 0, 0),
-      createdAt: new Date(h.createdAt || 0).getTime(),
-      reason: h.reason
-    })).sort((a: any, b: any) => {
+    const historyArray = (labour?.statusHistory || []).map((h: any) => {
+      let t = 0;
+      if (h?.effectiveDate) {
+        const hd = new Date(h.effectiveDate);
+        if (!isNaN(hd.getTime())) {
+          t = new Date(hd.getFullYear(), hd.getMonth(), hd.getDate(), 0, 0, 0, 0).getTime();
+        }
+      }
+      return {
+        status: h?.status,
+        time: t,
+        createdAt: h?.createdAt ? new Date(h.createdAt).getTime() : 0,
+        reason: h?.reason
+      };
+    }).sort((a: any, b: any) => {
       if (b.time !== a.time) return b.time - a.time;
       return b.createdAt - a.createdAt;
     });

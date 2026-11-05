@@ -112,23 +112,33 @@ export function AttendanceCalendar({ supervisor, initialAttendances, payments = 
 
   // Create a map for fast lookup by "YYYY-MM-DD"
   const attendanceMap = new Map<string, AttendanceRecord>();
-  initialAttendances.forEach((att) => {
+  (initialAttendances || []).forEach((att) => {
+    if (!att || !att.date) return;
     const d = new Date(att.date);
+    if (isNaN(d.getTime())) return;
     const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
     attendanceMap.set(key, att);
   });
 
   const isInactiveOnDate = (dateStr: string) => {
-    const target = new Date(dateStr);
-    target.setHours(0, 0, 0, 0);
-    const targetTime = target.getTime();
+    const [y, m, dayNum] = dateStr.split("-").map(Number);
+    const targetTime = new Date(y, m - 1, dayNum, 0, 0, 0, 0).getTime();
 
-    const historyArray = (supervisor.statusHistory || []).map((h: any) => ({
-      status: h.status,
-      time: new Date(h.effectiveDate).setHours(0, 0, 0, 0),
-      createdAt: new Date(h.createdAt || 0).getTime(),
-      reason: h.reason
-    })).sort((a: any, b: any) => {
+    const historyArray = (supervisor.statusHistory || []).map((h: any) => {
+      let t = 0;
+      if (h?.effectiveDate) {
+        const hd = new Date(h.effectiveDate);
+        if (!isNaN(hd.getTime())) {
+          t = new Date(hd.getFullYear(), hd.getMonth(), hd.getDate(), 0, 0, 0, 0).getTime();
+        }
+      }
+      return {
+        status: h?.status,
+        time: t,
+        createdAt: h?.createdAt ? new Date(h.createdAt).getTime() : 0,
+        reason: h?.reason
+      };
+    }).sort((a: any, b: any) => {
       if (b.time !== a.time) return b.time - a.time;
       return b.createdAt - a.createdAt;
     });
@@ -476,12 +486,12 @@ export function AttendanceCalendar({ supervisor, initialAttendances, payments = 
                       <div className="text-left">
                         <div className="flex items-center gap-1">
                           <div className="text-[11px] sm:text-xs font-black tracking-tight text-slate-800 dark:text-slate-100">
-                            ₹{att.earnedAmount.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                            ₹{(att.earnedAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                           </div>
                           {isLocked && <span title="Locked (30 days past)"><Lock className="h-3 w-3 text-slate-400" /></span>}
                         </div>
                         <p className="text-[9px] text-slate-400 font-medium truncate">
-                          Rate: ₹{Math.round(att.dailyRate * 100) / 100}
+                          Rate: ₹{Math.round((att.dailyRate || 0) * 100) / 100}
                         </p>
                         {att.remarks && (
                           <p className="text-[9px] mt-1 text-slate-500 italic leading-tight opacity-90 truncate" title={att.remarks}>

@@ -50,7 +50,7 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
     setMounted(true);
   }, []);
 
-  const standardDailyRate = typeof labour.dailyWage === 'string' ? parseFloat(labour.dailyWage) : (labour.dailyWage || 0);
+  const standardDailyRate = typeof labour?.dailyWage === 'string' ? (parseFloat(labour.dailyWage) || 0) : (labour?.dailyWage || 0);
 
   if (!mounted) {
     return <div className="animate-pulse space-y-6 min-h-[500px] bg-slate-50 dark:bg-slate-800 rounded-xl" />;
@@ -72,30 +72,40 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const attendanceMap = new Map<string, AttendanceRecord>();
-  initialAttendances.forEach((att) => {
+  (initialAttendances || []).forEach((att) => {
+    if (!att || !att.date) return;
     const d = new Date(att.date);
+    if (isNaN(d.getTime())) return;
     const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
     attendanceMap.set(key, att);
   });
 
   const isInactiveOnDate = (dateStr: string) => {
-    const target = new Date(dateStr);
-    target.setHours(0, 0, 0, 0);
-    const targetTime = target.getTime();
+    const [y, m, dayNum] = dateStr.split("-").map(Number);
+    const targetTime = new Date(y, m - 1, dayNum, 0, 0, 0, 0).getTime();
 
-    const historyArray = (labour.statusHistory || []).map((h: any) => ({
-      status: h.status,
-      time: new Date(h.effectiveDate).setHours(0, 0, 0, 0),
-      createdAt: new Date(h.createdAt || 0).getTime(),
-      reason: h.reason
-    })).sort((a: any, b: any) => {
+    const historyArray = (labour?.statusHistory || []).map((h: any) => {
+      let t = 0;
+      if (h?.effectiveDate) {
+        const hd = new Date(h.effectiveDate);
+        if (!isNaN(hd.getTime())) {
+          t = new Date(hd.getFullYear(), hd.getMonth(), hd.getDate(), 0, 0, 0, 0).getTime();
+        }
+      }
+      return {
+        status: h?.status,
+        time: t,
+        createdAt: h?.createdAt ? new Date(h.createdAt).getTime() : 0,
+        reason: h?.reason
+      };
+    }).sort((a: any, b: any) => {
       if (b.time !== a.time) return b.time - a.time;
       return b.createdAt - a.createdAt;
     });
 
     const lastStatus = historyArray.find((h: any) => h.time <= targetTime);
     if (lastStatus && lastStatus.status === "INACTIVE") return { inactive: true, reason: lastStatus.reason };
-    if (!lastStatus && labour.active === false) return { inactive: true, reason: null };
+    if (!lastStatus && labour?.active === false) return { inactive: true, reason: null };
     return { inactive: false, reason: null };
   };
 
@@ -107,9 +117,11 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
     const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const att = attendanceMap.get(key);
     if (att) {
-      if (att.hajari > 0) monthHajariCount += att.hajari;
+      const hajariVal = typeof att.hajari === "number" ? att.hajari : (parseFloat(att.hajari as any) || 0);
+      const rateVal = typeof att.hajariRate === "number" ? att.hajariRate : (parseFloat(att.hajariRate as any) || standardDailyRate);
+      if (hajariVal > 0) monthHajariCount += hajariVal;
       else monthAbsentCount++;
-      monthTotalEarned += (att.hajari * att.hajariRate) || 0;
+      monthTotalEarned += (hajariVal * rateVal) || 0;
     }
   }
 
@@ -165,12 +177,12 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{labour.isForeman ? "Daily Salary Rate" : "Fixed Hajari Rate"}</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{labour?.isForeman ? "Daily Salary Rate" : "Fixed Hajari Rate"}</p>
                 <p className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">
-                  ₹{labour.isForeman ? Math.round(((standardDailyRate * 30) / daysInMonth) * 100) / 100 : standardDailyRate}
+                  ₹{labour?.isForeman ? (daysInMonth ? Math.round(((standardDailyRate * 30) / daysInMonth) * 100) / 100 : 0) : standardDailyRate}
                 </p>
                 <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-0.5">
-                  {labour.isForeman ? `Dynamic (₹${Math.round(standardDailyRate * 30)} ÷ ${daysInMonth} days)` : "Standard Daily Rate"}
+                  {labour?.isForeman ? `Dynamic (₹${Math.round(standardDailyRate * 30)} ÷ ${daysInMonth} days)` : "Standard Daily Rate"}
                 </p>
               </div>
               <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
@@ -278,24 +290,30 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
               let isLocked = false;
               if (att && att.createdAt) {
                 const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-                isLocked = new Date(att.createdAt).getTime() < thirtyDaysAgo.getTime();
+                const attCreated = new Date(att.createdAt);
+                if (!isNaN(attCreated.getTime())) {
+                  isLocked = attCreated.getTime() < thirtyDaysAgo.getTime();
+                }
               }
               const now = new Date();
               const isFuture = new Date(year, month, day).getTime() > new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
               const { inactive: isInactive, reason: inactiveReason } = isInactiveOnDate(dateStr);
 
+              const hajariNum = att ? (typeof att.hajari === "number" ? att.hajari : (parseFloat(att.hajari as any) || 0)) : 0;
+              const rateNum = att ? (typeof att.hajariRate === "number" ? att.hajariRate : (parseFloat(att.hajariRate as any) || standardDailyRate)) : standardDailyRate;
+
               let cardBg = "bg-white dark:bg-slate-900 hover:border-blue-400";
               if (isInactive) cardBg = "bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-60 grayscale";
-              else if (att && att.hajari > 0) cardBg = "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/70 shadow-sm";
-              else if (att && att.hajari === 0) cardBg = "bg-rose-50/60 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800/70 shadow-sm";
+              else if (att && hajariNum > 0) cardBg = "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/70 shadow-sm";
+              else if (att && hajariNum === 0) cardBg = "bg-rose-50/60 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800/70 shadow-sm";
 
               return (
                 <div key={day} className={`group relative min-h-[90px] sm:min-h-[110px] p-1.5 sm:p-2 md:p-2.5 rounded-xl border transition-all flex flex-col justify-between ${cardBg} ${isToday ? "ring-2 ring-blue-500 ring-offset-1" : ""} ${isFuture ? "opacity-50" : ""}`}>
                   <div className="flex items-start justify-between">
                     <span className={`inline-flex items-center justify-center h-6 w-6 rounded-lg text-xs font-bold ${isToday ? "bg-blue-600 text-white shadow-sm" : "text-slate-700 dark:text-slate-300"}`}>{day}</span>
                     {att && !isInactive && (
-                      <div className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md w-fit ${att.hajari > 0 ? "text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-900/50" : "text-rose-700 dark:text-rose-300 bg-rose-100/80 dark:bg-rose-900/50"}`}>
-                        {att.hajari > 0 ? `${att.hajari} Hajari` : "Absent"}
+                      <div className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md w-fit ${hajariNum > 0 ? "text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-900/50" : "text-rose-700 dark:text-rose-300 bg-rose-100/80 dark:bg-rose-900/50"}`}>
+                        {hajariNum > 0 ? `${hajariNum} Hajari` : "Absent"}
                       </div>
                     )}
                   </div>
@@ -310,9 +328,9 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
                     ) : att ? (
                       <div className="text-left">
                         <div className="text-[11px] sm:text-xs font-black tracking-tight text-slate-800 dark:text-slate-100">
-                          ₹{(att.hajari * att.hajariRate).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          ₹{((hajariNum * rateNum) || 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                         </div>
-                        <p className="text-[9px] text-slate-400 font-medium truncate">Rate: ₹{Math.round(att.hajariRate * 100) / 100}</p>
+                        <p className="text-[9px] text-slate-400 font-medium truncate">Rate: ₹{Math.round(rateNum * 100) / 100}</p>
                       </div>
                     ) : (
                       <div className="text-[10px] text-slate-300 dark:text-slate-600 italic">Not marked</div>
@@ -329,14 +347,14 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
                         <select
                           disabled={updatingDays[day] || false}
                           className={`w-full text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded p-1 text-slate-700 dark:text-slate-300 focus:outline-none focus:border-blue-500 cursor-pointer ${updatingDays[day] ? 'opacity-50' : ''}`}
-                          value={att ? att.hajari.toString() : ""}
+                          value={att ? String(hajariNum) : ""}
                           onChange={(e) => handleMarkHajari(day, e.target.value)}
                         >
                           <option value="" disabled>Select Hajari</option>
                           <option value="0">Absent (0 Hajari)</option>
                           <option value="0.5">0.5 Hajari (Half Day)</option>
                           <option value="1">1.0 Hajari (Full Day)</option>
-                          {!labour.isForeman && (
+                          {!labour?.isForeman && (
                             <>
                               <option value="1.5">1.5 Hajari (1.5 Shifts)</option>
                               <option value="2">2.0 Hajari (Double Shift)</option>
@@ -361,7 +379,7 @@ export function LabourAttendanceCalendar({ labour, initialAttendances }: Props) 
                           {att && (
                             <option value="clear" className="font-bold text-rose-600 bg-rose-50 dark:bg-rose-900/20">✖ Clear Record</option>
                           )}
-                          {!labour.isForeman && (
+                          {!labour?.isForeman && (
                             <option value="custom" className="font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900">
                               + Custom Hajari Value...
                             </option>

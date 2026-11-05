@@ -9,6 +9,7 @@ import { AadharUpload } from "@/components/ui/aadhar-upload";
 import { LabourStatusDialog } from "@/components/ui/labour-status-dialog";
 import { toggleLabourActiveSupervisor } from "./actions";
 import { BackButton } from "@/components/ui/back-button";
+import { formatDate } from "@/lib/utils";
 
 export default async function SupervisorLabourDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
@@ -24,7 +25,7 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
   });
   const siteIds = assignedSites.map((a) => a.siteId);
 
-  const labourRaw = await prisma.labour.findUnique({
+  const labourRaw = await prisma.labour.findFirst({
     where: { id: resolvedParams.id, siteId: { in: siteIds } },
     include: {
       site: true,
@@ -37,17 +38,26 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
   if (!labourRaw) return notFound();
   
   const labour = labourRaw as any;
-  const dailyWage = labour.dailyWage ?? labour.labourCategory.dailyWage;
+  const dailyWage = labour.dailyWage ?? labour.labourCategory?.dailyWage ?? 0;
   const isForeman = labour.labourCategory?.name === "Fitter Foreman";
 
-  const formattedAttendances = labour.attendances.map((a: any) => ({
+  const formattedAttendances = (labour.attendances || []).map((a: any) => ({
     id: a.id,
     labourId: a.labourId,
-    date: a.date.toISOString(),
-    status: a.status,
-    hajari: a.hajari,
-    hajariRate: a.hajariRate,
-    createdAt: a.createdAt.toISOString(),
+    date: a.date ? (a.date instanceof Date ? a.date.toISOString() : new Date(a.date).toISOString()) : new Date().toISOString(),
+    status: a.status || "PRESENT",
+    hajari: typeof a.hajari === "number" ? a.hajari : (parseFloat(a.hajari) || 0),
+    hajariRate: typeof a.hajariRate === "number" ? a.hajariRate : (parseFloat(a.hajariRate) || dailyWage || 0),
+    createdAt: a.createdAt ? (a.createdAt instanceof Date ? a.createdAt.toISOString() : new Date(a.createdAt).toISOString()) : new Date().toISOString(),
+  }));
+
+  const formattedStatusHistory = (labour.statusHistory || []).map((h: any) => ({
+    id: h.id,
+    labourId: h.labourId,
+    status: h.status,
+    effectiveDate: h.effectiveDate ? (h.effectiveDate instanceof Date ? h.effectiveDate.toISOString() : new Date(h.effectiveDate).toISOString()) : null,
+    reason: h.reason || null,
+    createdAt: h.createdAt ? (h.createdAt instanceof Date ? h.createdAt.toISOString() : new Date(h.createdAt).toISOString()) : null,
   }));
 
   return (
@@ -76,10 +86,10 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
           
           <div className="flex flex-wrap items-center gap-2 sm:ml-[3.25rem]">
             <span className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 transition-colors px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-white backdrop-blur-md border border-white/20 shadow-sm">
-              <HardHat className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-200" /> {labour.labourCategory.name}
+              <HardHat className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-200" /> {labour.labourCategory?.name || "General"}
             </span>
             <span className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 transition-colors px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-white backdrop-blur-md border border-white/20 shadow-sm">
-              <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-200" /> {labour.site.projectName}
+              <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-200" /> {labour.site?.projectName || "Assigned Site"}
             </span>
           </div>
         </div>
@@ -119,7 +129,7 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
                 </h2>
               </div>
               <p className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 text-xl">
-                {labour.joiningDate ? new Date(labour.joiningDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : new Date(labour.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+                {labour.joiningDate ? formatDate(labour.joiningDate) : (labour.createdAt ? formatDate(labour.createdAt) : "—")}
               </p>
             </div>
 
@@ -133,7 +143,7 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
                 </h2>
               </div>
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 text-blue-700 dark:text-blue-300 font-black px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl flex items-center justify-between text-lg sm:text-xl border border-blue-100 dark:border-blue-900/50 shadow-inner">
-                <span>{isForeman ? Math.round((typeof dailyWage === 'number' ? dailyWage : parseFloat(dailyWage || '0')) * 30).toLocaleString("en-IN") : (typeof dailyWage === 'number' ? dailyWage.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : dailyWage)}</span>
+                <span>{isForeman ? Math.round(dailyWage * 30).toLocaleString("en-IN") : dailyWage.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
                 <span className="text-xs font-bold uppercase tracking-wider opacity-70">{isForeman ? "/ month" : "/ hajari"}</span>
               </div>
             </div>
@@ -147,11 +157,11 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
         </div>
 
         {/* Status History Section */}
-        {labour.statusHistory && labour.statusHistory.length > 0 && (
+        {formattedStatusHistory.length > 0 && (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
             <h3 className="text-lg font-bold mb-4 text-slate-800 dark:text-slate-200">Status History</h3>
             <div className="space-y-4">
-              {labour.statusHistory.map((history: any) => (
+              {formattedStatusHistory.map((history: any) => (
                 <div key={history.id} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -159,7 +169,7 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
                         {history.status}
                       </Badge>
                       <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                        Effective: {new Date(history.effectiveDate).toLocaleDateString()}
+                        Effective: {history.effectiveDate ? formatDate(history.effectiveDate) : "—"}
                       </span>
                     </div>
                     {history.reason && (
@@ -177,7 +187,7 @@ export default async function SupervisorLabourDetailsPage({ params }: { params: 
         {/* Main Content: Attendance Calendar */}
         <div className="w-full">
           <LabourAttendanceCalendar 
-            labour={{ id: labour.id, name: labour.name, dailyWage, isForeman, active: labour.active, statusHistory: labour.statusHistory }} 
+            labour={{ id: labour.id, name: labour.name, dailyWage, isForeman, active: labour.active, statusHistory: formattedStatusHistory }} 
             initialAttendances={formattedAttendances} 
           />
         </div>

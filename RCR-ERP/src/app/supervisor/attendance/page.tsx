@@ -245,7 +245,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                             <td className="px-6 py-4">
                               <HajariInput
                                 labourId={p.id}
-                                defaultValue={existing?.hajari !== undefined ? existing.hajari.toString() : ""}
+                                defaultValue={existing?.hajari != null ? String(existing.hajari) : ""}
                                 isLocked={isLocked}
                                 maxLimit={cat.name === "Fitter Foreman" ? 1 : 10}
                               />
