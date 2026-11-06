@@ -95,13 +95,13 @@ export function SiteLaboursTable({ site, allSites, allSupervisors }: { site: any
                 <TD className="align-top">
                   <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-bold mb-1 border border-amber-200 dark:border-amber-500/20">
                     <Pickaxe className="h-3 w-3" />
-                    {l.labourCategory.name}
+                    {l.labourCategory?.name || "General"}
                   </div>
                   <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex flex-col gap-0.5 mt-1">
                     <span className="text-emerald-600 dark:text-emerald-500">
-                      ₹{l.labourCategory.name === "Fitter Foreman" 
-                        ? Math.round((l.dailyWage ?? l.labourCategory.dailyWage) * 30).toLocaleString("en-IN") + "/month" 
-                        : (l.dailyWage ?? l.labourCategory.dailyWage) + "/hajri"}
+                      ₹{l.labourCategory?.name === "Fitter Foreman" 
+                        ? Math.round(((l.dailyWage ?? l.labourCategory?.dailyWage ?? 0)) * 30).toLocaleString("en-IN") + "/month" 
+                        : ((l.dailyWage ?? l.labourCategory?.dailyWage ?? 0)) + "/hajri"}
                     </span>
                     {l.overtimeRate && <span>₹{l.overtimeRate}/hr OT</span>}
                   </div>

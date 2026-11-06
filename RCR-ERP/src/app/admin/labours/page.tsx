@@ -20,7 +20,7 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
   const showInactive = resolvedParams.showInactive === "1";
   const PAGE_SIZE = 10;
 
-  const [totalSites, sites, allSites, allCategories, allSupervisors] = await Promise.all([
+  const [totalSites, sites, allSites, allSupervisors] = await Promise.all([
     prisma.site.count({ where: { active: true } }),
     prisma.site.findMany({
       where: { active: true },
@@ -59,7 +59,7 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
           labourCategory: { select: { id: true, name: true, dailyWage: true } },
           supervisor: { select: { id: true, name: true } },
           createdAt: true,
-          ...({ updatedAt: true } as any),
+          updatedAt: true,
         },
         where: q ? {
           OR: [
@@ -67,7 +67,7 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
             { phone: { contains: q, mode: "insensitive" } },
           ]
         } : (showInactive ? undefined : { active: true }),
-        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }] as any
+        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }]
       }
     },
     orderBy: { projectName: "asc" },
@@ -82,7 +82,6 @@ export default async function LaboursPage({ searchParams }: { searchParams: Prom
     },
     orderBy: { projectName: "asc" }
   }),
-  prisma.labourCategory.findMany({ orderBy: { name: "asc" } }),
   prisma.user.findMany({ where: { role: "SUPERVISOR", active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } })
   ]);
 
