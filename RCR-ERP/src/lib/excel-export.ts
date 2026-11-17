@@ -106,8 +106,18 @@ export async function generateRABillExcelWorkbook(data: {
 
   formatTopDetails(sheet1, [2, 3, 4, 5, 7, 8, 9]);
 
+  let computedTowerWork = 0;
+  towers.forEach((b: any) => {
+    const towerWorkAmt = (b.workItems || []).reduce((s: number, i: any) => {
+      return s + ((i.currentAmt !== undefined && i.currentAmt !== null) ? Number(i.currentAmt) : ((i.currentQty || 0) * (i.rate || 0)));
+    }, 0);
+    computedTowerWork += towerWorkAmt;
+  });
+  const supplyTotal = supplyEntries.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0);
+
   const lines = runningBill?.lines || [];
-  const currentTotal = lines.reduce((sum: number, l: any) => sum + (l.currentAmount || 0), 0);
+  const linesTotal = lines.reduce((sum: number, l: any) => sum + (l.currentAmount || 0), 0);
+  const currentTotal = linesTotal > 0 ? linesTotal : (computedTowerWork + supplyTotal);
   const cgst = currentTotal * (cgstPct / 100);
   const sgst = currentTotal * (sgstPct / 100);
   const netPayable = currentTotal + cgst + sgst;
@@ -118,7 +128,7 @@ export async function generateRABillExcelWorkbook(data: {
   let sr = 1;
   towers.forEach((b: any) => {
     const towerWorkAmt = (b.workItems || []).reduce((s: number, i: any) => {
-      return s + ((i.currentAmt !== undefined && i.currentAmt !== null) ? i.currentAmt : ((i.currentQty || 0) * i.rate));
+      return s + ((i.currentAmt !== undefined && i.currentAmt !== null) ? Number(i.currentAmt) : ((i.currentQty || 0) * (i.rate || 0)));
     }, 0);
 
     if (towerWorkAmt > 0) {
@@ -128,7 +138,6 @@ export async function generateRABillExcelWorkbook(data: {
     }
   });
 
-  const supplyTotal = supplyEntries.reduce((s: number, e: any) => s + (e.totalAmount || 0), 0);
   if (supplyTotal > 0) {
     const r = sheet1.addRow([sr++, "Departmental Extra Labour Supply Amount", supplyTotal]);
     r.getCell(3).numFmt = "₹ #,##0.00";

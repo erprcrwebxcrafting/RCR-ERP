@@ -28,6 +28,10 @@ import {
 
 
 function BillHeaderBanner({ site, latestBill, sheetTitle }: { site: any; latestBill: any; sheetTitle?: string }) {
+  const isDraft = latestBill?.isDraft || !latestBill?.id || latestBill?.id === "draft";
+  const displayBillNo = latestBill?.billNo || (isDraft ? "Draft" : "001");
+  const displayDate = formatDate(latestBill?.billDate || new Date());
+
   return (
     <div className="space-y-3 border-b pb-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
@@ -36,10 +40,10 @@ function BillHeaderBanner({ site, latestBill, sheetTitle }: { site: any; latestB
           <p className="text-xs text-muted-foreground font-medium leading-tight mt-0.5">RCR ENTERPRISES / SSHIVAAY CONSTRUCTIONS</p>
         </div>
         <div className="text-left sm:text-right font-mono text-xs flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 sm:gap-1">
-          <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 px-2 py-0.5 font-bold">
-            Invoice: {latestBill?.billNo || "Draft"}
+          <Badge variant="outline" className={`border-indigo-500/30 px-2 py-0.5 font-bold ${isDraft ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30" : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"}`}>
+            Invoice: {displayBillNo}
           </Badge>
-          <p className="text-muted-foreground text-[11px]">Date: {formatDate(latestBill?.billDate || new Date())}</p>
+          <p className="text-muted-foreground text-[11px]">Date: {displayDate}</p>
         </div>
       </div>
 
@@ -54,7 +58,7 @@ function BillHeaderBanner({ site, latestBill, sheetTitle }: { site: any; latestB
         <div className="space-y-1.5 md:border-l md:pl-3.5 border-slate-200 dark:border-slate-800 flex flex-col justify-between">
           <div className="flex items-center justify-between bg-white/60 dark:bg-slate-800/60 px-2 py-1 rounded border border-slate-200/80 dark:border-slate-700">
             <span className="text-[11px] font-semibold text-muted-foreground">Invoice No:</span>
-            <span className="font-bold font-mono text-indigo-600 dark:text-indigo-400">{latestBill?.billNo || "001"}</span>
+            <span className="font-bold font-mono text-indigo-600 dark:text-indigo-400">{displayBillNo}</span>
           </div>
           <div className="flex items-center justify-between text-[11px]">
             <span className="text-muted-foreground">Work Order No:</span>
@@ -88,6 +92,20 @@ export function RABillViewer({ site }: { site: any }) {
 
   const bills = site.bills || [];
   const latestBill = bills[0] || null;
+
+  const nextBillCount = bills.length + 1;
+  const autoInvoiceNo = formatInvoiceNo(nextBillCount);
+  const autoRefNo = formatRefNo(nextBillCount);
+  const currentPeriodLabel = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+
+  const draftBillInfo = {
+    id: "draft",
+    isDraft: true,
+    billNo: `DRAFT (${autoInvoiceNo})`,
+    refNo: autoRefNo,
+    billDate: new Date(),
+    periodLabel: currentPeriodLabel,
+  };
 
   const [taxPcts, setTaxPcts] = useState({
     cgstPct: site.cgstPct ?? 9,
@@ -135,7 +153,7 @@ export function RABillViewer({ site }: { site: any }) {
   const handleDownloadExcel = () => {
     downloadFile({
       url: `/api/sites/${site.id}/export-excel`,
-      defaultFilename: `${site.projectName.replace(/\s+/g, "_")}_RA_Bill.xlsx`,
+      defaultFilename: `${site.projectName.replace(/\s+/g, "_")}_DRAFT_RA_Bill.xlsx`,
       fileType: "excel",
       title: "Creating Running Bill Excel...",
     });
@@ -144,7 +162,7 @@ export function RABillViewer({ site }: { site: any }) {
   const handleDownloadPdfPackage = () => {
     downloadFile({
       url: `/api/sites/${site.id}/export-pdf`,
-      defaultFilename: `${site.projectName.replace(/\s+/g, "_")}_RA_Bill.pdf`,
+      defaultFilename: `${site.projectName.replace(/\s+/g, "_")}_DRAFT_RA_Bill.pdf`,
       fileType: "pdf",
       title: "Generating Official Bill PDF...",
     });
@@ -389,7 +407,7 @@ export function RABillViewer({ site }: { site: any }) {
       {/* TAB CONTENT: SHEET 1 (TAX INVOICE) */}
       {activeSheetTab === "sheet1" && (
         <Card className="max-w-4xl mx-auto shadow-md border p-6 bg-background space-y-6">
-          <BillHeaderBanner site={site} latestBill={latestBill} sheetTitle="TAX INVOICE" />
+          <BillHeaderBanner site={site} latestBill={draftBillInfo} sheetTitle="TAX INVOICE" />
 
           {/* Invoice Itemized Work Description Table */}
           <div className="border rounded-md overflow-hidden">
@@ -481,7 +499,7 @@ export function RABillViewer({ site }: { site: any }) {
             </div>
           </CardHeader>
 
-          <BillHeaderBanner site={site} latestBill={latestBill} sheetTitle="Sheet 2: Consolidated Abstract Summary" />
+          <BillHeaderBanner site={site} latestBill={draftBillInfo} sheetTitle="Sheet 2: Consolidated Abstract Summary" />
 
           <Table className="border">
             <THead className="bg-muted/60">
@@ -638,7 +656,7 @@ export function RABillViewer({ site }: { site: any }) {
 
             return (
               <div className="space-y-6">
-                <BillHeaderBanner site={site} latestBill={latestBill} sheetTitle={`BUA Building Sheet - ${b.name}`} />
+                <BillHeaderBanner site={site} latestBill={draftBillInfo} sheetTitle={`BUA Building Sheet - ${b.name}`} />
 
                 <div className="bg-indigo-500/10 border border-indigo-500/30 p-3 rounded-lg flex items-center justify-between text-xs font-semibold flex-wrap gap-2">
                   <span className="text-indigo-400">CIVIL WORK (BUA)</span>
@@ -745,7 +763,7 @@ export function RABillViewer({ site }: { site: any }) {
 
       {activeSheetTab === "supply" && (
         <Card className="p-6 space-y-6 bg-background">
-          <BillHeaderBanner site={site} latestBill={latestBill} sheetTitle="Sheet 5: Client Extra Supply Labour Log" />
+          <BillHeaderBanner site={site} latestBill={draftBillInfo} sheetTitle="Sheet 5: Client Extra Supply Labour Log" />
 
           {(() => {
             const entries = site.supplyLabourEntries || [];
@@ -869,7 +887,7 @@ export function RABillViewer({ site }: { site: any }) {
 
       {activeSheetTab === "balance" && (
         <div className="space-y-6">
-          <BillHeaderBanner site={site} latestBill={latestBill} sheetTitle="Sheet 6: Client Ledger & Balance Sheet" />
+          <BillHeaderBanner site={site} latestBill={draftBillInfo} sheetTitle="Sheet 6: Client Ledger & Balance Sheet" />
           <SiteBalanceSheet site={site} hidePaymentForm={true} />
         </div>
       )}
