@@ -146,6 +146,7 @@ export interface AttendanceCardData {
   balancePayable: number;
   openingBalance?: number;
   logoStr?: string;
+  role?: string;
 }
 
 export const AttendanceCardPages = ({ data }: { data: AttendanceCardData }) => {

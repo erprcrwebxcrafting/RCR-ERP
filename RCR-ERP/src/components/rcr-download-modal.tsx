@@ -7,7 +7,7 @@ export interface DownloadOptions {
   url: string;
   defaultFilename?: string;
   title?: string;
-  fileType?: "excel" | "pdf" | "card";
+  fileType?: "excel" | "pdf" | "card" | "zip";
 }
 
 interface DownloadState {
@@ -17,7 +17,7 @@ interface DownloadState {
   isSuccess: boolean;
   error: string | null;
   title: string;
-  fileType: "excel" | "pdf" | "card";
+  fileType: "excel" | "pdf" | "card" | "zip";
 }
 
 const initialState: DownloadState = {
@@ -68,6 +68,8 @@ export async function triggerRcrDownload({
       ? "Creating Excel Ledger..."
       : customFileType === "card"
       ? "Generating Bulk Attendance Cards..."
+      : customFileType === "zip"
+      ? "Packaging Individual Cards (ZIP)..."
       : "Creating PDF Document...");
 
   updateState({
@@ -96,6 +98,14 @@ export async function triggerRcrDownload({
           "Formatting PDF card layouts & signatures...",
           "Compiling printable bulk cards...",
           "Finalizing PDF file...",
+        ]
+      : customFileType === "zip"
+      ? [
+          "Gathering site labour & supervisor records...",
+          "Calculating hajaris & worker balances...",
+          "Generating separate PDF card for each worker...",
+          "Compressing into a clean ZIP folder...",
+          "Finalizing ZIP download...",
         ]
       : [
           "Fetching site records & balances...",

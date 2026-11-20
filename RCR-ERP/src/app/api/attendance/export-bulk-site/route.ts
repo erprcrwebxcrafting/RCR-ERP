@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { generateBulkAttendanceCardBuffer, AttendanceCardData } from "@/lib/pdf/attendance-card";
+import { generateBulkAttendanceCardBuffer, generateAttendanceCardBuffer, AttendanceCardData } from "@/lib/pdf/attendance-card";
 import { calculateAttendanceCardData } from "@/lib/attendance-calc";
+import JSZip from "jszip";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,12 @@ export async function GET(req: NextRequest) {
       const batch = labours.slice(i, i + batchSize);
       const promises = batch.map(async (labour) => {
         try {
-          return await calculateAttendanceCardData(labour.id, "LABOUR", monthParam);
+          const card = await calculateAttendanceCardData(labour.id, "LABOUR", monthParam);
+          if (card) {
+            card.role = "Labour";
+            return card;
+          }
+          return null;
         } catch (e) {
           console.error(`Error calculating card for labour ${labour.id}:`, e);
           return null;
@@ -56,7 +62,12 @@ export async function GET(req: NextRequest) {
       const batch = supervisors.slice(i, i + batchSize);
       const promises = batch.map(async (supervisor) => {
         try {
-          return await calculateAttendanceCardData(supervisor.id, "SUPERVISOR", monthParam);
+          const card = await calculateAttendanceCardData(supervisor.id, "SUPERVISOR", monthParam);
+          if (card) {
+            card.role = "Supervisor";
+            return card;
+          }
+          return null;
         } catch (e) {
           console.error(`Error calculating card for supervisor ${supervisor.id}:`, e);
           return null;
@@ -82,11 +93,46 @@ export async function GET(req: NextRequest) {
       console.error("Failed to load logo for bulk cards", e);
     }
 
-    const pdfBuffer = await generateBulkAttendanceCardBuffer(allCardsData);
-    
+    const format = searchParams.get("format"); // "zip" or "pdf" (default)
     const dateParam = new Date(monthParam);
     const monthName = dateParam.toLocaleString('default', { month: 'short', year: 'numeric' });
-    const filename = `${site.projectName.replace(/[^a-zA-Z0-9]/g, "_")}_Bulk_Cards_${monthName}.pdf`;
+    const safeProjectName = site.projectName.replace(/[^a-zA-Z0-9]/g, "_");
+
+    if (format === "zip") {
+      const zip = new JSZip();
+      const cardBatchSize = 4;
+      for (let i = 0; i < allCardsData.length; i += cardBatchSize) {
+        const batch = allCardsData.slice(i, i + cardBatchSize);
+        await Promise.all(
+          batch.map(async (card, idx) => {
+            const index = i + idx + 1;
+            const singleBuffer = await generateAttendanceCardBuffer(card);
+            const role = card.role || "Worker";
+            const cleanName = (card.workerName || "Worker")
+              .replace(/[^a-zA-Z0-9_\-\s]/g, "")
+              .trim()
+              .replace(/\s+/g, "_");
+            const padIndex = String(index).padStart(2, "0");
+            const cardFileName = `${padIndex}_${role}_${cleanName}_${monthName.replace(/\s+/g, "_")}.pdf`;
+            zip.file(cardFileName, singleBuffer);
+          })
+        );
+      }
+
+      const zipBuffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+      const zipFilename = `${safeProjectName}_Hajri_Cards_${monthName.replace(/\s+/g, "_")}.zip`;
+
+      return new NextResponse(new Uint8Array(zipBuffer), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/zip",
+          "Content-Disposition": `attachment; filename="${zipFilename}"`,
+        },
+      });
+    }
+
+    const pdfBuffer = await generateBulkAttendanceCardBuffer(allCardsData);
+    const filename = `${safeProjectName}_Bulk_Cards_${monthName.replace(/\s+/g, "_")}.pdf`;
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
