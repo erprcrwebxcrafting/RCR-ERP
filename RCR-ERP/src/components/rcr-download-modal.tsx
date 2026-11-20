@@ -128,7 +128,16 @@ export async function triggerRcrDownload({
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      const errText = await response.text().catch(() => "");
+      let errText = await response.text().catch(() => "");
+      if (errText.includes("<html") || errText.includes("<!DOCTYPE") || errText.includes("<span") || errText.includes("<div") || errText.includes("<body")) {
+        if (response.status === 504 || errText.toLowerCase().includes("504") || errText.toLowerCase().includes("timeout")) {
+          errText = "Server timeout (504): PDF/File generation took too long. Please try again.";
+        } else if (response.status === 404) {
+          errText = "No records found for the selected site / month.";
+        } else {
+          errText = `Server encountered an error (${response.status}). Please try again.`;
+        }
+      }
       throw new Error(errText || `Server returned error (${response.status})`);
     }
 
