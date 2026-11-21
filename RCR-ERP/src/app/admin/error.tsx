@@ -12,9 +12,20 @@ export default function AdminErrorBoundary({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const isStaleAction =
+    error?.message?.toLowerCase().includes("server action") &&
+    error?.message?.toLowerCase().includes("not found");
+
   useEffect(() => {
     console.error("Admin Section Error Caught:", error);
-  }, [error]);
+    if (isStaleAction) {
+      const hasAutoReloaded = sessionStorage.getItem("admin_stale_action_auto_reloaded");
+      if (!hasAutoReloaded) {
+        sessionStorage.setItem("admin_stale_action_auto_reloaded", "true");
+        window.location.reload();
+      }
+    }
+  }, [error, isStaleAction]);
 
   const isNetwork =
     error?.message?.toLowerCase().includes("network") ||
@@ -26,19 +37,23 @@ export default function AdminErrorBoundary({
     <div className="min-h-[70vh] flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl text-center space-y-5">
         <div className={`h-14 w-14 rounded-2xl mx-auto flex items-center justify-center border shadow-inner ${
-          isNetwork
+          isStaleAction
+            ? "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/50"
+            : isNetwork
             ? "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/50"
             : "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50"
         }`}>
-          {isNetwork ? <WifiOff className="h-7 w-7" /> : <AlertTriangle className="h-7 w-7" />}
+          {isStaleAction ? <RotateCcw className="h-7 w-7" /> : isNetwork ? <WifiOff className="h-7 w-7" /> : <AlertTriangle className="h-7 w-7" />}
         </div>
 
         <div className="space-y-2">
           <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            {isNetwork ? "Network Connection Interrupted" : "Something Went Wrong"}
+            {isStaleAction ? "New Version Available" : isNetwork ? "Network Connection Interrupted" : "Something Went Wrong"}
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-            {isNetwork
+            {isStaleAction
+              ? "A fresh system update was just deployed on the server. Please click Reload Page to get the latest version."
+              : isNetwork
               ? "Unable to fetch data from the server. This usually happens due to a temporary internet fluctuation or slow server response."
               : "An unexpected error occurred while loading this section."}
           </p>
